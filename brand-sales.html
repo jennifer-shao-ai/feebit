@@ -360,7 +360,7 @@
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v2.0 · Feebit © 2026</div>
+  <div class="sidebar-footer">v2.1 · Feebit © 2026</div>
 </div>
 
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
@@ -370,7 +370,7 @@
     <div style="display:flex;align-items:center;gap:10px">
       <button class="btn-hamburger" onclick="toggleSidebar()">☰</button>
       <span class="topbar-title">📈 品牌銷售分析</span>
-      <span style="font-size:11px;color:#aaa;font-weight:400;">v2.0</span>
+      <span style="font-size:11px;color:#aaa;font-weight:400;">v2.1</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <span id="period-badge" class="period-badge" style="display:none"></span>
@@ -622,6 +622,20 @@ const COUNTRY_PREFIX = /^(韓國|日本|葡萄牙|馬來西亞|泰國|台灣|美
 function extractBrand(name) {
   let s = name.trim();
 
+  // 0. Check leading bracket content first (e.g. 【COSRX】商品名 → COSRX)
+  const bracketM = s.match(/^[【\[〔]([^】\]〕]+)[】\]〕]/);
+  if (bracketM) {
+    const inner   = bracketM[1].trim();
+    const innerLC = inner.toLowerCase();
+    for (const { alias, canonical } of ALIAS_MAP) {
+      if (innerLC.startsWith(alias.toLowerCase())) return canonical;
+    }
+    const engB = inner.match(/^([A-Za-z][A-Za-z0-9&._'\-]*)/);
+    if (engB && engB[1].length >= 2) return engB[1];
+    const cjkB = inner.match(/^([\u4e00-\u9fff]{2,6})/);
+    if (cjkB) return cjkB[1];
+  }
+
   // 1. Strip 【...】〔...〕[...] brackets from front
   s = s.replace(/^(【[^】]*】\s*|〔[^〕]*〕\s*|\[[^\]]*\]\s*)+/, '').trim();
 
@@ -639,6 +653,12 @@ function extractBrand(name) {
     if (s.toLowerCase().startsWith(alias.toLowerCase())) return canonical;
   }
 
+  // 5b. Scan full original name for any known alias (catches brands embedded mid-name)
+  const fullLC = name.toLowerCase();
+  for (const { alias, canonical } of ALIAS_MAP) {
+    if (alias.length >= 3 && fullLC.includes(alias.toLowerCase())) return canonical;
+  }
+
   // 6. Fallback: leading English token
   const eng = s.match(/^([A-Za-z][A-Za-z0-9&._'\-]*)/);
   if (eng && eng[1].length >= 2) return eng[1];
@@ -648,6 +668,27 @@ function extractBrand(name) {
   if (cjk) return cjk[1];
 
   return '未分類';
+}
+
+// Merge brands where one name is a prefix of another (e.g. "COSRX" vs "COSRX Advanced")
+function autoMergeSplitBrands() {
+  const counts = {};
+  for (const p of state.products) counts[p.autoBrand] = (counts[p.autoBrand] || 0) + 1;
+  const ranked = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+
+  for (const p of state.products) {
+    if (state.brandMap[p.no]) continue;
+    const cur   = p.autoBrand;
+    const curLC = cur.toLowerCase();
+    for (const other of ranked) {
+      if (other === cur || counts[other] <= counts[cur]) continue;
+      const otherLC = other.toLowerCase();
+      if (curLC.startsWith(otherLC) || otherLC.startsWith(curLC)) {
+        state.brandMap[p.no] = other;
+        break;
+      }
+    }
+  }
 }
 
 // ══════════════════════════════════════════
@@ -756,6 +797,7 @@ function processData(rows) {
   state.period       = period || '本月報表';
   state.editingBrand = null;
 
+  autoMergeSplitBrands();
   showDashboard();
 }
 
