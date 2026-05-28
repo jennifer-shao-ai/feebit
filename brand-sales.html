@@ -317,6 +317,10 @@
     <a class="nav-item active" href="brand-sales.html"><span class="icon">📈</span> 品牌銷售分析</a>
   </div>
   <div class="sidebar-section">
+    <div class="sidebar-label">市場分析</div>
+    <a class="nav-item" href="market-tracker.html" id="nav-market"><span class="icon">🔭</span> 品類競品分析</a>
+  </div>
+  <div class="sidebar-section">
     <div class="sidebar-label">行銷</div>
     <div class="nav-item soon"><span class="icon">📢</span> 廣告文案<span class="soon-tag">即將推出</span></div>
   </div>
@@ -356,7 +360,7 @@
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v1.8 · Feebit © 2026</div>
+  <div class="sidebar-footer">v2.1 · Feebit © 2026</div>
 </div>
 
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
@@ -366,9 +370,11 @@
     <div style="display:flex;align-items:center;gap:10px">
       <button class="btn-hamburger" onclick="toggleSidebar()">☰</button>
       <span class="topbar-title">📈 品牌銷售分析</span>
+      <span style="font-size:11px;color:#aaa;font-weight:400;">v2.1</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <span id="period-badge" class="period-badge" style="display:none"></span>
+      <button id="copy-top5-btn" class="btn btn-ghost" style="display:none" onclick="copyTop5Excel()">複製前五名</button>
       <button id="copy-btn" class="btn btn-ghost" style="display:none" onclick="copyRanking()">複製排行</button>
       <button id="reset-btn" class="btn btn-ghost" style="display:none" onclick="resetAll()">重新上傳</button>
     </div>
@@ -585,7 +591,7 @@ const BRAND_TABLE = {
   '全久榮':            ['全久榮'],
   '克司博':            ['克司博', 'CHOBS'],
   '唐鑫':              ['唐鑫'],
-  'V4U鳶鳥禮':         ['V4U鳶鳥禮', 'V4U'],
+  'V4U薇選禮':          ['V4U薇選禮', 'V4U'],
   // 其他在 CSV 出現但品牌表未列的
   'Athens':            ['Athens'],
   'Qure':              ['Qure'],
@@ -616,6 +622,20 @@ const COUNTRY_PREFIX = /^(韓國|日本|葡萄牙|馬來西亞|泰國|台灣|美
 function extractBrand(name) {
   let s = name.trim();
 
+  // 0. Check leading bracket content first (e.g. 【COSRX】商品名 → COSRX)
+  const bracketM = s.match(/^[【\[〔]([^】\]〕]+)[】\]〕]/);
+  if (bracketM) {
+    const inner   = bracketM[1].trim();
+    const innerLC = inner.toLowerCase();
+    for (const { alias, canonical } of ALIAS_MAP) {
+      if (innerLC.startsWith(alias.toLowerCase())) return canonical;
+    }
+    const engB = inner.match(/^([A-Za-z][A-Za-z0-9&._'\-]*)/);
+    if (engB && engB[1].length >= 2) return engB[1];
+    const cjkB = inner.match(/^([\u4e00-\u9fff]{2,6})/);
+    if (cjkB) return cjkB[1];
+  }
+
   // 1. Strip 【...】〔...〕[...] brackets from front
   s = s.replace(/^(【[^】]*】\s*|〔[^〕]*〕\s*|\[[^\]]*\]\s*)+/, '').trim();
 
@@ -633,6 +653,12 @@ function extractBrand(name) {
     if (s.toLowerCase().startsWith(alias.toLowerCase())) return canonical;
   }
 
+  // 5b. Scan full original name for any known alias (catches brands embedded mid-name)
+  const fullLC = name.toLowerCase();
+  for (const { alias, canonical } of ALIAS_MAP) {
+    if (alias.length >= 3 && fullLC.includes(alias.toLowerCase())) return canonical;
+  }
+
   // 6. Fallback: leading English token
   const eng = s.match(/^([A-Za-z][A-Za-z0-9&._'\-]*)/);
   if (eng && eng[1].length >= 2) return eng[1];
@@ -642,6 +668,27 @@ function extractBrand(name) {
   if (cjk) return cjk[1];
 
   return '未分類';
+}
+
+// Merge brands where one name is a prefix of another (e.g. "COSRX" vs "COSRX Advanced")
+function autoMergeSplitBrands() {
+  const counts = {};
+  for (const p of state.products) counts[p.autoBrand] = (counts[p.autoBrand] || 0) + 1;
+  const ranked = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+
+  for (const p of state.products) {
+    if (state.brandMap[p.no]) continue;
+    const cur   = p.autoBrand;
+    const curLC = cur.toLowerCase();
+    for (const other of ranked) {
+      if (other === cur || counts[other] <= counts[cur]) continue;
+      const otherLC = other.toLowerCase();
+      if (curLC.startsWith(otherLC) || otherLC.startsWith(curLC)) {
+        state.brandMap[p.no] = other;
+        break;
+      }
+    }
+  }
 }
 
 // ══════════════════════════════════════════
@@ -750,6 +797,7 @@ function processData(rows) {
   state.period       = period || '本月報表';
   state.editingBrand = null;
 
+  autoMergeSplitBrands();
   showDashboard();
 }
 
@@ -789,8 +837,9 @@ function esc(s) {
 function showDashboard() {
   document.getElementById('upload-section').style.display   = 'none';
   document.getElementById('dashboard-section').style.display = 'block';
-  document.getElementById('reset-btn').style.display  = '';
-  document.getElementById('copy-btn').style.display   = '';
+  document.getElementById('reset-btn').style.display      = '';
+  document.getElementById('copy-btn').style.display       = '';
+  document.getElementById('copy-top5-btn').style.display  = '';
 
   const pb = document.getElementById('period-badge');
   pb.textContent = state.period;
@@ -958,13 +1007,39 @@ function renderProductTable() {
 
 function updateProductBrand(no, val) {
   if (val === '__new__') {
-    const name = prompt('請輸入新品牌名稱：');
-    if (name && name.trim()) state.brandMap[no] = name.trim();
-    else return;
-  } else {
-    state.brandMap[no] = val;
+    showNewBrandInput(no);
+    return;
   }
+  state.brandMap[no] = val;
   renderAll();
+}
+
+function showNewBrandInput(no) {
+  const cell = document.querySelector(`select[onchange*="'${no}'"]`)?.parentElement;
+  if (!cell) return;
+  cell.innerHTML = `
+    <div style="display:flex;gap:4px;align-items:center">
+      <input id="new-brand-input-${no}" type="text" placeholder="品牌名稱"
+        style="border:1px solid #6366f1;border-radius:6px;padding:3px 6px;font-size:13px;width:110px;outline:none"
+        onkeydown="handleNewBrandKey(event,'${no}')" />
+      <button onclick="confirmNewBrand('${no}')"
+        style="background:#6366f1;color:#fff;border:none;border-radius:6px;padding:3px 8px;font-size:12px;cursor:pointer">確認</button>
+      <button onclick="renderAll()"
+        style="background:transparent;border:1px solid #555;border-radius:6px;padding:3px 6px;font-size:12px;cursor:pointer;color:#aaa">✕</button>
+    </div>`;
+  document.getElementById(`new-brand-input-${no}`)?.focus();
+}
+
+function handleNewBrandKey(evt, no) {
+  if (evt.key === 'Enter')  confirmNewBrand(no);
+  if (evt.key === 'Escape') renderAll();
+}
+
+function confirmNewBrand(no) {
+  const inp = document.getElementById(`new-brand-input-${no}`);
+  const name = inp ? inp.value.trim() : '';
+  if (name) { state.brandMap[no] = name; renderAll(); }
+  else inp?.focus();
 }
 
 // ══════════════════════════════════════════
@@ -994,6 +1069,17 @@ function switchTab(el) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
   document.getElementById(tabId).classList.add('active');
+}
+
+// ══════════════════════════════════════════
+// Copy top 5 for Excel (two rows: brands / sales)
+// ══════════════════════════════════════════
+function copyTop5Excel() {
+  const groups = computeGroups().slice(0, 5);
+  const rows   = groups.map(g => g.brand + '\t' + g.sales).join('\n');
+  navigator.clipboard.writeText(rows)
+    .then(() => alert('已複製前五名（Excel 格式）✅'))
+    .catch(() => alert('複製失敗，請手動選取'));
 }
 
 // ══════════════════════════════════════════
@@ -1030,8 +1116,9 @@ function resetAll() {
 
   document.getElementById('upload-section').style.display    = '';
   document.getElementById('dashboard-section').style.display = 'none';
-  document.getElementById('reset-btn').style.display  = 'none';
-  document.getElementById('copy-btn').style.display   = 'none';
+  document.getElementById('reset-btn').style.display      = 'none';
+  document.getElementById('copy-btn').style.display       = 'none';
+  document.getElementById('copy-top5-btn').style.display  = 'none';
   document.getElementById('period-badge').style.display = 'none';
   document.getElementById('file-input').value = '';
 

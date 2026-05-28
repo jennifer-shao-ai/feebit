@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>品類競品分析 · 飛比特工具箱</title>
+<link rel="icon" href="favicon.svg">
+<script>if(location.search.includes("share"))document.documentElement.classList.add("standalone");</script>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+/* ── 品類競品分析專屬樣式 ── */
+.main-tabs { display:flex; gap:0; border-bottom:2px solid var(--gray-200); margin-bottom:20px; overflow-x:auto; }
+.main-tabs::-webkit-scrollbar { height:0; }
+.main-tab { padding:10px 18px; cursor:pointer; font-size:14px; font-weight:500; color:var(--gray-500); border-bottom:2px solid transparent; margin-bottom:-2px; transition:all .15s; white-space:nowrap; flex-shrink:0; }
+.main-tab:hover { color:var(--primary); }
+.main-tab.active { color:var(--primary); border-bottom-color:var(--primary); font-weight:600; }
+.main-tab-content { display:none; }
+.main-tab-content.active { display:block; }
+
+.source-tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+.source-tab { padding:5px 14px; border-radius:20px; cursor:pointer; font-size:12px; font-weight:500; color:var(--gray-600); border:1px solid var(--gray-200); background:white; transition:all .15s; white-space:nowrap; }
+.source-tab.active { background:var(--primary); color:white; border-color:var(--primary); }
+.source-tab:hover:not(.active) { background:var(--gray-100); }
+
+.sub-tabs { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:14px; }
+.sub-tab { padding:4px 10px; border-radius:4px; cursor:pointer; font-size:12px; color:var(--gray-500); border:1px solid var(--gray-200); background:white; transition:all .15s; white-space:nowrap; }
+.sub-tab.active { background:var(--gray-800); color:white; border-color:var(--gray-800); }
+.sub-tab:hover:not(.active) { background:var(--gray-100); }
+
+.data-status-bar { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:var(--gray-50); border-radius:var(--radius); margin-bottom:12px; font-size:12px; gap:8px; flex-wrap:wrap; }
+.status-info { display:flex; align-items:center; gap:6px; color:var(--gray-500); }
+.sdot { width:7px; height:7px; border-radius:50%; display:inline-block; flex-shrink:0; }
+.sdot-demo { background:var(--warning); }
+.sdot-live { background:var(--success); }
+.sdot-err { background:var(--danger); }
+.sdot-load { background:var(--primary); animation:sdotpulse 1s infinite; }
+@keyframes sdotpulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+.demo-badge { background:#fef3c7; color:var(--warning); padding:1px 6px; border-radius:3px; font-size:10px; font-weight:700; }
+.refresh-btn { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border:1px solid var(--gray-200); border-radius:4px; background:white; color:var(--gray-600); font-size:12px; cursor:pointer; transition:all .15s; }
+.refresh-btn:hover { border-color:var(--primary); color:var(--primary); }
+
+.product-table-wrap { overflow-x:auto; }
+.product-table { width:100%; border-collapse:collapse; font-size:13px; min-width:600px; }
+.product-table th { background:var(--gray-50); padding:10px 12px; text-align:left; font-weight:600; border-bottom:2px solid var(--gray-200); white-space:nowrap; color:var(--gray-700); }
+.product-table td { padding:9px 12px; border-bottom:1px solid var(--gray-100); vertical-align:middle; }
+.product-table tr:hover td { background:var(--gray-50); }
+
+.rank-num { font-size:14px; font-weight:700; color:var(--gray-400); display:block; text-align:center; line-height:1; }
+.rank-num.r1 { color:#f59e0b; font-size:16px; }
+.rank-num.r2 { color:#94a3b8; }
+.rank-num.r3 { color:#b45309; }
+.rank-change { font-size:10px; display:block; text-align:center; margin-top:2px; }
+.rc-up { color:var(--success); }
+.rc-dn { color:var(--danger); }
+.rc-eq { color:var(--gray-400); }
+
+.product-cell { display:flex; align-items:center; gap:10px; min-width:180px; }
+.product-thumb-ph { width:46px; height:46px; border-radius:6px; background:var(--gray-100); display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+.product-thumb { width:46px; height:46px; border-radius:6px; object-fit:cover; flex-shrink:0; }
+.product-name { font-size:13px; font-weight:500; line-height:1.4; max-width:220px; white-space:normal; }
+.product-brand { font-size:11px; color:var(--gray-400); margin-top:2px; }
+.badge-new { background:#dcfce7; color:#16a34a; padding:1px 5px; border-radius:3px; font-size:10px; font-weight:700; margin-left:4px; vertical-align:middle; }
+.badge-hot { background:#fee2e2; color:#dc2626; padding:1px 5px; border-radius:3px; font-size:10px; font-weight:700; margin-left:4px; vertical-align:middle; }
+
+.price-cell { font-weight:600; white-space:nowrap; }
+.price-orig { text-decoration:line-through; color:var(--gray-400); font-size:11px; margin-left:4px; font-weight:normal; }
+.price-alert-row td { background:#fff5f5 !important; }
+.price-warn-tag { background:#fee2e2; color:#dc2626; padding:2px 6px; border-radius:3px; font-size:11px; font-weight:600; white-space:nowrap; }
+
+/* ── 品牌監控 ── */
+.brand-layout { display:grid; grid-template-columns:200px 1fr; gap:16px; }
+@media(max-width:768px){ .brand-layout { grid-template-columns:1fr; } }
+.brand-list-panel { background:white; border-radius:var(--radius); padding:14px; box-shadow:0 1px 3px rgba(0,0,0,.06); align-self:start; }
+.brand-panel-head { font-size:11px; font-weight:600; color:var(--gray-400); text-transform:uppercase; letter-spacing:.5px; margin-bottom:10px; }
+.brand-item { display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border-radius:6px; cursor:pointer; font-size:13px; font-weight:500; transition:all .15s; margin-bottom:3px; }
+.brand-item:hover { background:var(--gray-100); }
+.brand-item.active { background:var(--primary); color:white; }
+.brand-item .b-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.b-dot-ok { background:var(--success); }
+.b-dot-alert { background:var(--danger); animation:sdotpulse 1s infinite; }
+.brand-right-panel { min-width:0; }
+.brand-stat-row { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px; }
+.brand-stat { background:white; border-radius:var(--radius); padding:12px 14px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+.brand-stat .bs-label { font-size:11px; color:var(--gray-400); margin-bottom:4px; }
+.brand-stat .bs-num { font-size:20px; font-weight:700; }
+.bs-alert { color:var(--danger); }
+
+.chart-wrap { background:white; border-radius:var(--radius); padding:14px; box-shadow:0 1px 3px rgba(0,0,0,.06); margin-top:16px; }
+.chart-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.chart-title { font-size:13px; font-weight:600; }
+.chart-canvas-wrap { height:160px; position:relative; }
+
+/* ── 自家銷量 ── */
+.myshop-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px; }
+@media(max-width:768px){ .myshop-stats { grid-template-columns:repeat(2,1fr); } }
+.stat-box { background:white; border-radius:var(--radius); padding:14px 16px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+.stat-box .sb-label { font-size:11px; color:var(--gray-400); margin-bottom:4px; }
+.stat-box .sb-num { font-size:22px; font-weight:700; }
+.stat-box .sb-change { font-size:11px; margin-top:4px; }
+.sc-up { color:var(--success); }
+.sc-dn { color:var(--danger); }
+
+/* ── 關鍵字情報 ── */
+.kw-pills { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:18px; }
+.kw-pill { padding:6px 14px; border-radius:20px; cursor:pointer; font-size:13px; font-weight:500; color:var(--gray-600); background:white; border:1px solid var(--gray-200); transition:all .15s; white-space:nowrap; display:flex; align-items:center; gap:5px; }
+.kw-pill.active { background:var(--primary); color:white; border-color:var(--primary); }
+.kw-pill:hover:not(.active) { background:var(--gray-100); }
+.kw-src { font-size:9px; font-weight:700; padding:1px 4px; border-radius:3px; }
+.kw-src-auto { background:rgba(0,0,0,.08); color:inherit; }
+.kw-src-auto-active { background:rgba(255,255,255,.25); color:white; }
+
+.media-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+@media(max-width:1100px){ .media-grid { grid-template-columns:repeat(2,1fr); } }
+@media(max-width:600px){ .media-grid { grid-template-columns:1fr; } }
+.media-col { background:white; border-radius:var(--radius); padding:14px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+.media-col-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.media-col-title { font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px; }
+.pb { font-size:10px; font-weight:700; padding:2px 6px; border-radius:3px; }
+.pb-google { background:#e8f0fe; color:#1a73e8; }
+.pb-dcard { background:#ede9fe; color:#7c3aed; }
+.pb-ptt { background:#fff0db; color:#c2440f; }
+.pb-yt { background:#fee2e2; color:#cc0000; }
+.see-more { font-size:11px; color:var(--primary); cursor:pointer; text-decoration:none; }
+.see-more:hover { text-decoration:underline; }
+
+.article-list { list-style:none; display:flex; flex-direction:column; gap:7px; }
+.art-item { display:flex; gap:8px; padding:6px; border-radius:5px; transition:background .1s; }
+.art-item:hover { background:var(--gray-50); }
+.art-rank { font-size:12px; font-weight:700; color:var(--gray-400); min-width:16px; text-align:right; flex-shrink:0; padding-top:2px; }
+.art-rank.r1 { color:#f59e0b; }
+.art-rank.r2 { color:#94a3b8; }
+.art-rank.r3 { color:#b45309; }
+.art-body { flex:1; min-width:0; }
+.art-title { font-size:12px; font-weight:500; line-height:1.4; color:var(--gray-800); text-decoration:none; display:block; }
+.art-title:hover { color:var(--primary); }
+.art-meta { font-size:10px; color:var(--gray-400); margin-top:2px; }
+
+/* ── 設定 ── */
+.settings-section { margin-bottom:24px; }
+.settings-section-title { font-size:13px; font-weight:600; color:var(--gray-700); margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid var(--gray-200); display:flex; align-items:center; gap:6px; }
+.settings-item { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:white; border-radius:var(--radius); border:1px solid var(--gray-200); margin-bottom:6px; gap:8px; }
+.si-info { flex:1; min-width:0; }
+.si-name { font-size:13px; font-weight:500; }
+.si-meta { font-size:11px; color:var(--gray-400); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:360px; }
+.si-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.btn-del { padding:4px 10px; font-size:12px; border-radius:4px; border:none; cursor:pointer; font-weight:500; background:#fee2e2; color:#dc2626; }
+.btn-del:hover { background:#fca5a5; }
+.btn-edit { padding:4px 10px; font-size:12px; border-radius:4px; border:1px solid var(--gray-200); cursor:pointer; font-weight:500; background:white; color:var(--gray-600); }
+.btn-edit:hover { border-color:var(--primary); color:var(--primary); }
+
+.toggle { position:relative; display:inline-block; width:36px; height:20px; flex-shrink:0; }
+.toggle input { opacity:0; width:0; height:0; }
+.toggle-s { position:absolute; cursor:pointer; inset:0; background:var(--gray-300); border-radius:20px; transition:.3s; }
+.toggle-s:before { content:''; position:absolute; height:16px; width:16px; left:2px; bottom:2px; background:white; border-radius:50%; transition:.3s; box-shadow:0 1px 2px rgba(0,0,0,.2); }
+input:checked + .toggle-s { background:var(--primary); }
+input:checked + .toggle-s:before { transform:translateX(16px); }
+
+.add-form { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; align-items:center; }
+.add-form input { flex:1; min-width:140px; padding:7px 10px; border:1px solid var(--gray-200); border-radius:var(--radius); font-size:13px; outline:none; }
+.add-form input:focus { border-color:var(--primary); }
+.add-form input.short { flex:none; width:110px; }
+.btn-add { background:var(--primary); color:white; border:none; padding:7px 14px; border-radius:var(--radius); font-size:13px; font-weight:500; cursor:pointer; white-space:nowrap; }
+.btn-add:hover { background:var(--primary-dark); }
+
+.api-box { background:#eff6ff; border:1px solid #bfdbfe; border-radius:var(--radius); padding:16px; }
+.api-box h3 { font-size:13px; font-weight:600; color:#1d4ed8; margin-bottom:8px; }
+.api-box p { font-size:12px; color:#3b82f6; line-height:1.6; margin-bottom:4px; }
+.api-box code { background:white; padding:1px 5px; border-radius:3px; font-family:monospace; font-size:11px; color:var(--gray-700); }
+.api-box a { color:#1d4ed8; }
+.api-input-row { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+.api-input-row input { flex:1; min-width:200px; padding:7px 10px; border:1px solid #bfdbfe; border-radius:var(--radius); font-size:13px; outline:none; background:white; }
+.api-input-row input:focus { border-color:var(--primary); }
+
+.empty-state { text-align:center; padding:40px 20px; color:var(--gray-400); }
+.empty-state .es-icon { font-size:34px; margin-bottom:10px; }
+.empty-state p { font-size:13px; }
+
+.src-content { display:none; }
+.src-content.active { display:block; }
+.sub-content { display:none; }
+.sub-content.active { display:block; }
+</style>
+</head>
+<body>
+
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<!-- ── SIDEBAR ── -->
+<div id="sidebar">
+  <div class="sidebar-logo">
+    <div class="brand">飛比特 Feebit</div>
+    <div class="sub">營運工具箱</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">總覽</div>
+    <a class="nav-item" href="index.html"><span class="icon">🏠</span> 首頁</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">財務</div>
+    <a class="nav-item" href="bank-converter.html"><span class="icon">🏦</span> 帳務轉換</a>
+    <a class="nav-item" href="accounting-ops.html"><span class="icon">📅</span> 例行帳務作業</a>
+    <a class="nav-item" href="finance-dashboard.html"><span class="icon">📊</span> 帳務分析</a>
+    <a class="nav-item" href="coupang-invoice.html"><span class="icon">🧾</span> 酷澎發票轉檔</a>
+    <a class="nav-item" href="coupang-reconcile.html"><span class="icon">🔍</span> 酷澎商城對帳</a>
+    <a class="nav-item" href="shopee-subsidy.html"><span class="icon">🚚</span> 蝦皮運費補助申請</a>
+    <a class="nav-item" href="shopee-converter.html"><span class="icon">🛒</span> 蝦皮撥款轉換</a>
+    <a class="nav-item" href="profit-calculator.html"><span class="icon">💰</span> 毛利試算機</a>
+    <a class="nav-item" href="brand-sales.html"><span class="icon">📈</span> 品牌銷售分析</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">市場分析</div>
+    <a class="nav-item active" href="market-tracker.html"><span class="icon">🔭</span> 品類競品分析</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">行銷</div>
+    <div class="nav-item soon"><span class="icon">📢</span> 廣告文案<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">客服</div>
+    <div class="nav-item soon"><span class="icon">💬</span> 客服回覆<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">業務</div>
+    <a class="nav-item" href="purchase-order.html"><span class="icon">📄</span> 採購單轉換</a>
+    <div class="nav-item soon"><span class="icon">🤝</span> 廠商談判<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">人事</div>
+    <a class="nav-item" href="attendance.html"><span class="icon">🗓️</span> 考勤查驗</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">庫存</div>
+    <a class="nav-item" href="stock-analysis.html"><span class="icon">📦</span> 庫存訂貨分析</a>
+    <a class="nav-item" href="slow-mover-alert.html"><span class="icon">🔴</span> 滯銷品警示</a>
+    <a class="nav-item" href="feebit-inventory-filter.html"><span class="icon">🏪</span> 商品篩選工具</a>
+    <a class="nav-item" href="reorder-suggestions.html"><span class="icon">🔄</span> 庫存訂貨建議</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">研發</div>
+    <a class="nav-item" href="research-notes.html"><span class="icon">📚</span> 研發筆記</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">法規</div>
+    <a class="nav-item" href="http://127.0.0.1:5050" target="_blank"><span class="icon">📋</span> PIF Builder</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">生活</div>
+    <a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span> 旅行規劃</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">系統</div>
+    <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
+  </div>
+  <div class="sidebar-footer">v1.0 · Feebit © 2026</div>
+</div>
+
+<!-- ── MAIN ── -->
+<div id="main">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="btn-hamburger" onclick="openSidebar()">☰</button>
+      <span class="topbar-title">品類競品分析</span>
+      <span class="topbar-badge">市場分析</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:4px">v1.0</span>
+    </div>
+    <button class="btn-share" onclick="copyShare(this)">🔗 分享</button>
+  </div>
+
+  <div class="page">
+
+    <!-- ── 主 TAB BAR ── -->
+    <div class="main-tabs">
+      <div class="main-tab active" onclick="switchMain('hot',this)">🔥 熱銷追蹤</div>
+      <div class="main-tab" onclick="switchMain('brand',this)">🛡️ 品牌監控</div>
+      <div class="main-tab" onclick="switchMain('myshop',this)">📊 自家銷量</div>
+      <div class="main-tab" onclick="switchMain('keyword',this)">🔎 關鍵字情報</div>
+      <div class="main-tab" onclick="switchMain('settings',this)">⚙️ 設定</div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         TAB 1：熱銷追蹤
+    ══════════════════════════════════════ -->
+    <div class="main-tab-content active" id="tab-hot">
+
+      <!-- 平台 Level 1 -->
+      <div class="source-tabs" id="src-tabs">
+        <div class="source-tab active" onclick="switchSrc('tw',this)">🇹🇼 台灣電商</div>
+        <div class="source-tab" onclick="switchSrc('shopee-comp',this)">🛍️ 蝦皮競品</div>
+        <div class="source-tab" onclick="switchSrc('kr',this)">🇰🇷 韓國</div>
+        <div class="source-tab" onclick="switchSrc('cn',this)">🇨🇳 中國</div>
+      </div>
+
+      <!-- ── 台灣電商 ── -->
+      <div class="src-content active" id="src-tw">
+        <div class="sub-tabs" id="tw-sub-tabs">
+          <div class="sub-tab active" onclick="switchSub('tw','momo',this)">momo購物</div>
+          <div class="sub-tab" onclick="switchSub('tw','coupang',this)">酷澎</div>
+          <div class="sub-tab" onclick="switchSub('tw','poya',this)">Poya 寶雅</div>
+        </div>
+        <div class="sub-content active" id="tw-momo">
+          <div class="data-status-bar">
+            <div class="status-info"><span class="sdot sdot-demo"></span><span class="demo-badge">示範資料</span>接入 Cloudflare Workers 後自動更新</div>
+            <button class="refresh-btn" onclick="showNotReady()">↻ 立即爬取</button>
+          </div>
+          <div class="card"><div class="product-table-wrap" id="table-tw-momo"></div></div>
+        </div>
+        <div class="sub-content" id="tw-coupang">
+          <div class="data-status-bar">
+            <div class="status-info"><span class="sdot sdot-demo"></span><span class="demo-badge">示範資料</span>接入 Cloudflare Workers 後自動更新</div>
+            <button class="refresh-btn" onclick="showNotReady()">↻ 立即爬取</button>
+          </div>
+          <div class="card"><div class="product-table-wrap" id="table-tw-coupang"></div></div>
+        </div>
+        <div class="sub-content" id="tw-poya">
+          <div class="data-status-bar">
+            <div class="status-info"><span class="sdot sdot-demo"></span><span class="demo-badge">示範資料</span>接入 Cloudflare Workers 後自動更新</div>
+            <button class="refresh-btn" onclick="showNotReady()">↻ 立即爬取</button>
+          </div>
+          <div class="card"><div class="product-table-wrap" id="table-tw-poya"></div></div>
+        </div>
+      </div>
+
+      <!-- ── 蝦皮競品 ── -->
+      <div class="src-content" id="src-shopee-comp">
+        <div class="sub-tabs" id="shopee-comp-sub-tabs"></div>
+        <div id="shopee-comp-contents"></div>
+      </div>
+
+      <!-- ── 韓國 ── -->
+      <div class="src-content" id="src-kr">
+        <div class="sub-tabs" id="kr-sub-tabs">
+          <div class="sub-tab active" onclick="switchSub('kr','oliveyoung',this)">Olive Young</div>
+          <div class="sub-tab" onclick="switchSub('kr','hwahae',this)">화해 Hwahae</div>
+          <div class="sub-tab" onclick="switchSub('kr','naver',this)">Naver Shopping</div>
+          <div class="sub-tab" onclick="switchSub('kr','coupang-kr',this)">Coupang KR</div>
+        </div>
+        <div class="sub-content active" id="kr-oliveyoung">
+          <div class="data-status-bar">
+            <div class="status-info"><span class="sdot sdot-demo"></span><span class="demo-badge">示範資料</span>接入 Cloudflare Workers 後自動更新（韓文自動翻譯中文）</div>
+            <button class="refresh-btn" onclick="showNotReady()">↻ 立即爬取</button>
+          </div>
+          <div class="card"><div class="product-table-wrap" id="table-kr-oliveyoung"></div></div>
+        </div>
+        <div class="sub-content" id="kr-hwahae">
+          <div class="data-status-bar"><div class="status-info"><span class="sdot sdot-demo"></span><span class="demo-badge">示範資料</span>화해 月銷榜・成分熱度榜</div><button class="refresh-btn" onclick="showNotReady()">↻ 立即爬取</button></div>
+          <div class="card"><div class="product-table-wrap" id="table-kr-hwahae"></div></div>
+        </div>
+        <div class="sub-content" id="kr-naver">
+          <div class="data-status-bar"><div class="status-info"><span class="sdot sdot-demo"></span><span class="demo-badge">示範資料</span>Naver Shopping 搜尋熱度排行</div><button class="refresh-btn" onclick="showNotReady()">↻ 立即爬取</button></div>
+          <div class="card"><div class="product-table-wrap" id="table-kr-naver"></div></div>
+        </div>
+        <div class="sub-content" id="kr-coupang-kr">
+          <div class="data-status-bar"><div class="status-info"><span class="sdot sdot-demo"></span><span class="demo-badge">示範資料</span>Coupang KR 分類熱銷</div><button class="refresh-btn" onclick="showNotReady()">↻ 立即爬取</button></div>
+          <div class="card"><div class="product-table-wrap" id="table-kr-coupang-kr"></div></div>
+        </div>
+      </div>
+
+      <!-- ── 中國 ── -->
+      <div class="src-content" id="src-cn">
+        <div class="sub-tabs" id="cn-sub-tabs">
+          <div class="sub-tab active" onclick="switchSub('cn','taobao',this)">淘寶</div>
+          <div class="sub-tab" onclick="switchSub('cn','1688',this)">1688</div>
+        </div>
+        <div class="sub-content active" id="cn-taobao">
+          <div class="data-status-bar"><div class="status-info"><span class="sdot sdot-demo"></span><span class="demo-badge">示範資料</span>透過 Apify 爬取，接入後自動更新</div><button class="refresh-btn" onclick="showNotReady()">↻ 立即爬取</button></div>
+          <div class="card"><div class="product-table-wrap" id="table-cn-taobao"></div></div>
+        </div>
+        <div class="sub-content" id="cn-1688">
+          <div class="data-status-bar"><div class="status-info"><span class="sdot sdot-demo"></span><span class="demo-badge">示範資料</span>1688 批發熱銷・可查供應商報價</div><button class="refresh-btn" onclick="showNotReady()">↻ 立即爬取</button></div>
+          <div class="card"><div class="product-table-wrap" id="table-cn-1688"></div></div>
+        </div>
+      </div>
+
+    </div><!-- /tab-hot -->
+
+    <!-- ══════════════════════════════════════
+         TAB 2：品牌監控
+    ══════════════════════════════════════ -->
+    <div class="main-tab-content" id="tab-brand">
+      <div class="data-status-bar" style="margin-bottom:16px">
+        <div class="status-info"><span class="sdot sdot-demo"></span><span class="demo-badge">示範資料</span>設定底線價格 → 每週自動掃描蝦皮全站，破價自動亮紅</div>
+        <button class="refresh-btn" onclick="showNotReady()">↻ 立即掃描</button>
+      </div>
+      <div class="brand-layout">
+        <div class="brand-list-panel">
+          <div class="brand-panel-head">監控品牌</div>
+          <div id="brand-list-items"></div>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--gray-100)">
+            <button class="btn-add" style="width:100%;justify-content:center;display:flex" onclick="switchMain('settings',null);setTimeout(()=>document.getElementById('settings-brand-section').scrollIntoView({behavior:'smooth'}),100)">＋ 新增品牌</button>
+          </div>
+        </div>
+        <div class="brand-right-panel" id="brand-right">
+          <div class="brand-stat-row" id="brand-stats"></div>
+          <div class="card">
+            <div class="card-header"><h2 id="brand-table-title">選擇品牌查看監控資料</h2></div>
+            <div class="product-table-wrap" id="brand-table"></div>
+          </div>
+          <div class="chart-wrap" id="brand-chart-wrap" style="display:none">
+            <div class="chart-head"><span class="chart-title" id="brand-chart-title">價格趨勢</span><span style="font-size:11px;color:var(--gray-400)">近 8 週</span></div>
+            <div class="chart-canvas-wrap"><canvas id="brandPriceChart"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         TAB 3：自家銷量
+    ══════════════════════════════════════ -->
+    <div class="main-tab-content" id="tab-myshop">
+      <div class="data-status-bar" style="margin-bottom:16px">
+        <div class="status-info"><span class="sdot sdot-demo"></span><span class="demo-badge">示範資料</span>接入蝦皮 Open API 後顯示真實銷量（申請中）</div>
+        <button class="refresh-btn" onclick="showNotReady()">↻ 更新資料</button>
+      </div>
+      <div class="sub-tabs" id="myshop-tabs">
+        <div class="sub-tab active" onclick="switchMyshop('all',this)">📊 四店合計</div>
+        <div class="sub-tab" onclick="switchMyshop('lala',this)">lala_v_official</div>
+        <div class="sub-tab" onclick="switchMyshop('s827',this)">827842797</div>
+        <div class="sub-tab" onclick="switchMyshop('s539',this)">539417652</div>
+        <div class="sub-tab" onclick="switchMyshop('b1314',this)">b.1314520</div>
+      </div>
+      <div class="myshop-stats" id="myshop-stats"></div>
+      <div class="card">
+        <div class="card-header"><h2 id="myshop-table-title">商品銷量排行</h2><span style="font-size:12px;color:var(--gray-400)">本週 vs 上週</span></div>
+        <div class="product-table-wrap" id="myshop-table"></div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-head"><span class="chart-title">整體銷量趨勢</span><span style="font-size:11px;color:var(--gray-400)">近 8 週</span></div>
+        <div class="chart-canvas-wrap"><canvas id="myshopChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         TAB 4：關鍵字情報
+    ══════════════════════════════════════ -->
+    <div class="main-tab-content" id="tab-keyword">
+      <div class="data-status-bar" style="margin-bottom:14px">
+        <div class="status-info"><span class="sdot sdot-demo"></span><span class="demo-badge">示範資料</span>接入 Google CSE / Dcard API / PTT API / YouTube API 後自動更新</div>
+        <button class="refresh-btn" onclick="showNotReady()">↻ 更新</button>
+      </div>
+      <div class="kw-pills" id="kw-pills"></div>
+      <div class="media-grid" id="media-grid"></div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         TAB 5：設定
+    ══════════════════════════════════════ -->
+    <div class="main-tab-content" id="tab-settings">
+
+      <!-- 競品店 -->
+      <div class="settings-section">
+        <div class="settings-section-title">🛍️ 競品店管理<span style="font-size:11px;font-weight:400;color:var(--gray-400);margin-left:6px">（每週爬取前20筆熱銷）</span></div>
+        <div id="shop-list"></div>
+        <div class="add-form">
+          <input type="text" id="add-shop-name" placeholder="店家名稱（顯示用）">
+          <input type="text" id="add-shop-url" placeholder="蝦皮店家 URL（https://shopee.tw/...）" style="flex:2">
+          <button class="btn-add" onclick="addShop()">＋ 新增</button>
+        </div>
+      </div>
+
+      <!-- 品牌監控 -->
+      <div class="settings-section" id="settings-brand-section">
+        <div class="settings-section-title">🛡️ 品牌監控管理<span style="font-size:11px;font-weight:400;color:var(--gray-400);margin-left:6px">（低於底線價自動標紅）</span></div>
+        <div id="brand-settings-list"></div>
+        <div class="add-form">
+          <input type="text" id="add-brand-name" placeholder="品牌名稱（如：DHC、Innisfree）">
+          <input type="text" id="add-brand-floor" placeholder="底線售價 NT$" class="short">
+          <button class="btn-add" onclick="addBrand()">＋ 新增</button>
+        </div>
+      </div>
+
+      <!-- 關鍵字 -->
+      <div class="settings-section">
+        <div class="settings-section-title">🔎 關鍵字管理
+          <span style="font-size:11px;font-weight:400;color:var(--gray-400);margin-left:6px">官網自動同步</span>
+          <button class="refresh-btn" style="margin-left:auto" onclick="showNotReady()">↻ 重新從官網同步</button>
+        </div>
+        <div id="keyword-settings-list"></div>
+        <div class="add-form">
+          <input type="text" id="add-kw-text" placeholder="手動新增關鍵字">
+          <button class="btn-add" onclick="addKeyword()">＋ 新增</button>
+        </div>
+      </div>
+
+      <!-- Cloudflare 設定 -->
+      <div class="settings-section">
+        <div class="settings-section-title">☁️ Cloudflare 後端設定</div>
+        <div class="api-box">
+          <h3>尚未連接後端，目前顯示示範資料</h3>
+          <p>申請 Cloudflare 帳號並部署 Workers 後，將 API 端點填入下方，工具即開始自動爬取真實資料。</p>
+          <p style="margin-top:8px">申請步驟：前往 <a href="https://dash.cloudflare.com/sign-up" target="_blank">dash.cloudflare.com/sign-up</a> → 免費註冊 → 不需要 domain → 進入 Workers &amp; Pages 找到 Account ID</p>
+          <div class="api-input-row">
+            <input type="text" id="cf-endpoint" placeholder="Workers API endpoint（https://market-tracker.xxx.workers.dev）" oninput="saveCFConfig()">
+            <input type="text" id="cf-token" placeholder="API Token（選填，用於私有部署）" style="flex:0.5;min-width:160px" oninput="saveCFConfig()">
+            <button class="btn-add" onclick="testConnection()">測試連線</button>
+          </div>
+          <div id="cf-status" style="font-size:12px;margin-top:8px;color:var(--gray-400)"></div>
+        </div>
+      </div>
+
+      <!-- 排程設定 -->
+      <div class="settings-section">
+        <div class="settings-section-title">⏰ 爬取排程</div>
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+            <div>
+              <div style="font-size:13px;font-weight:500">自動爬取頻率</div>
+              <div style="font-size:12px;color:var(--gray-400);margin-top:4px">目前設定：每週一 08:00 自動爬取所有來源前 20 筆</div>
+            </div>
+            <select id="schedule-select" onchange="saveSchedule()" style="padding:7px 10px;border:1px solid var(--gray-200);border-radius:var(--radius);font-size:13px;outline:none">
+              <option value="daily">每日一次</option>
+              <option value="weekly" selected>每週一次（推薦）</option>
+              <option value="manual">僅手動觸發</option>
+            </select>
+          </div>
+          <div style="margin-top:12px;font-size:12px;color:var(--gray-400);background:var(--gray-50);padding:10px 12px;border-radius:6px">
+            💡 每週一次可節省 ScrapingBee 免費額度（1,000 次/月），多數熱銷趨勢以週為單位變動，每週已足夠。
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /tab-settings -->
+
+  </div><!-- /page -->
+</div><!-- /main -->
+
+<script>
+// ════════════════════════════════════════
+// 工具函數
+// ════════════════════════════════════════
+function openSidebar(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-overlay').classList.add('show'); }
+function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('show'); }
+function copyShare(btn){ const url = location.href.split('?')[0]+'?share'; navigator.clipboard.writeText(url); btn.textContent='✓ 已複製'; setTimeout(()=>btn.textContent='🔗 分享',2000); }
+function showNotReady(){ alert('⚙️ 請先完成 Cloudflare Workers 部署設定\n\n至「設定 → Cloudflare 後端設定」填入 API 端點'); }
+
+// ── API 層：有端點用真實 API，無端點用 Mock ──
+function getCFEndpoint(){ return ((load('cf')||{}).endpoint||'').replace(/\/$/,''); }
+
+async function apiGet(path){
+  const ep = getCFEndpoint();
+  if(!ep) return null;
+  try{
+    const r = await fetch(ep+path);
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    return await r.json();
+  }catch(e){ console.warn('API error',path,e.message); return null; }
+}
+
+async function apiPost(path, body){
+  const ep = getCFEndpoint();
+  if(!ep) return null;
+  try{
+    const r = await fetch(ep+path, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+    return await r.json();
+  }catch(e){ console.warn('API error',path,e.message); return null; }
+}
+
+async function loadProducts(source, sub=''){
+  const ep = getCFEndpoint();
+  if(ep){
+    const url = sub ? `/api/products?source=${source}&sub=${encodeURIComponent(sub)}&limit=20` : `/api/products?source=${source}&limit=20`;
+    const data = await apiGet(url);
+    if(data?.products?.length) return { products: data.products, live: true };
+  }
+  // fallback mock
+  const mockKey = source.replace('-','_');
+  return { products: MOCK[mockKey] || MOCK.momo, live: false };
+}
+
+async function triggerScrape(source, btnEl){
+  const ep = getCFEndpoint();
+  if(!ep){ showNotReady(); return; }
+  const orig = btnEl.textContent;
+  btnEl.textContent = '⏳ 爬取中...';
+  btnEl.disabled = true;
+  const r = await apiPost('/api/scrape', { source });
+  btnEl.textContent = r?.ok ? '✓ 完成' : '❌ 失敗';
+  setTimeout(()=>{ btnEl.textContent=orig; btnEl.disabled=false; }, 3000);
+  if(r?.ok) alert(`爬取完成！${JSON.stringify(r.results||{})}`);
+}
+
+// ── Tab 切換 ──
+function switchMain(id, el){
+  document.querySelectorAll('.main-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.main-tab-content').forEach(c=>c.classList.remove('active'));
+  if(el) el.classList.add('active');
+  else document.querySelectorAll('.main-tab')[['hot','brand','myshop','keyword','settings'].indexOf(id)].classList.add('active');
+  document.getElementById('tab-'+id).classList.add('active');
+  if(id==='brand') initBrandTab();
+  if(id==='myshop') initMyshopTab();
+  if(id==='keyword') renderKeywordPills();
+  if(id==='settings') renderSettings();
+}
+
+function switchSrc(id, el){
+  document.querySelectorAll('#src-tabs .source-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.src-content').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('src-'+id).classList.add('active');
+}
+
+function switchSub(group, id, el){
+  const parent = document.getElementById(group+'-sub-tabs');
+  parent.querySelectorAll('.sub-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  // hide all sub-contents in this group
+  document.querySelectorAll('[id^="'+group+'-"]').forEach(c=>{ if(c.classList.contains('sub-content')) c.classList.remove('active'); });
+  document.getElementById(group+'-'+id).classList.add('active');
+}
+
+// ════════════════════════════════════════
+// LocalStorage 資料管理
+// ════════════════════════════════════════
+const STORES = { shops:'mt_shops', brands:'mt_brands', keywords:'mt_keywords', schedule:'mt_schedule', cf:'mt_cf' };
+
+function load(key){ try{ return JSON.parse(localStorage.getItem(STORES[key]))||null; }catch{ return null; } }
+function save(key,val){ localStorage.setItem(STORES[key], JSON.stringify(val)); }
+
+function getShops(){
+  return load('shops') || [
+    { id:'s1', name:'kjnac', url:'https://shopee.tw/kjnacosmeticba' },
+    { id:'s2', name:'millicent', url:'https://shopee.tw/millicent' },
+    { id:'s3', name:'t091771', url:'https://shopee.tw/t091771' },
+    { id:'s4', name:'helpbuykr.official', url:'https://shopee.tw/helpbuykr.official' },
+    { id:'s5', name:'helpbuykr', url:'https://shopee.tw/helpbuykr' }
+  ];
+}
+
+function getBrands(){
+  return load('brands') || [
+    { id:'b1', name:'DHC', floor:380, alertCount:2 },
+    { id:'b2', name:'Innisfree', floor:420, alertCount:0 },
+    { id:'b3', name:'Some By Mi', floor:350, alertCount:1 },
+    { id:'b4', name:'HEME', floor:499, alertCount:3 },
+    { id:'b5', name:'Missha', floor:390, alertCount:0 }
+  ];
+}
+
+function getKeywords(){
+  return load('keywords') || [
+    { id:'k1', text:'玻尿酸精華', source:'auto', visible:true },
+    { id:'k2', text:'卸妝水', source:'auto', visible:true },
+    { id:'k3', text:'防曬乳 SPF50', source:'auto', visible:true },
+    { id:'k4', text:'擴香瓶', source:'auto', visible:true },
+    { id:'k5', text:'護髮油', source:'auto', visible:true },
+    { id:'k6', text:'沐浴露', source:'auto', visible:false },
+    { id:'k7', text:'氣墊粉底', source:'auto', visible:true },
+    { id:'k8', text:'韓系眉筆', source:'manual', visible:true },
+    { id:'k9', text:'香氛蠟燭', source:'auto', visible:true },
+    { id:'k10', text:'化妝包', source:'auto', visible:true }
+  ];
+}
+
+// ════════════════════════════════════════
+// MOCK 資料
+// ════════════════════════════════════════
+const MOCK = {
+  momo:[
+    {rank:1,emoji:'🧴',name:'蘭芝 超完美柔焦持久氣墊粉底 SPF43 PA+++',brand:'蘭芝 LANEIGE',spec:'15g',price:680,orig:850,sales:3241,date:'2025-12',isNew:false,up:2},
+    {rank:2,emoji:'💧',name:'innisfree 綠茶玻尿酸精華液 80ml',brand:'innisfree',spec:'80ml',price:480,orig:null,sales:2890,date:'2026-01',isNew:false,up:-1},
+    {rank:3,emoji:'🌿',name:'森田藥妝 玻尿酸保濕面膜 10片裝',brand:'森田藥妝',spec:'10片',price:299,orig:399,sales:2560,date:'2025-11',isNew:false,up:0},
+    {rank:4,emoji:'✨',name:'資生堂 ELIXIR 活顏緊緻乳液EX 純淨型',brand:'資生堂',spec:'130ml',price:1280,orig:null,sales:1982,date:'2025-10',isNew:false,up:3},
+    {rank:5,emoji:'🌸',name:'HEME 超持妝氣墊粉底液 SPF50 PA++++',brand:'HEME',spec:'13g 多色',price:580,orig:null,sales:1754,date:'2026-01',isNew:false,up:-2},
+    {rank:6,emoji:'🌿',name:'L\'Oréal Paris 金緻修護護髮素 200ml',brand:'L\'Oréal Paris',spec:'200ml',price:219,orig:269,sales:1623,date:'2025-09',isNew:false,up:1},
+    {rank:7,emoji:'🧪',name:'Dr.Wu 杏仁酸煥膚精華 18% 30ml',brand:'Dr.Wu',spec:'30ml',price:1150,orig:null,sales:1445,date:'2026-02',isNew:true,up:8},
+    {rank:8,emoji:'🚿',name:'Dove 美體沐浴乳深層修護 1000ml',brand:'Dove',spec:'1000ml',price:219,orig:null,sales:1392,date:'2025-08',isNew:false,up:-1},
+    {rank:9,emoji:'💊',name:'玉蘭油 Pro-X全效煥白精華液 50ml',brand:'玉蘭油 OLAY',spec:'50ml',price:799,orig:null,sales:1280,date:'2025-11',isNew:false,up:2},
+    {rank:10,emoji:'🌺',name:'L\'Occitane 玫瑰身體乳 250ml',brand:'L\'Occitane',spec:'250ml',price:1490,orig:null,sales:1102,date:'2026-02',isNew:true,up:6},
+    {rank:11,emoji:'🧼',name:'蜜妮 Biore 卸妝棉 44片',brand:'蜜妮 Biore',spec:'44片',price:199,orig:249,sales:998,date:'2025-09',isNew:false,up:0},
+    {rank:12,emoji:'💄',name:'ETUDE 奶油輕柔染唇液 4g',brand:'ETUDE',spec:'4g 多色',price:350,orig:null,sales:876,date:'2026-02',isNew:true,up:12},
+    {rank:13,emoji:'💦',name:'飛柔 強韌豐盈洗髮精 750ml',brand:'飛柔 Rejoice',spec:'750ml',price:169,orig:219,sales:823,date:'2025-08',isNew:false,up:-3},
+    {rank:14,emoji:'🌟',name:'凡士林 深層修護滋潤身體乳液 400ml',brand:'凡士林 Vaseline',spec:'400ml',price:199,orig:null,sales:789,date:'2025-07',isNew:false,up:1},
+    {rank:15,emoji:'🧫',name:'CeraVe 全效修護保濕乳液 473ml',brand:'CeraVe',spec:'473ml',price:599,orig:null,sales:734,date:'2025-11',isNew:false,up:4},
+    {rank:16,emoji:'✏️',name:'Make me 超精細霧感雙頭眉筆',brand:'Make me',spec:'0.9g 多色',price:299,orig:null,sales:698,date:'2026-01',isNew:false,up:2},
+    {rank:17,emoji:'💎',name:'台塑生醫 皙之密 B3 淡斑精華 30ml',brand:'台塑生醫',spec:'30ml',price:1299,orig:null,sales:645,date:'2026-02',isNew:true,up:15},
+    {rank:18,emoji:'🌊',name:'MAMAMADE 輕盈修護髮油 60ml',brand:'MAMAMADE',spec:'60ml',price:480,orig:null,sales:612,date:'2026-01',isNew:true,up:9},
+    {rank:19,emoji:'🏺',name:'Kiehl\'s 高保濕乳霜 28ml',brand:'Kiehl\'s',spec:'28ml',price:950,orig:null,sales:589,date:'2025-12',isNew:false,up:0},
+    {rank:20,emoji:'✨',name:'Some By Mi AHA BHA PHA 30天奇蹟霜 60g',brand:'Some By Mi',spec:'60g',price:450,orig:590,sales:543,date:'2025-11',isNew:false,up:-1}
+  ],
+  coupang:[
+    {rank:1,emoji:'🌿',name:'台鹽生技 玻尿酸保濕精華液 30ml',brand:'台鹽生技',spec:'30ml',price:299,orig:399,sales:1823,date:'2026-01',isNew:false,up:1},
+    {rank:2,emoji:'🧴',name:'資生堂 Prior 美容液精華乳 SPF25',brand:'資生堂',spec:'125ml',price:890,orig:null,sales:1654,date:'2025-12',isNew:false,up:-1},
+    {rank:3,emoji:'💧',name:'韓束 水光肌補水安瓶精華 30ml',brand:'韓束',spec:'30ml',price:399,orig:499,sales:1421,date:'2026-01',isNew:true,up:5},
+    {rank:4,emoji:'🌸',name:'Etude House 輕盈保濕BB霜 SPF30 PA++',brand:'Etude House',spec:'45ml',price:420,orig:null,sales:1280,date:'2025-11',isNew:false,up:2},
+    {rank:5,emoji:'🚿',name:'植村秀 深層淨膚油 150ml',brand:'植村秀',spec:'150ml',price:1250,orig:null,sales:1102,date:'2025-10',isNew:false,up:3},
+    {rank:6,emoji:'✨',name:'Missha M 完美遮瑕氣墊 SPF50 PA+++',brand:'Missha',spec:'15g',price:450,orig:580,sales:987,date:'2026-02',isNew:true,up:7},
+    {rank:7,emoji:'🌺',name:'The Body Shop 茶樹淨膚精華 30ml',brand:'The Body Shop',spec:'30ml',price:680,orig:null,sales:892,date:'2025-09',isNew:false,up:0},
+    {rank:8,emoji:'💎',name:'SK-II 煥采神仙水 230ml（限定版）',brand:'SK-II',spec:'230ml',price:3980,orig:4500,sales:743,date:'2026-01',isNew:false,up:-2},
+    {rank:9,emoji:'🌊',name:'neutrogena 深層補水保濕凝膠 200ml',brand:'neutrogena',spec:'200ml',price:320,orig:null,sales:689,date:'2025-11',isNew:false,up:1},
+    {rank:10,emoji:'🧪',name:'Paula\'s Choice BHA 水楊酸精華 30ml',brand:'Paula\'s Choice',spec:'30ml',price:1280,orig:null,sales:623,date:'2025-08',isNew:false,up:4},
+    {rank:11,emoji:'🌿',name:'Cetaphil 溫和潔膚乳 250ml',brand:'Cetaphil',spec:'250ml',price:299,orig:349,sales:598,date:'2025-07',isNew:false,up:0},
+    {rank:12,emoji:'💄',name:'3CE 漸層唇釉 唇泥 4.5g',brand:'3CE',spec:'4.5g 多色',price:380,orig:null,sales:567,date:'2026-02',isNew:true,up:11},
+    {rank:13,emoji:'🌸',name:'Laneige 水蜜桃睡眠唇膜 20g',brand:'Laneige',spec:'20g',price:480,orig:null,sales:534,date:'2025-12',isNew:false,up:3},
+    {rank:14,emoji:'✏️',name:'Kate 造型眉筆 A 0.6g',brand:'Kate',spec:'0.6g 多色',price:280,orig:null,sales:498,date:'2025-10',isNew:false,up:-1},
+    {rank:15,emoji:'💦',name:'潘婷 Aqua Pure 淨化洗髮精 700ml',brand:'潘婷',spec:'700ml',price:139,orig:169,sales:456,date:'2025-09',isNew:false,up:2},
+    {rank:16,emoji:'🌟',name:'Aprilskin 魔法石奶油面膜 120g',brand:'Aprilskin',spec:'120g',price:599,orig:null,sales:412,date:'2026-01',isNew:true,up:8},
+    {rank:17,emoji:'🧫',name:'Hada Labo 極潤保濕化粧水 170ml',brand:'Hada Labo',spec:'170ml',price:250,orig:299,sales:389,date:'2025-11',isNew:false,up:0},
+    {rank:18,emoji:'🏺',name:'第一三共 Minon 全效保濕化粧水 150ml',brand:'Minon',spec:'150ml',price:780,orig:null,sales:356,date:'2025-10',isNew:false,up:5},
+    {rank:19,emoji:'💊',name:'Vichy 薇姿 礦泉活膚精華乳 50ml',brand:'Vichy',spec:'50ml',price:890,orig:1050,sales:312,date:'2026-02',isNew:false,up:6},
+    {rank:20,emoji:'🌺',name:'JMsolution 蜂蜜補水安瓶精華 30ml x 3入',brand:'JMsolution',spec:'30ml x 3',price:350,orig:null,sales:287,date:'2025-12',isNew:false,up:1}
+  ],
+  poya:[
+    {rank:1,emoji:'🌿',name:'美吾髮 輕柔感洗髮精 700ml',brand:'美吾髮',spec:'700ml',price:149,orig:189,sales:2341,date:'2025-11',isNew:false,up:1},
+    {rank:2,emoji:'💧',name:'高絲 SOFTYMO 速效卸粧油 230ml',brand:'高絲 SOFTYMO',spec:'230ml',price:299,orig:null,sales:1987,date:'2025-12',isNew:false,up:3},
+    {rank:3,emoji:'🧴',name:'Biore 深層卸粧棉 44片',brand:'Biore',spec:'44片',price:189,orig:249,sales:1654,date:'2025-10',isNew:false,up:0},
+    {rank:4,emoji:'✨',name:'UNO 積極保濕凝露 80g',brand:'UNO',spec:'80g',price:199,orig:null,sales:1432,date:'2026-01',isNew:false,up:2},
+    {rank:5,emoji:'🌸',name:'Maybelline 煥顏輕透氣墊 SPF50 PA+++',brand:'Maybelline',spec:'14.5g',price:499,orig:599,sales:1287,date:'2026-02',isNew:true,up:6},
+    {rank:6,emoji:'💄',name:'開架第一 唇釉 玻璃唇感 5ml',brand:'唇釉',spec:'5ml 多色',price:199,orig:null,sales:1102,date:'2025-12',isNew:false,up:4},
+    {rank:7,emoji:'🚿',name:'沙宣 水感保濕系列洗髮精 750ml',brand:'沙宣 Vidal Sassoon',spec:'750ml',price:159,orig:199,sales:987,date:'2025-09',isNew:false,up:-1},
+    {rank:8,emoji:'🌺',name:'妮維雅 深層保濕潤膚乳 400ml',brand:'妮維雅 NIVEA',spec:'400ml',price:229,orig:null,sales:876,date:'2025-08',isNew:false,up:0},
+    {rank:9,emoji:'💎',name:'CANMAKE 水潤淨膚BB霜 SPF50 PA+++',brand:'CANMAKE',spec:'22g',price:349,orig:null,sales:789,date:'2026-01',isNew:false,up:7},
+    {rank:10,emoji:'🌊',name:'花王 Jergens 深層保濕身體乳 470ml',brand:'花王 Jergens',spec:'470ml',price:199,orig:249,sales:712,date:'2025-11',isNew:false,up:2},
+    {rank:11,emoji:'🌿',name:'資生堂 Prior 防曬隔離乳 SPF50 PA++++',brand:'資生堂 Prior',spec:'40ml',price:420,orig:null,sales:645,date:'2026-02',isNew:true,up:9},
+    {rank:12,emoji:'✏️',name:'Integrate 眉粉 W131 自然灰棕',brand:'Integrate',spec:'1.4g',price:239,orig:null,sales:598,date:'2025-10',isNew:false,up:1},
+    {rank:13,emoji:'🧪',name:'肌研 白潤淡斑美白化粧水 170ml',brand:'肌研',spec:'170ml',price:299,orig:359,sales:543,date:'2025-12',isNew:false,up:3},
+    {rank:14,emoji:'💊',name:'蜂王 珍珠霜 晚安修護 25ml',brand:'蜂王',spec:'25ml',price:89,orig:null,sales:498,date:'2025-07',isNew:false,up:0},
+    {rank:15,emoji:'🏺',name:'澳洲茶樹 Tea Tree 精油洗面乳 150ml',brand:'Tea Tree',spec:'150ml',price:320,orig:null,sales:456,date:'2025-11',isNew:false,up:5},
+    {rank:16,emoji:'💦',name:'H&B 香橙身體磨砂 200g',brand:'H&B',spec:'200g',price:169,orig:219,sales:412,date:'2026-01',isNew:true,up:11},
+    {rank:17,emoji:'🌸',name:'媚點 完美遮瑕氣墊粉底 SPF50',brand:'媚點',spec:'12g',price:299,orig:null,sales:378,date:'2025-09',isNew:false,up:2},
+    {rank:18,emoji:'🌺',name:'Petal Fresh 玫瑰洗髮精 475ml',brand:'Petal Fresh',spec:'475ml',price:259,orig:null,sales:342,date:'2025-10',isNew:false,up:1},
+    {rank:19,emoji:'🧫',name:'高絲 COSMEPORT 防曬噴霧 SPF50 60g',brand:'高絲',spec:'60g',price:299,orig:null,sales:312,date:'2026-02',isNew:true,up:7},
+    {rank:20,emoji:'💎',name:'澳洲綿羊油 Pure Lanolin 乳霜 250ml',brand:'澳洲綿羊油',spec:'250ml',price:249,orig:299,sales:287,date:'2025-08',isNew:false,up:0}
+  ],
+  oliveyoung:[
+    {rank:1,emoji:'🇰🇷',name:'미샤 M 쿠션 파운데이션 SPF50 PA+++\n(MISSHA M 氣墊粉底)',brand:'MISSHA',spec:'15g',price:1580,orig:null,sales:5621,date:'2026-01',isNew:false,up:2},
+    {rank:2,emoji:'🌿',name:'조선미녀 쌀 선크림 SPF50 PA++++\n(朝鮮美女 米萃防曬)',brand:'조선미녀',spec:'50ml',price:980,orig:null,sales:4892,date:'2025-11',isNew:false,up:5},
+    {rank:3,emoji:'💧',name:'라운드랩 1025 독도 수분크림\n(Round Lab 獨島保濕霜)',brand:'Round Lab',spec:'80ml',price:1280,orig:null,sales:3987,date:'2025-12',isNew:false,up:1},
+    {rank:4,emoji:'✨',name:'클리오 킬커버 파운데이션 38g\n(CLIO Kill Cover 粉底液)',brand:'CLIO',spec:'38ml',price:1350,orig:1580,sales:3421,date:'2026-02',isNew:true,up:8},
+    {rank:5,emoji:'🌸',name:'넘버즈인 자음수 100ml\n(Numbers In 激活安瓶水)',brand:'Numbers In',spec:'100ml',price:890,orig:null,sales:2987,date:'2025-10',isNew:false,up:3},
+    {rank:6,emoji:'🌺',name:'구달 청귤 비타C 선크림 SPF50\n(Goodal 青橘維C防曬)',brand:'Goodal',spec:'50ml',price:1050,orig:null,sales:2654,date:'2026-01',isNew:false,up:4},
+    {rank:7,emoji:'💎',name:'닥터자르트 세라마이딘 크림 15ml\n(Dr.Jart+ Ceramidin Cream)',brand:'Dr.Jart+',spec:'15ml',price:2200,orig:null,sales:2312,date:'2025-09',isNew:false,up:-1},
+    {rank:8,emoji:'🧴',name:'에스트라 아토베리어 365 크림 80ml\n(Esthetic House 保濕霜)',brand:'Esthetic House',spec:'80ml',price:1480,orig:1780,sales:1987,date:'2025-12',isNew:false,up:6},
+    {rank:9,emoji:'🌊',name:'토리든 다이브인 세럼 50ml\n(Torriden Dive-In 精華)',brand:'Torriden',spec:'50ml',price:1380,orig:null,sales:1754,date:'2026-02',isNew:true,up:10},
+    {rank:10,emoji:'💊',name:'아누아 어성초 77% 토너 250ml\n(Anua 魚腥草水 化粧水)',brand:'Anua',spec:'250ml',price:980,orig:1280,sales:1621,date:'2025-11',isNew:false,up:2},
+    {rank:11,emoji:'✏️',name:'롬앤 제로 매트 립스틱 2g\n(Rom&nd Zero Matte 唇膏)',brand:'rom&nd',spec:'2g 多色',price:780,orig:null,sales:1492,date:'2026-01',isNew:false,up:7},
+    {rank:12,emoji:'🧪',name:'성분에디터 나이아신아마이드 앰플\n(Ingredient Editor B3 安瓶)',brand:'Ingredient Editor',spec:'30ml',price:1290,orig:null,sales:1287,date:'2025-10',isNew:false,up:3},
+    {rank:13,emoji:'🌿',name:'제이준 수분 마스크팩 10매\n(Jayjun 水分面膜 10片)',brand:'Jayjun',spec:'10片',price:890,orig:1100,sales:1102,date:'2025-09',isNew:false,up:1},
+    {rank:14,emoji:'🌸',name:'아이소이 불가리안 로즈 세럼 20ml\n(Isoi 保加利亞玫瑰精華)',brand:'Isoi',spec:'20ml',price:1580,orig:null,sales:987,date:'2026-02',isNew:true,up:9},
+    {rank:15,emoji:'💄',name:'3CE 선셋 틴트 4g\n(3CE Sunset Tint 唇釉)',brand:'3CE',spec:'4g 多色',price:820,orig:null,sales:876,date:'2025-12',isNew:false,up:4},
+    {rank:16,emoji:'🏺',name:'코스알엑스 달팽이 크림 100g\n(COSRX 蝸牛面霜)',brand:'COSRX',spec:'100g',price:1280,orig:null,sales:789,date:'2025-11',isNew:false,up:0},
+    {rank:17,emoji:'💦',name:'뮤즈비 세라마이드 크림 50ml\n(Muzzvy Ceramide 乳霜)',brand:'Muzzvy',spec:'50ml',price:1100,orig:null,sales:712,date:'2026-01',isNew:false,up:6},
+    {rank:18,emoji:'🌺',name:'더마토리 하이포 알레르기 크림 50ml\n(Dermatory 低敏霜)',brand:'Dermatory',spec:'50ml',price:1650,orig:null,sales:645,date:'2025-10',isNew:false,up:2},
+    {rank:19,emoji:'🧫',name:'메디힐 핵산 앰플 마스크팩 10매\n(Mediheal DNA 安瓶面膜)',brand:'Mediheal',spec:'10片',price:750,orig:980,sales:598,date:'2025-12',isNew:false,up:1},
+    {rank:20,emoji:'🌊',name:'비플레인 녹두 진정 패드 70매\n(B-Plain 綠豆鎮定化妝棉)',brand:'B-Plain',spec:'70片',price:890,orig:null,sales:543,date:'2026-02',isNew:true,up:13}
+  ]
+};
+
+// ── 生成商品表格 HTML ──
+function renderProductTable(containerId, data){
+  const wrap = document.getElementById(containerId);
+  if(!wrap) return;
+  if(!data||data.length===0){ wrap.innerHTML='<div class="empty-state"><div class="es-icon">🔍</div><p>尚無資料，請設定 Cloudflare Workers 後爬取</p></div>'; return; }
+  const rows = data.map(p=>{
+    const rankClass = p.rank<=3?`r${p.rank}`:'';
+    const changeHTML = p.up>0?`<span class="rank-change rc-up">▲${p.up}</span>`:p.up<0?`<span class="rank-change rc-dn">▼${Math.abs(p.up)}</span>`:`<span class="rank-change rc-eq">—</span>`;
+    const priceHTML = `NT$${p.price.toLocaleString()}${p.orig?`<span class="price-orig">NT$${p.orig.toLocaleString()}</span>`:''}`;
+    const salesHTML = p.sales?p.sales.toLocaleString():'-';
+    const badges = (p.isNew?'<span class="badge-new">NEW</span>':'')+(p.up>=10?'<span class="badge-hot">🔥熱</span>':'');
+    const nameLines = p.name.split('\n');
+    const nameHTML = nameLines.length>1?`${nameLines[0]}<div style="font-size:10px;color:var(--gray-400);margin-top:2px">${nameLines[1]}</div>`:nameLines[0];
+    return `<tr>
+      <td class="rank-cell"><span class="rank-num ${rankClass}">#${p.rank}</span>${changeHTML}</td>
+      <td><div class="product-cell"><div class="product-thumb-ph">${p.emoji}</div><div><div class="product-name">${nameHTML}${badges}</div><div class="product-brand">${p.brand}</div></div></div></td>
+      <td style="color:var(--gray-600)">${p.spec}</td>
+      <td class="price-cell">${priceHTML}</td>
+      <td style="text-align:right">${salesHTML}</td>
+      <td style="color:var(--gray-500)">${p.date||'-'}</td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML = `<table class="product-table"><thead><tr>
+    <th style="width:60px">排名</th><th>商品</th><th>規格</th><th>售價</th><th style="text-align:right">當月銷量</th><th>上架月份</th>
+  </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+// ── 產生蝦皮競品各店 tab ──
+function initShopeeCompTabs(){
+  const shops = getShops();
+  const tabsEl = document.getElementById('shopee-comp-sub-tabs');
+  const contentsEl = document.getElementById('shopee-comp-contents');
+  if(!shops.length){ tabsEl.innerHTML=''; contentsEl.innerHTML='<div class="empty-state"><div class="es-icon">🛍️</div><p>尚未設定競品店，請至「設定」新增</p></div>'; return; }
+  tabsEl.innerHTML = shops.map((s,i)=>`<div class="sub-tab${i===0?' active':''}" onclick="switchShopeeComp('${s.id}',this)">${s.name}</div>`).join('');
+  contentsEl.innerHTML = shops.map((s,i)=>`
+    <div class="sub-content${i===0?' active':''}" id="shopee-comp-${s.id}">
+      <div class="data-status-bar">
+        <div class="status-info"><span class="sdot sdot-demo"></span><span class="demo-badge">示範資料</span>${s.url}</div>
+        <button class="refresh-btn" onclick="showNotReady()">↻ 立即爬取</button>
+      </div>
+      <div class="card"><div class="product-table-wrap" id="table-shopee-${s.id}"></div></div>
+    </div>`).join('');
+  // 渲染每個競品店 mock 資料（用 momo 資料改造）
+  shops.forEach((s,i)=>{
+    const mockData = MOCK.momo.slice(0,20).map((p,j)=>({...p, rank:j+1, up:Math.floor(Math.random()*7)-3}));
+    renderProductTable(`table-shopee-${s.id}`, mockData);
+  });
+}
+
+function switchShopeeComp(id, el){
+  document.querySelectorAll('#shopee-comp-sub-tabs .sub-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('#shopee-comp-contents .sub-content').forEach(c=>c.classList.remove('active'));
+  document.getElementById('shopee-comp-'+id).classList.add('active');
+}
+
+// ════════════════════════════════════════
+// Tab 2：品牌監控
+// ════════════════════════════════════════
+let brandChart = null;
+
+function initBrandTab(){
+  const brands = getBrands();
+  const listEl = document.getElementById('brand-list-items');
+  listEl.innerHTML = brands.map((b,i)=>`
+    <div class="brand-item${i===0?' active':''}" onclick="selectBrand('${b.id}',this)">
+      <span>${b.name}</span>
+      <span class="b-dot ${b.alertCount>0?'b-dot-alert':'b-dot-ok'}"></span>
+    </div>`).join('');
+  if(brands.length) selectBrand(brands[0].id, listEl.querySelector('.brand-item.active'));
+}
+
+function selectBrand(id, el){
+  document.querySelectorAll('.brand-item').forEach(b=>b.classList.remove('active'));
+  if(el) el.classList.add('active');
+  const brands = getBrands();
+  const brand = brands.find(b=>b.id===id);
+  if(!brand) return;
+  // 統計卡
+  const stats = document.getElementById('brand-stats');
+  const totalShops = 8 + Math.floor(Math.random()*5);
+  stats.innerHTML = `
+    <div class="brand-stat"><div class="bs-label">監控店家數</div><div class="bs-num">${totalShops}</div></div>
+    <div class="brand-stat"><div class="bs-label">破價店家</div><div class="bs-num ${brand.alertCount>0?'bs-alert':''}">${brand.alertCount}</div></div>
+    <div class="brand-stat"><div class="bs-label">最低售價</div><div class="bs-num ${brand.alertCount>0?'bs-alert':''}">NT$${(brand.floor - (brand.alertCount>0?Math.floor(Math.random()*80)+30:0)).toLocaleString()}</div></div>`;
+  // 表格
+  document.getElementById('brand-table-title').textContent = `${brand.name} — 蝦皮全站售價`;
+  const mockBrandData = generateBrandMock(brand);
+  renderBrandTable(mockBrandData, brand.floor);
+  // 趨勢圖
+  document.getElementById('brand-chart-wrap').style.display='block';
+  document.getElementById('brand-chart-title').textContent = `${brand.name} 最低售價趨勢`;
+  renderBrandChart(brand);
+}
+
+function generateBrandMock(brand){
+  const shops = ['lala_v_official','millicent','kjnac','t091771','helpbuykr','shopee_beauty_tw','cosme_station','official_kr_beauty','tw_cosme','style_cosme'];
+  return shops.map((s,i)=>{
+    const isAlert = i < brand.alertCount;
+    const price = isAlert ? brand.floor - Math.floor(Math.random()*80+20) : brand.floor + Math.floor(Math.random()*200+10);
+    return { shop:s, name:`${brand.name} 熱銷品項 ${String.fromCharCode(65+i)}`, price, floor:brand.floor, isAlert };
+  });
+}
+
+function renderBrandTable(data, floor){
+  const wrap = document.getElementById('brand-table');
+  const rows = data.map(d=>{
+    const diff = d.price - floor;
+    const diffStr = diff>=0 ? `<span style="color:var(--success)">+NT$${diff}</span>` : `<span style="color:var(--danger)">-NT$${Math.abs(diff)}</span>`;
+    const tr = `<tr${d.isAlert?' class="price-alert-row"':''}>
+      <td>${d.shop}</td>
+      <td>${d.name}${d.isAlert?'<span class="price-warn-tag" style="margin-left:8px">⚠ 破價</span>':''}</td>
+      <td class="price-cell" style="${d.isAlert?'color:#dc2626':''}"}>NT$${d.price.toLocaleString()}</td>
+      <td>NT$${floor.toLocaleString()}</td>
+      <td>${diffStr}</td>
+    </tr>`;
+    return tr;
+  }).join('');
+  wrap.innerHTML=`<table class="product-table"><thead><tr>
+    <th>蝦皮店家</th><th>商品名稱</th><th>售價</th><th>底線價</th><th>差異</th>
+  </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function renderBrandChart(brand){
+  const weeks = ['3/3','3/10','3/17','3/24','3/31','4/7','4/14','4/21'];
+  const base = brand.floor + 50;
+  const prices = weeks.map((_,i)=> base + Math.sin(i*0.8)*40 + Math.random()*30 - (i>5?60:0));
+  const ctx = document.getElementById('brandPriceChart');
+  if(brandChart){ brandChart.destroy(); brandChart=null; }
+  brandChart = new Chart(ctx, {
+    type:'line',
+    data:{ labels:weeks, datasets:[
+      { label:'市場最低價', data:prices.map(Math.round), borderColor:'#ef4444', backgroundColor:'rgba(239,68,68,.1)', tension:.35, fill:true, pointRadius:3 },
+      { label:'底線價格', data:weeks.map(()=>brand.floor), borderColor:'#94a3b8', borderDash:[6,3], borderWidth:1.5, pointRadius:0 }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{ font:{size:11}, boxWidth:12 } } }, scales:{ y:{ ticks:{ font:{size:10}, callback:v=>'$'+v } }, x:{ ticks:{ font:{size:10} } } } }
+  });
+}
+
+// ════════════════════════════════════════
+// Tab 3：自家銷量
+// ════════════════════════════════════════
+let myshopChart = null;
+const MYSHOPS = {
+  all:{ label:'四店合計', thisWeek:3847, lastWeek:3201 },
+  lala:{ label:'lala_v_official', thisWeek:1823, lastWeek:1502 },
+  s827:{ label:'827842797', thisWeek:789, lastWeek:698 },
+  s539:{ label:'539417652', thisWeek:654, lastWeek:612 },
+  b1314:{ label:'b.1314520', thisWeek:581, lastWeek:389 }
+};
+
+function initMyshopTab(){ switchMyshop('all', null); }
+
+function switchMyshop(key, el){
+  if(el){ document.querySelectorAll('#myshop-tabs .sub-tab').forEach(t=>t.classList.remove('active')); el.classList.add('active'); }
+  const shop = MYSHOPS[key] || MYSHOPS.all;
+  const diff = shop.thisWeek - shop.lastWeek;
+  const pct = ((diff/shop.lastWeek)*100).toFixed(1);
+  const isUp = diff>=0;
+  document.getElementById('myshop-stats').innerHTML=`
+    <div class="stat-box"><div class="sb-label">本週銷量（筆）</div><div class="sb-num">${shop.thisWeek.toLocaleString()}</div><div class="sb-change ${isUp?'sc-up':'sc-dn'}">${isUp?'▲':'▼'} ${Math.abs(diff)} (${isUp?'+':''}${pct}% vs 上週)</div></div>
+    <div class="stat-box"><div class="sb-label">上週銷量</div><div class="sb-num">${shop.lastWeek.toLocaleString()}</div><div class="sb-change" style="color:var(--gray-400)">基準週</div></div>
+    <div class="stat-box"><div class="sb-label">熱銷商品數</div><div class="sb-num" style="color:var(--success)">12</div><div class="sb-change sc-up">▲ 3 vs 上週</div></div>
+    <div class="stat-box"><div class="sb-label">需關注商品</div><div class="sb-num" style="color:var(--warning)">4</div><div class="sb-change" style="color:var(--gray-400)">銷量下滑 ≥20%</div></div>`;
+  document.getElementById('myshop-table-title').textContent=`${shop.label} — 商品銷量排行`;
+  renderMyshopTable();
+  renderMyshopChart(shop);
+}
+
+function renderMyshopTable(){
+  const items=[
+    {rank:1,emoji:'🧴',name:'玻尿酸保濕面膜 10片裝',spec:'10片',thisW:287,lastW:201,trend:43},
+    {rank:2,emoji:'💧',name:'清爽控油防曬乳 SPF50 50ml',spec:'50ml',thisW:245,lastW:267,trend:-8},
+    {rank:3,emoji:'✨',name:'煥顏亮白精華液 30ml',spec:'30ml',thisW:198,lastW:145,trend:37},
+    {rank:4,emoji:'🌿',name:'無矽靈護髮素 300ml',spec:'300ml',thisW:176,lastW:189,trend:-7},
+    {rank:5,emoji:'🌸',name:'天然玫瑰香氛擴香 100ml',spec:'100ml',thisW:154,lastW:98,trend:57},
+    {rank:6,emoji:'💎',name:'抗老緊緻眼霜 15ml',spec:'15ml',thisW:143,lastW:132,trend:8},
+    {rank:7,emoji:'🌺',name:'法式香氛沐浴露 500ml',spec:'500ml',thisW:132,lastW:178,trend:-26},
+    {rank:8,emoji:'💄',name:'水潤豐盈唇釉 4.5g',spec:'多色',thisW:121,lastW:89,trend:36},
+    {rank:9,emoji:'🚿',name:'胺基酸洗髮精 400ml',spec:'400ml',thisW:118,lastW:121,trend:-2},
+    {rank:10,emoji:'🌊',name:'積雪草修復身體乳 200ml',spec:'200ml',thisW:98,lastW:67,trend:46}
+  ];
+  const rows=items.map(p=>{
+    const rankClass=p.rank<=3?`r${p.rank}`:'';
+    const trendStr=p.trend>=0?`<span class="sc-up">▲${p.trend}%</span>`:`<span class="sc-dn">▼${Math.abs(p.trend)}%</span>`;
+    return `<tr>
+      <td class="rank-cell"><span class="rank-num ${rankClass}">#${p.rank}</span></td>
+      <td><div class="product-cell"><div class="product-thumb-ph">${p.emoji}</div><div><div class="product-name">${p.name}</div><div class="product-brand">${p.spec}</div></div></div></td>
+      <td style="text-align:right;font-weight:600">${p.thisW}</td>
+      <td style="text-align:right;color:var(--gray-500)">${p.lastW}</td>
+      <td style="text-align:right">${trendStr}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('myshop-table').innerHTML=`<table class="product-table"><thead><tr>
+    <th style="width:60px">排名</th><th>商品</th><th style="text-align:right">本週</th><th style="text-align:right">上週</th><th style="text-align:right">變化</th>
+  </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function renderMyshopChart(shop){
+  const weeks=['4/7','4/14','4/21','4/28','5/5','5/12','5/19','5/26'];
+  const base=shop.thisWeek;
+  const data=weeks.map((_,i)=>Math.round(base*0.7+base*0.3*(i/7)+Math.random()*base*0.15));
+  const ctx=document.getElementById('myshopChart');
+  if(myshopChart){ myshopChart.destroy(); myshopChart=null; }
+  myshopChart=new Chart(ctx,{
+    type:'bar',
+    data:{ labels:weeks, datasets:[{ label:'週銷量（筆）', data, backgroundColor:'rgba(37,99,235,.25)', borderColor:'#2563eb', borderWidth:1.5, borderRadius:4 }]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{ font:{size:11}, boxWidth:12 } } }, scales:{ y:{ ticks:{ font:{size:10} } }, x:{ ticks:{ font:{size:10} } } } }
+  });
+}
+
+// ════════════════════════════════════════
+// Tab 4：關鍵字情報
+// ════════════════════════════════════════
+const MOCK_ARTICLES = {
+  google:[
+    {title:'2026 最新玻尿酸精華推薦！美妝達人評測 TOP 10',meta:'2天前 · 美妝趨勢報導',url:'#'},
+    {title:'【保養教學】玻尿酸精華怎麼選？成分師解析三大類型',meta:'5天前 · 女人我最大',url:'#'},
+    {title:'Dcard 熱議｜用了3個月後的玻尿酸精華誠實心得',meta:'1週前 · Dcard 美妝版',url:'#'},
+    {title:'2026最值得買的平價玻尿酸精華 NT$300以下評比',meta:'2週前 · 愛美網',url:'#'},
+    {title:'皮膚科醫生推薦！醫美級玻尿酸精華成分解析',meta:'3週前 · 健康2.0',url:'#'}
+  ],
+  dcard:[
+    {title:'innisfree 綠茶玻尿酸用完了 真的有變水嫩嗎？老實說',meta:'2026-05-26 · 美妝版 · 432 愛心',url:'#'},
+    {title:'玻尿酸精華跟水精華有什麼差？買錯好可惜',meta:'2026-05-24 · 美妝版 · 287 愛心',url:'#'},
+    {title:'大家的玻尿酸精華回購率怎麼樣？我用爛了這罐...',meta:'2026-05-22 · 保養版 · 198 愛心',url:'#'},
+    {title:'請問平價玻尿酸精華哪個質地最輕盈？我膚質很油',meta:'2026-05-20 · 問卦版 · 156 愛心',url:'#'},
+    {title:'韓系玻尿酸精華 VS 台灣品牌 一起比較使用心得',meta:'2026-05-18 · 美妝版 · 143 愛心',url:'#'}
+  ],
+  ptt:[
+    {title:'[討論] 2026上半年用的最滿意的玻尿酸保濕推薦',meta:'2026-05-25 · Beauty板 · 89推',url:'#'},
+    {title:'[問卦] 玻尿酸精華買貴的跟買便宜的差在哪',meta:'2026-05-23 · Gossiping · 156推',url:'#'},
+    {title:'[心得] Dr.Wu玻尿酸用完第一罐終於可以寫心得了',meta:'2026-05-21 · Beauty · 67推',url:'#'},
+    {title:'[推薦] 藥妝店找得到的玻尿酸 這幾個真的不輸專櫃',meta:'2026-05-19 · Beauty · 123推',url:'#'},
+    {title:'[問題] 玻尿酸精華早晚都要用嗎？會卡粉嗎',meta:'2026-05-17 · Beauty · 45推',url:'#'}
+  ],
+  youtube:[
+    {title:'玻尿酸精華大亂鬥！我花了2萬試完市售10款【真實評測】',meta:'3天前 · 234K 觀看',url:'#'},
+    {title:'【開箱】2026最夯韓系玻尿酸 跟日本的有什麼差？',meta:'1週前 · 89K 觀看',url:'#'},
+    {title:'皮膚科醫師教你認識玻尿酸！低分子高分子差在哪',meta:'2週前 · 156K 觀看',url:'#'},
+    {title:'NT$200 vs NT$2000 的玻尿酸精華 差在哪裡？',meta:'3週前 · 312K 觀看',url:'#'},
+    {title:'【跟我一起保養】晚間保養例行 玻尿酸+視黃醇分享',meta:'1個月前 · 67K 觀看',url:'#'}
+  ]
+};
+
+const SEARCH_URLS = {
+  google: q=>`https://www.google.com/search?q=${encodeURIComponent(q)}`,
+  dcard: q=>`https://www.dcard.tw/search?query=${encodeURIComponent(q)}`,
+  ptt: q=>`https://www.ptt.cc/bbs/Beauty/search?q=${encodeURIComponent(q)}`,
+  youtube: q=>`https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`
+};
+
+function renderKeywordPills(){
+  const kws = getKeywords().filter(k=>k.visible);
+  const pillsEl = document.getElementById('kw-pills');
+  if(!kws.length){ pillsEl.innerHTML='<p style="color:var(--gray-400);font-size:13px">尚無關鍵字，請至「設定」新增</p>'; return; }
+  pillsEl.innerHTML = kws.map((k,i)=>`
+    <div class="kw-pill${i===0?' active':''}" onclick="selectKw(this,'${k.text}')">
+      ${k.text}
+      <span class="kw-src ${i===0?'kw-src-auto-active':'kw-src-auto'}">${k.source==='auto'?'自動':'手動'}</span>
+    </div>`).join('');
+  if(kws.length) renderMediaGrid(kws[0].text);
+}
+
+function selectKw(el, text){
+  document.querySelectorAll('.kw-pill').forEach(p=>{ p.classList.remove('active'); p.querySelector('.kw-src').className='kw-src kw-src-auto'; });
+  el.classList.add('active');
+  el.querySelector('.kw-src').className='kw-src kw-src-auto-active';
+  renderMediaGrid(text);
+}
+
+async function renderMediaGrid(kw){
+  const grid = document.getElementById('media-grid');
+  const defs = [
+    { id:'google', label:'Google', badge:'pb-google', icon:'🔍' },
+    { id:'dcard',  label:'Dcard',  badge:'pb-dcard',  icon:'💬' },
+    { id:'ptt',    label:'PTT',    badge:'pb-ptt',    icon:'📌' },
+    { id:'youtube',label:'YouTube',badge:'pb-yt',     icon:'▶'  }
+  ];
+  // 先用 mock 快速渲染，再用 API 覆蓋
+  const mockData = { google:MOCK_ARTICLES.google, dcard:MOCK_ARTICLES.dcard, ptt:MOCK_ARTICLES.ptt, youtube:MOCK_ARTICLES.youtube };
+
+  function buildCol(p, articles, isLive){
+    const dot = isLive?`<span class="sdot sdot-live" style="display:inline-block;margin-right:4px"></span>`:'';
+    return `<div class="media-col">
+      <div class="media-col-head">
+        <div class="media-col-title"><span class="pb ${p.badge}">${p.icon} ${p.label}</span>${dot}</div>
+        <a class="see-more" href="${SEARCH_URLS[p.id](kw)}" target="_blank">查看更多 →</a>
+      </div>
+      <ul class="article-list">
+        ${articles.slice(0,5).map((a,i)=>`
+          <li class="art-item">
+            <span class="art-rank${i<3?' r'+(i+1):''}">${i+1}</span>
+            <div class="art-body">
+              <a class="art-title" href="${a.url||SEARCH_URLS[p.id](kw)}" target="_blank">${a.title}</a>
+              <div class="art-meta">${a.meta||''}</div>
+            </div>
+          </li>`).join('')}
+      </ul>
+    </div>`;
+  }
+
+  // 初始顯示 mock
+  grid.innerHTML = defs.map(p=>buildCol(p, mockData[p.id], false)).join('');
+
+  // 若有 API，非同步更新
+  if(!getCFEndpoint()) return;
+  for(const p of defs){
+    const data = await apiGet(`/api/articles?keyword=${encodeURIComponent(kw)}&platform=${p.id}&limit=5`);
+    if(data?.articles?.length){
+      const colEl = grid.children[defs.indexOf(p)];
+      if(colEl) colEl.outerHTML = buildCol(p, data.articles, true);
+    }
+  }
+}
+
+// ════════════════════════════════════════
+// Tab 5：設定
+// ════════════════════════════════════════
+function renderSettings(){
+  renderShopSettings();
+  renderBrandSettings();
+  renderKeywordSettings();
+  const cf = load('cf')||{};
+  if(cf.endpoint) document.getElementById('cf-endpoint').value=cf.endpoint;
+  if(cf.token) document.getElementById('cf-token').value=cf.token;
+  const sched = load('schedule')||'weekly';
+  document.getElementById('schedule-select').value=sched;
+}
+
+function renderShopSettings(){
+  const shops = getShops();
+  document.getElementById('shop-list').innerHTML = shops.map(s=>`
+    <div class="settings-item">
+      <div class="si-info">
+        <div class="si-name">${s.name}</div>
+        <div class="si-meta">${s.url}</div>
+      </div>
+      <div class="si-actions">
+        <button class="btn-del" onclick="deleteShop('${s.id}')">刪除</button>
+      </div>
+    </div>`).join('') || '<div style="color:var(--gray-400);font-size:13px;padding:8px">尚無競品店</div>';
+}
+
+function addShop(){
+  const name = document.getElementById('add-shop-name').value.trim();
+  const url = document.getElementById('add-shop-url').value.trim();
+  if(!name||!url){ alert('請填入名稱與 URL'); return; }
+  const shops = getShops();
+  shops.push({ id:'s'+Date.now(), name, url });
+  save('shops', shops);
+  document.getElementById('add-shop-name').value='';
+  document.getElementById('add-shop-url').value='';
+  renderShopSettings();
+  initShopeeCompTabs();
+}
+
+function deleteShop(id){
+  if(!confirm('確定刪除這個競品店？')) return;
+  save('shops', getShops().filter(s=>s.id!==id));
+  renderShopSettings();
+  initShopeeCompTabs();
+}
+
+function renderBrandSettings(){
+  const brands = getBrands();
+  document.getElementById('brand-settings-list').innerHTML = brands.map(b=>`
+    <div class="settings-item">
+      <div class="si-info">
+        <div class="si-name">${b.name}</div>
+        <div class="si-meta">底線售價：NT$${b.floor.toLocaleString()}　目前破價：${b.alertCount} 家</div>
+      </div>
+      <div class="si-actions">
+        <button class="btn-edit" onclick="editBrandFloor('${b.id}','${b.name}',${b.floor})">修改底線</button>
+        <button class="btn-del" onclick="deleteBrand('${b.id}')">刪除</button>
+      </div>
+    </div>`).join('') || '<div style="color:var(--gray-400);font-size:13px;padding:8px">尚無監控品牌</div>';
+}
+
+function addBrand(){
+  const name = document.getElementById('add-brand-name').value.trim();
+  const floor = parseInt(document.getElementById('add-brand-floor').value)||0;
+  if(!name){ alert('請填入品牌名稱'); return; }
+  const brands = getBrands();
+  brands.push({ id:'b'+Date.now(), name, floor, alertCount:0 });
+  save('brands', brands);
+  document.getElementById('add-brand-name').value='';
+  document.getElementById('add-brand-floor').value='';
+  renderBrandSettings();
+}
+
+function editBrandFloor(id, name, current){
+  const val = prompt(`修改「${name}」底線售價（目前：NT$${current}）：`, current);
+  if(!val) return;
+  const price = parseInt(val);
+  if(isNaN(price)||price<=0){ alert('請輸入有效價格'); return; }
+  const brands = getBrands();
+  const idx = brands.findIndex(b=>b.id===id);
+  if(idx>=0){ brands[idx].floor=price; save('brands',brands); renderBrandSettings(); }
+}
+
+function deleteBrand(id){
+  if(!confirm('確定刪除此品牌監控？')) return;
+  save('brands', getBrands().filter(b=>b.id!==id));
+  renderBrandSettings();
+}
+
+function renderKeywordSettings(){
+  const kws = getKeywords();
+  document.getElementById('keyword-settings-list').innerHTML = kws.map(k=>`
+    <div class="settings-item">
+      <div class="si-info">
+        <div class="si-name">${k.text} <span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;margin-left:4px;background:${k.source==='auto'?'#dcfce7':'#dbeafe'};color:${k.source==='auto'?'#16a34a':'#1d4ed8'}">${k.source==='auto'?'官網自動':'手動'}</span></div>
+      </div>
+      <div class="si-actions">
+        <div class="toggle-wrap">
+          <span style="font-size:12px;color:var(--gray-500)">${k.visible?'顯示':'隱藏'}</span>
+          <label class="toggle"><input type="checkbox" ${k.visible?'checked':''} onchange="toggleKeyword('${k.id}',this.checked)"><span class="toggle-s"></span></label>
+        </div>
+        <button class="btn-del" onclick="deleteKeyword('${k.id}')">刪除</button>
+      </div>
+    </div>`).join('') || '<div style="color:var(--gray-400);font-size:13px;padding:8px">尚無關鍵字</div>';
+}
+
+function addKeyword(){
+  const text = document.getElementById('add-kw-text').value.trim();
+  if(!text){ alert('請填入關鍵字'); return; }
+  const kws = getKeywords();
+  if(kws.find(k=>k.text===text)){ alert('此關鍵字已存在'); return; }
+  kws.push({ id:'k'+Date.now(), text, source:'manual', visible:true });
+  save('keywords', kws);
+  document.getElementById('add-kw-text').value='';
+  renderKeywordSettings();
+  renderKeywordPills();
+}
+
+function toggleKeyword(id, visible){
+  const kws = getKeywords();
+  const idx = kws.findIndex(k=>k.id===id);
+  if(idx>=0){ kws[idx].visible=visible; save('keywords',kws); renderKeywordSettings(); renderKeywordPills(); }
+}
+
+function deleteKeyword(id){
+  if(!confirm('確定刪除此關鍵字？')) return;
+  save('keywords', getKeywords().filter(k=>k.id!==id));
+  renderKeywordSettings();
+  renderKeywordPills();
+}
+
+function saveCFConfig(){
+  save('cf',{ endpoint:document.getElementById('cf-endpoint').value, token:document.getElementById('cf-token').value });
+}
+
+function testConnection(){
+  const ep = document.getElementById('cf-endpoint').value.trim();
+  const status = document.getElementById('cf-status');
+  if(!ep){ status.textContent='⚠️ 請先填入 Workers endpoint URL'; status.style.color='var(--warning)'; return; }
+  status.textContent='⏳ 連線測試中...'; status.style.color='var(--primary)';
+  fetch(ep+'/ping').then(r=>r.ok?r.json():Promise.reject(r.status))
+    .then(()=>{ status.textContent='✅ 連線成功！Workers 已就緒'; status.style.color='var(--success)'; })
+    .catch(e=>{ status.textContent=`❌ 連線失敗（${e}）—請確認 Workers 已部署且 URL 正確`; status.style.color='var(--danger)'; });
+}
+
+function saveSchedule(){ save('schedule', document.getElementById('schedule-select').value); }
+
+// ════════════════════════════════════════
+// 初始化
+// ════════════════════════════════════════
+async function initPage(){
+  // ── 台灣電商 ──
+  await loadAndRender('momo',     'table-tw-momo',      null);
+  await loadAndRender('coupang',  'table-tw-coupang',   null);
+  await loadAndRender('poya',     'table-tw-poya',      null);
+  // ── 韓國 ──
+  await loadAndRender('oliveyoung', 'table-kr-oliveyoung', null);
+  await loadAndRender('hwahae',     'table-kr-hwahae',     null, p=>({...p,emoji:'🧪'}));
+  await loadAndRender('naver_kr',   'table-kr-naver',      null, p=>({...p,emoji:'🔍'}));
+  await loadAndRender('coupang_kr', 'table-kr-coupang-kr', null);
+  // ── 中國 ──
+  await loadAndRender('taobao', 'table-cn-taobao', null, (p,i)=>({...p,rank:i+1,emoji:'🏮',price:Math.round(p.price*0.6)}));
+  await loadAndRender('1688',   'table-cn-1688',   null, (p,i)=>({...p,rank:i+1,emoji:'🏭',price:Math.round(p.price*0.35),spec:(p.spec||'')+' (批)'}));
+  // ── 蝦皮競品 ──
+  initShopeeCompTabs();
+  // ── 關鍵字 pills ──
+  renderKeywordPills();
+  // ── 更新 status bar ──
+  updateStatusBars();
+}
+
+async function loadAndRender(source, tableId, sub, transform){
+  const { products, live } = await loadProducts(source, sub||'');
+  const data = transform ? products.map((p,i)=>transform(p,i)) : products;
+  renderProductTable(tableId, data);
+  // 更新 status dot
+  const tableEl = document.getElementById(tableId);
+  if(tableEl){
+    const bar = tableEl.closest('.card')?.previousElementSibling;
+    if(bar?.classList.contains('data-status-bar')){
+      const dot = bar.querySelector('.sdot');
+      const badge = bar.querySelector('.demo-badge');
+      if(live && dot){ dot.className='sdot sdot-live'; if(badge) badge.textContent='已連接'; }
+    }
+  }
+}
+
+function updateStatusBars(){
+  const isLive = !!getCFEndpoint();
+  if(!isLive) return;
+  document.querySelectorAll('.data-status-bar').forEach(bar=>{
+    const dot = bar.querySelector('.sdot');
+    if(dot && dot.classList.contains('sdot-demo')) dot.className='sdot sdot-load';
+  });
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{ initPage(); });
+</script>
+</body>
+</html>
