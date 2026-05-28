@@ -965,13 +965,39 @@ function renderProductTable() {
 
 function updateProductBrand(no, val) {
   if (val === '__new__') {
-    const name = prompt('請輸入新品牌名稱：');
-    if (name && name.trim()) state.brandMap[no] = name.trim();
-    else return;
-  } else {
-    state.brandMap[no] = val;
+    showNewBrandInput(no);
+    return;
   }
+  state.brandMap[no] = val;
   renderAll();
+}
+
+function showNewBrandInput(no) {
+  const cell = document.querySelector(`select[onchange*="'${no}'"]`)?.parentElement;
+  if (!cell) return;
+  cell.innerHTML = `
+    <div style="display:flex;gap:4px;align-items:center">
+      <input id="new-brand-input-${no}" type="text" placeholder="品牌名稱"
+        style="border:1px solid #6366f1;border-radius:6px;padding:3px 6px;font-size:13px;width:110px;outline:none"
+        onkeydown="handleNewBrandKey(event,'${no}')" />
+      <button onclick="confirmNewBrand('${no}')"
+        style="background:#6366f1;color:#fff;border:none;border-radius:6px;padding:3px 8px;font-size:12px;cursor:pointer">確認</button>
+      <button onclick="renderAll()"
+        style="background:transparent;border:1px solid #555;border-radius:6px;padding:3px 6px;font-size:12px;cursor:pointer;color:#aaa">✕</button>
+    </div>`;
+  document.getElementById(`new-brand-input-${no}`)?.focus();
+}
+
+function handleNewBrandKey(evt, no) {
+  if (evt.key === 'Enter')  confirmNewBrand(no);
+  if (evt.key === 'Escape') renderAll();
+}
+
+function confirmNewBrand(no) {
+  const inp = document.getElementById(`new-brand-input-${no}`);
+  const name = inp ? inp.value.trim() : '';
+  if (name) { state.brandMap[no] = name; renderAll(); }
+  else inp?.focus();
 }
 
 // ══════════════════════════════════════════
