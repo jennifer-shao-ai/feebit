@@ -360,7 +360,7 @@
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v1.9 · Feebit © 2026</div>
+  <div class="sidebar-footer">v2.0 · Feebit © 2026</div>
 </div>
 
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
@@ -370,7 +370,7 @@
     <div style="display:flex;align-items:center;gap:10px">
       <button class="btn-hamburger" onclick="toggleSidebar()">☰</button>
       <span class="topbar-title">📈 品牌銷售分析</span>
-      <span style="font-size:11px;color:#aaa;font-weight:400;">v1.9</span>
+      <span style="font-size:11px;color:#aaa;font-weight:400;">v2.0</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <span id="period-badge" class="period-badge" style="display:none"></span>
@@ -1034,9 +1034,8 @@ function switchTab(el) {
 // ══════════════════════════════════════════
 function copyTop5Excel() {
   const groups = computeGroups().slice(0, 5);
-  const brands = groups.map(g => g.brand).join('\t');
-  const sales  = groups.map(g => g.sales).join('\t');
-  navigator.clipboard.writeText(brands + '\n' + sales)
+  const rows   = groups.map(g => g.brand + '\t' + g.sales).join('\n');
+  navigator.clipboard.writeText(rows)
     .then(() => alert('已複製前五名（Excel 格式）✅'))
     .catch(() => alert('複製失敗，請手動選取'));
 }
