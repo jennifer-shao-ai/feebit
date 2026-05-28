@@ -302,21 +302,21 @@ input:checked + .toggle-s:before { transform:translateX(16px); }
         <div class="sub-content active" id="tw-momo">
           <div class="data-status-bar">
             <div class="status-info"><span class="sdot sdot-demo"></span><span class="demo-badge">示範資料</span>接入 Cloudflare Workers 後自動更新</div>
-            <button class="refresh-btn" onclick="showNotReady()">↻ 立即爬取</button>
+            <button class="refresh-btn" onclick="triggerScrape('momo',this)">↻ 立即爬取</button>
           </div>
           <div class="card"><div class="product-table-wrap" id="table-tw-momo"></div></div>
         </div>
         <div class="sub-content" id="tw-coupang">
           <div class="data-status-bar">
             <div class="status-info"><span class="sdot sdot-demo"></span><span class="demo-badge">示範資料</span>接入 Cloudflare Workers 後自動更新</div>
-            <button class="refresh-btn" onclick="showNotReady()">↻ 立即爬取</button>
+            <button class="refresh-btn" onclick="triggerScrape('coupang',this)">↻ 立即爬取</button>
           </div>
           <div class="card"><div class="product-table-wrap" id="table-tw-coupang"></div></div>
         </div>
         <div class="sub-content" id="tw-poya">
           <div class="data-status-bar">
             <div class="status-info"><span class="sdot sdot-demo"></span><span class="demo-badge">示範資料</span>接入 Cloudflare Workers 後自動更新</div>
-            <button class="refresh-btn" onclick="showNotReady()">↻ 立即爬取</button>
+            <button class="refresh-btn" onclick="triggerScrape('poya',this)">↻ 立即爬取</button>
           </div>
           <div class="card"><div class="product-table-wrap" id="table-tw-poya"></div></div>
         </div>
@@ -339,20 +339,20 @@ input:checked + .toggle-s:before { transform:translateX(16px); }
         <div class="sub-content active" id="kr-oliveyoung">
           <div class="data-status-bar">
             <div class="status-info"><span class="sdot sdot-demo"></span><span class="demo-badge">示範資料</span>接入 Cloudflare Workers 後自動更新（韓文自動翻譯中文）</div>
-            <button class="refresh-btn" onclick="showNotReady()">↻ 立即爬取</button>
+            <button class="refresh-btn" onclick="triggerScrape('oliveyoung',this)">↻ 立即爬取</button>
           </div>
           <div class="card"><div class="product-table-wrap" id="table-kr-oliveyoung"></div></div>
         </div>
         <div class="sub-content" id="kr-hwahae">
-          <div class="data-status-bar"><div class="status-info"><span class="sdot sdot-demo"></span><span class="demo-badge">示範資料</span>화해 月銷榜・成分熱度榜</div><button class="refresh-btn" onclick="showNotReady()">↻ 立即爬取</button></div>
+          <div class="data-status-bar"><div class="status-info"><span class="sdot sdot-demo"></span><span class="demo-badge">示範資料</span>화해 月銷榜・成分熱度榜</div><button class="refresh-btn" onclick="triggerScrape('hwahae',this)">↻ 立即爬取</button></div>
           <div class="card"><div class="product-table-wrap" id="table-kr-hwahae"></div></div>
         </div>
         <div class="sub-content" id="kr-naver">
-          <div class="data-status-bar"><div class="status-info"><span class="sdot sdot-demo"></span><span class="demo-badge">示範資料</span>Naver Shopping 搜尋熱度排行</div><button class="refresh-btn" onclick="showNotReady()">↻ 立即爬取</button></div>
+          <div class="data-status-bar"><div class="status-info"><span class="sdot sdot-demo"></span><span class="demo-badge">示範資料</span>Naver Shopping 搜尋熱度排行</div><button class="refresh-btn" onclick="triggerScrape('naver_kr',this)">↻ 立即爬取</button></div>
           <div class="card"><div class="product-table-wrap" id="table-kr-naver"></div></div>
         </div>
         <div class="sub-content" id="kr-coupang-kr">
-          <div class="data-status-bar"><div class="status-info"><span class="sdot sdot-demo"></span><span class="demo-badge">示範資料</span>Coupang KR 分類熱銷</div><button class="refresh-btn" onclick="showNotReady()">↻ 立即爬取</button></div>
+          <div class="data-status-bar"><div class="status-info"><span class="sdot sdot-demo"></span><span class="demo-badge">示範資料</span>Coupang KR 分類熱銷</div><button class="refresh-btn" onclick="triggerScrape('coupang_kr',this)">↻ 立即爬取</button></div>
           <div class="card"><div class="product-table-wrap" id="table-kr-coupang-kr"></div></div>
         </div>
       </div>
@@ -364,11 +364,11 @@ input:checked + .toggle-s:before { transform:translateX(16px); }
           <div class="sub-tab" onclick="switchSub('cn','1688',this)">1688</div>
         </div>
         <div class="sub-content active" id="cn-taobao">
-          <div class="data-status-bar"><div class="status-info"><span class="sdot sdot-demo"></span><span class="demo-badge">示範資料</span>透過 Apify 爬取，接入後自動更新</div><button class="refresh-btn" onclick="showNotReady()">↻ 立即爬取</button></div>
+          <div class="data-status-bar"><div class="status-info"><span class="sdot sdot-demo"></span><span class="demo-badge">示範資料</span>透過 Apify 爬取，接入後自動更新</div><button class="refresh-btn" onclick="triggerScrape('taobao',this)">↻ 立即爬取</button></div>
           <div class="card"><div class="product-table-wrap" id="table-cn-taobao"></div></div>
         </div>
         <div class="sub-content" id="cn-1688">
-          <div class="data-status-bar"><div class="status-info"><span class="sdot sdot-demo"></span><span class="demo-badge">示範資料</span>1688 批發熱銷・可查供應商報價</div><button class="refresh-btn" onclick="showNotReady()">↻ 立即爬取</button></div>
+          <div class="data-status-bar"><div class="status-info"><span class="sdot sdot-demo"></span><span class="demo-badge">示範資料</span>1688 批發熱銷・可查供應商報價</div><button class="refresh-btn" onclick="triggerScrape('1688',this)">↻ 立即爬取</button></div>
           <div class="card"><div class="product-table-wrap" id="table-cn-1688"></div></div>
         </div>
       </div>
@@ -381,7 +381,7 @@ input:checked + .toggle-s:before { transform:translateX(16px); }
     <div class="main-tab-content" id="tab-brand">
       <div class="data-status-bar" style="margin-bottom:16px">
         <div class="status-info"><span class="sdot sdot-demo"></span><span class="demo-badge">示範資料</span>設定底線價格 → 每週自動掃描蝦皮全站，破價自動亮紅</div>
-        <button class="refresh-btn" onclick="showNotReady()">↻ 立即掃描</button>
+        <button class="refresh-btn" onclick="triggerScrape('brand_scan',this)">↻ 立即掃描</button>
       </div>
       <div class="brand-layout">
         <div class="brand-list-panel">
@@ -411,7 +411,7 @@ input:checked + .toggle-s:before { transform:translateX(16px); }
     <div class="main-tab-content" id="tab-myshop">
       <div class="data-status-bar" style="margin-bottom:16px">
         <div class="status-info"><span class="sdot sdot-demo"></span><span class="demo-badge">示範資料</span>接入蝦皮 Open API 後顯示真實銷量（申請中）</div>
-        <button class="refresh-btn" onclick="showNotReady()">↻ 更新資料</button>
+        <button class="refresh-btn" onclick="triggerScrape('myshop',this)">↻ 更新資料</button>
       </div>
       <div class="sub-tabs" id="myshop-tabs">
         <div class="sub-tab active" onclick="switchMyshop('all',this)">📊 四店合計</div>
@@ -437,7 +437,7 @@ input:checked + .toggle-s:before { transform:translateX(16px); }
     <div class="main-tab-content" id="tab-keyword">
       <div class="data-status-bar" style="margin-bottom:14px">
         <div class="status-info"><span class="sdot sdot-demo"></span><span class="demo-badge">示範資料</span>接入 Google CSE / Dcard API / PTT API / YouTube API 後自動更新</div>
-        <button class="refresh-btn" onclick="showNotReady()">↻ 更新</button>
+        <button class="refresh-btn" onclick="triggerScrape('dcard',this)">↻ 更新</button>
       </div>
       <div class="kw-pills" id="kw-pills"></div>
       <div class="media-grid" id="media-grid"></div>
@@ -784,7 +784,7 @@ function initShopeeCompTabs(){
     <div class="sub-content${i===0?' active':''}" id="shopee-comp-${s.id}">
       <div class="data-status-bar">
         <div class="status-info"><span class="sdot sdot-demo"></span><span class="demo-badge">示範資料</span>${s.url}</div>
-        <button class="refresh-btn" onclick="showNotReady()">↻ 立即爬取</button>
+        <button class="refresh-btn" onclick="triggerScrape('shopee_comp',this)">↻ 立即爬取</button>
       </div>
       <div class="card"><div class="product-table-wrap" id="table-shopee-${s.id}"></div></div>
     </div>`).join('');
