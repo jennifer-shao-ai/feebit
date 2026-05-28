@@ -317,6 +317,10 @@
     <a class="nav-item active" href="brand-sales.html"><span class="icon">📈</span> 品牌銷售分析</a>
   </div>
   <div class="sidebar-section">
+    <div class="sidebar-label">市場分析</div>
+    <a class="nav-item" href="market-tracker.html" id="nav-market"><span class="icon">🔭</span> 品類競品分析</a>
+  </div>
+  <div class="sidebar-section">
     <div class="sidebar-label">行銷</div>
     <div class="nav-item soon"><span class="icon">📢</span> 廣告文案<span class="soon-tag">即將推出</span></div>
   </div>
@@ -369,6 +373,7 @@
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <span id="period-badge" class="period-badge" style="display:none"></span>
+      <button id="copy-top5-btn" class="btn btn-ghost" style="display:none" onclick="copyTop5Excel()">複製前五名</button>
       <button id="copy-btn" class="btn btn-ghost" style="display:none" onclick="copyRanking()">複製排行</button>
       <button id="reset-btn" class="btn btn-ghost" style="display:none" onclick="resetAll()">重新上傳</button>
     </div>
@@ -585,7 +590,7 @@ const BRAND_TABLE = {
   '全久榮':            ['全久榮'],
   '克司博':            ['克司博', 'CHOBS'],
   '唐鑫':              ['唐鑫'],
-  'V4U鳶鳥禮':         ['V4U鳶鳥禮', 'V4U'],
+  'V4U薇選禮':          ['V4U薇選禮', 'V4U'],
   // 其他在 CSV 出現但品牌表未列的
   'Athens':            ['Athens'],
   'Qure':              ['Qure'],
@@ -789,8 +794,9 @@ function esc(s) {
 function showDashboard() {
   document.getElementById('upload-section').style.display   = 'none';
   document.getElementById('dashboard-section').style.display = 'block';
-  document.getElementById('reset-btn').style.display  = '';
-  document.getElementById('copy-btn').style.display   = '';
+  document.getElementById('reset-btn').style.display      = '';
+  document.getElementById('copy-btn').style.display       = '';
+  document.getElementById('copy-top5-btn').style.display  = '';
 
   const pb = document.getElementById('period-badge');
   pb.textContent = state.period;
@@ -997,6 +1003,18 @@ function switchTab(el) {
 }
 
 // ══════════════════════════════════════════
+// Copy top 5 for Excel (two rows: brands / sales)
+// ══════════════════════════════════════════
+function copyTop5Excel() {
+  const groups = computeGroups().slice(0, 5);
+  const brands = groups.map(g => g.brand).join('\t');
+  const sales  = groups.map(g => g.sales).join('\t');
+  navigator.clipboard.writeText(brands + '\n' + sales)
+    .then(() => alert('已複製前五名（Excel 格式）✅'))
+    .catch(() => alert('複製失敗，請手動選取'));
+}
+
+// ══════════════════════════════════════════
 // Copy ranking to clipboard (markdown)
 // ══════════════════════════════════════════
 function copyRanking() {
@@ -1030,8 +1048,9 @@ function resetAll() {
 
   document.getElementById('upload-section').style.display    = '';
   document.getElementById('dashboard-section').style.display = 'none';
-  document.getElementById('reset-btn').style.display  = 'none';
-  document.getElementById('copy-btn').style.display   = 'none';
+  document.getElementById('reset-btn').style.display      = 'none';
+  document.getElementById('copy-btn').style.display       = 'none';
+  document.getElementById('copy-top5-btn').style.display  = 'none';
   document.getElementById('period-badge').style.display = 'none';
   document.getElementById('file-input').value = '';
 
