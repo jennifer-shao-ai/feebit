@@ -1159,7 +1159,7 @@ function analyzeEmployee(empId, month){
   const expectedWork=expected.length; // 應出勤 = 工作日總數，不扣請假
   return {emp,rows,totalDays,totalHours:fmt(totalHours),lateCount,earlyCount,missingCount,absentCount,
     totalOT,leaveBreakdown,expectedWork,lateMinutesList,
-    leaveTotal:fmt(Object.values(leaveBreakdown).reduce((a,b)=>a+b,0),1)};
+    leaveTotal:fmt(Object.entries(leaveBreakdown).filter(([t])=>t!=='公假').reduce((s,[,v])=>s+v,0),1)};
 }
 
 function editPunchCell(el,m,empId,date,field){
@@ -1323,7 +1323,7 @@ function renderVerify(){
   const totMissing=analyses.reduce((s,a)=>s+a.missingCount,0);
   const totAbsent=analyses.reduce((s,a)=>s+a.absentCount,0);
   const totOT=analyses.reduce((s,a)=>s+a.totalOT,0);
-  const totLeave=fmt(analyses.reduce((s,a)=>s+Object.values(a.leaveBreakdown).reduce((x,y)=>x+y,0),0),1);
+  const totLeave=fmt(analyses.reduce((s,a)=>s+Object.entries(a.leaveBreakdown).filter(([t])=>t!=='公假').reduce((x,[,y])=>x+y,0),0),1);
 
   document.getElementById('vfy-stats').innerHTML=`
     <div class="stat-box" style="border:1.5px solid var(--gray-200);">
@@ -1471,7 +1471,7 @@ function renderAnnual(){
 
     const rate=expectedDays?Math.round(totalDays/expectedDays*100):0;
     const avgScore=monthScores.length?Math.round(monthScores.reduce((s,m)=>s+m.score,0)/monthScores.length):0;
-    const leaveTotal=fmt(Object.values(leaveBreakdown).reduce((a,b)=>a+b,0),1);
+    const leaveTotal=fmt(Object.entries(leaveBreakdown).filter(([t])=>t!=='公假').reduce((s,[,v])=>s+v,0),1);
 
     return {emp,totalDays,totalHours:fmt(totalHours),lateCount,earlyCount,missingCount,absentCount,
       totalOT,leaveBreakdown,expectedDays,rate,avgScore,leaveTotal,monthScores};
@@ -1501,7 +1501,7 @@ function renderAnnual(){
             <td>${s.absentCount?`<span style="color:var(--danger);font-weight:600;">${s.absentCount}</span>`:0}</td>
             <td>${s.totalHours} h</td>
             <td>${s.totalOT?`<span class="badge badge-ot">${s.totalOT}h</span>`:'-'}</td>
-            <td style="white-space:normal;min-width:80px;">${s.leaveTotal>0?`${s.leaveTotal}天${Object.entries(s.leaveBreakdown).length?`<div style="font-size:10px;color:var(--gray-500);margin-top:2px;">${Object.entries(s.leaveBreakdown).map(([t,h])=>`${t}:${fmt(h,1)}天`).join(' ')}</div>`:''}`:'-'}</td>
+            <td style="white-space:normal;min-width:80px;">${(()=>{const nonGov=Object.entries(s.leaveBreakdown).filter(([t])=>t!=='公假');const govDays=s.leaveBreakdown['公假']||0;const nonGovTotal=nonGov.reduce((x,[,v])=>x+v,0);const parts=[];if(nonGovTotal>0) parts.push(`${fmt(nonGovTotal,1)}天`);if(govDays>0) parts.push(`<span style="color:var(--gray-400);">公假${fmt(govDays,1)}天</span>`);if(!parts.length) return '-';const detail=nonGov.length?`<div style="font-size:10px;color:var(--gray-500);margin-top:2px;">${nonGov.map(([t,h])=>`${t}:${fmt(h,1)}天`).join(' ')}</div>`:'';return parts.join(' ')+detail;})()}</td>
             <td>
               <div style="display:flex;align-items:center;gap:6px;">
                 <div class="score-wrap" style="width:50px;"><div class="score-bar ${barClass}" style="width:${s.avgScore}%;"></div></div>
