@@ -1074,10 +1074,10 @@ function analyzeEmployee(empId, month){
   const lateMinutesList=[];
   const leaveBreakdown={};
   const NO_DEDUCT_LEAVES=['公假','生理假','特休','排班調整','補休','喪假'];
-  empLeaves.filter(l=>!NO_DEDUCT_LEAVES.includes(l.type)).forEach(l=>{
+  empLeaves.forEach(l=>{
     const lr=recMap[l.date];
     const hasActualPunch=lr&&lr.clockIn&&lr.clockOut;
-    const days=hasActualPunch ? l.hours/8 : 1; // 當天有打卡才用小時換算，否則算整天
+    const days=hasActualPunch ? l.hours/8 : 1;
     leaveBreakdown[l.type]=(leaveBreakdown[l.type]||0)+days;
   });
   const totalOT=(md.overtimes||[]).filter(o=>o.employeeId===empId).reduce((s,o)=>s+o.hours,0);
@@ -1207,8 +1207,9 @@ function calcScore(empId, month){
   for(let i=0;i<r.missingCount;i++) s-=i>=2?2:1;
   // 缺勤 -10/天
   s-=r.absentCount*10;
-  // 請假 -0.5/天（不扣分假別已在 leaveBreakdown 排除）
-  const leaveTotal=Object.values(r.leaveBreakdown||{}).reduce((a,b)=>a+b,0);
+  // 請假 -0.5/天（不扣分假別不列入計算）
+  const SCORE_NO_DEDUCT=['公假','生理假','特休','排班調整','補休','喪假'];
+  const leaveTotal=Object.entries(r.leaveBreakdown||{}).filter(([t])=>!SCORE_NO_DEDUCT.includes(t)).reduce((s,[,v])=>s+v,0);
   s-=leaveTotal*0.5;
   return Math.max(0,Math.min(100,Math.round(s*10)/10));
 }
@@ -1320,7 +1321,7 @@ function renderVerify(){
     document.getElementById('vfy-table').innerHTML='<div class="empty-state"><div class="ei">🔍</div><div>無考勤資料，請先匯入打卡紀錄</div></div>';
   } else {
     document.getElementById('vfy-table').innerHTML=`<table>
-      <thead><tr><th>日期</th><th>員工</th><th>類型</th><th>排班</th><th>上班打卡</th><th>下班打卡</th><th>時數</th><th>狀態</th><th>本日扣分</th><th>調整</th></tr></thead>
+      <thead><tr><th>日期</th><th>員工</th><th>類型</th><th>排班</th><th>上班打卡</th><th>下班打卡</th><th>時數</th><th>狀態</th><th>本日計分</th><th>調整</th></tr></thead>
       <tbody>
       ${allRows.map(r=>{
         const statusHtml=r.status.map(s=>{
@@ -1352,6 +1353,8 @@ function renderVerify(){
   document.getElementById('vfy-summary').innerHTML=analyses.map(a=>{
     const score=calcScore(a.emp.id,month);
     const barClass=score>=90?'bar-hi':score>=75?'bar-md':'bar-lo';
+    const lateMinsTotal=(a.lateMinutesList||[]).reduce((s,m)=>s+m,0);
+    const lateHoursStr=lateMinsTotal?(lateMinsTotal/60).toFixed(1)+' h':'';
     return `<div class="card">
       <div class="card-header" style="margin-bottom:10px;">
         <div style="display:flex;align-items:center;gap:8px;">
@@ -1369,7 +1372,8 @@ function renderVerify(){
         <div class="stat-box"><div class="num" style="font-size:18px;">${a.expectedWork}</div><div class="lbl">應出勤</div></div>
         <div class="stat-box"><div class="num" style="font-size:18px;">${a.totalDays}</div><div class="lbl">出勤天數</div></div>
         <div class="stat-box"><div class="num" style="font-size:18px;">${a.totalHours}</div><div class="lbl">出勤時數</div></div>
-        <div class="stat-box ${a.lateCount?'warn':''}"><div class="num" style="font-size:18px;">${a.lateCount}</div><div class="lbl">遲到</div></div>
+        <div class="stat-box ${a.lateCount?'warn':''}"><div class="num" style="font-size:18px;">${a.lateCount}</div><div class="lbl">遲到次數</div></div>
+        <div class="stat-box ${lateMinsTotal?'warn':''}"><div class="num" style="font-size:18px;">${lateMinsTotal}</div><div class="lbl">遲到總分鐘</div>${lateHoursStr?`<div style="font-size:10px;color:var(--gray-400);margin-top:2px;">≈ ${lateHoursStr}</div>`:''}</div>
         <div class="stat-box ${a.earlyCount?'warn':''}"><div class="num" style="font-size:18px;">${a.earlyCount}</div><div class="lbl">早退</div></div>
         <div class="stat-box ${a.missingCount?'danger':''}"><div class="num" style="font-size:18px;">${a.missingCount}</div><div class="lbl">未打卡</div></div>
         <div class="stat-box ${a.absentCount?'danger':''}"><div class="num" style="font-size:18px;">${a.absentCount}</div><div class="lbl">缺勤</div></div>
