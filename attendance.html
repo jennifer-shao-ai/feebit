@@ -1192,6 +1192,32 @@ function setOverride(m,empId,date,val){
   saveDB(); renderVerify();
 }
 
+function calcScoreBreakdown(empId, month){
+  const r=analyzeEmployee(empId,month); if(!r) return [];
+  const items=[];
+  let lateDeduct=0;
+  (r.lateMinutesList||[]).forEach((mins,idx)=>{
+    const base=mins<=10?1:mins<=30?2:3;
+    const extra=idx>=4?2:idx>=2?1:0;
+    lateDeduct+=(base+extra);
+  });
+  if(lateDeduct>0) items.push(`遲到 ${r.lateCount} 次：－${lateDeduct} 分`);
+  if(r.earlyCount>0) items.push(`早退 ${r.earlyCount} 次：－${r.earlyCount*2} 分`);
+  if(r.missingCount>0){
+    let md=0; for(let i=0;i<r.missingCount;i++) md+=i>=2?2:1;
+    items.push(`未打卡 ${r.missingCount} 次：－${md} 分`);
+  }
+  if(r.absentCount>0) items.push(`缺勤 ${r.absentCount} 天：－${r.absentCount*10} 分`);
+  const SCORE_NO_DEDUCT=['公假','生理假','特休','排班調整','補休','喪假'];
+  const deductLeaves=Object.entries(r.leaveBreakdown||{}).filter(([t])=>!SCORE_NO_DEDUCT.includes(t));
+  const leaveTotal=deductLeaves.reduce((s,[,v])=>s+v,0);
+  if(leaveTotal>0){
+    const leaveStr=deductLeaves.map(([t,h])=>`${t} ${parseFloat(h.toFixed(1))}天`).join('、');
+    items.push(`請假（${leaveStr}）：－${parseFloat((leaveTotal*0.5).toFixed(1))} 分`);
+  }
+  return items;
+}
+
 function calcScore(empId, month){
   const r=analyzeEmployee(empId,month); if(!r) return 100;
   let s=100;
@@ -1440,7 +1466,7 @@ function renderAnnual(){
       Object.entries(a.leaveBreakdown).forEach(([t,h])=>{ leaveBreakdown[t]=(leaveBreakdown[t]||0)+h; });
       // 工讀生：沒有排班的月份不納入評分（避免被計為100）
       const isPT=emp.type==='part-time';
-      if(!isPT||a.expectedWork>0||a.totalDays>0) monthScores.push({month,score:calcScore(emp.id,month)});
+      if(!isPT||a.expectedWork>0||a.totalDays>0) monthScores.push({month,score:calcScore(emp.id,month),breakdown:calcScoreBreakdown(emp.id,month)});
     });
 
     const rate=expectedDays?Math.round(totalDays/expectedDays*100):0;
@@ -1495,16 +1521,23 @@ function renderAnnual(){
             </div>
         </div>
         ${renderLeaveBalance(s.leaveBreakdown,`${year} 年假別累計與勞基法對照`)}
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:12px;">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;margin-top:12px;">
           ${s.monthScores.map(ms=>{
             const sc=ms.score;
             const bc=sc>=90?'bar-hi':sc>=75?'bar-md':'bar-lo';
+            const bd=ms.breakdown||[];
             return `<div style="text-align:center;min-width:44px;">
               <div style="font-size:10px;color:var(--gray-400);margin-bottom:4px;">${ms.month.slice(5)}月</div>
               <div style="background:var(--gray-100);border-radius:4px;height:56px;display:flex;align-items:flex-end;overflow:hidden;width:44px;">
                 <div class="score-bar ${bc}" style="width:100%;height:${sc}%;"></div>
               </div>
               <div style="font-size:11px;font-weight:600;margin-top:3px;">${sc}</div>
+              ${bd.length?`<details style="margin-top:4px;font-size:10px;text-align:left;position:relative;">
+                <summary style="cursor:pointer;color:var(--gray-500);text-align:center;font-size:10px;list-style:none;user-select:none;">📋</summary>
+                <div style="position:absolute;left:0;top:100%;z-index:20;background:#fff;border:1px solid var(--gray-200);border-radius:6px;padding:6px 8px;min-width:160px;white-space:nowrap;color:var(--gray-700);box-shadow:0 2px 8px rgba(0,0,0,.1);">
+                  ${bd.map(b=>`<div style="line-height:1.8;">${esc(b)}</div>`).join('')}
+                </div>
+              </details>`:'<div style="height:18px;"></div>'}
             </div>`;
           }).join('')}
         </div>
