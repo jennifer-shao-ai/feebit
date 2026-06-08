@@ -206,7 +206,7 @@ tr:hover td { background: var(--gray-50); }
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
 
-  <div class="sidebar-footer">v1.1 · Feebit © 2026</div>
+  <div class="sidebar-footer">v1.2 · Feebit © 2026</div>
 </div>
 
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
@@ -218,7 +218,7 @@ tr:hover td { background: var(--gray-50); }
       <button class="hamburger" onclick="toggleSidebar()">☰</button>
       <span class="topbar-title">蝦皮撥款轉換</span>
     </div>
-    <span class="topbar-badge">v1.1</span>
+    <span class="topbar-badge">v1.2</span>
   </div>
 
   <div class="page">
@@ -228,16 +228,16 @@ tr:hover td { background: var(--gray-50); }
       <div class="card-title">⚙️ 轉換設定</div>
       <div class="form-row">
         <div class="form-group">
-          <label>從帳戶收（帳戶名稱）</label>
-          <input type="text" id="cfg-source" value="蝦皮賣場(彰山5222)" placeholder="蝦皮賣場(彰山5222)">
+          <label>自帳戶</label>
+          <input type="text" id="cfg-source" value="桑爹賣場(玉山5222)" placeholder="桑爹賣場(玉山5222)">
         </div>
         <div class="form-group">
-          <label>主類別</label>
-          <input type="text" id="cfg-main-cat" value="賣場/通路費用">
+          <label>主分類</label>
+          <input type="text" id="cfg-main-cat" value="賣場/通路銷售">
         </div>
         <div class="form-group">
-          <label>子類別</label>
-          <input type="text" id="cfg-sub-cat" value="結帳蝦皮">
+          <label>子分類</label>
+          <input type="text" id="cfg-sub-cat" value="蝦皮桑爹">
         </div>
       </div>
     </div>
@@ -392,9 +392,9 @@ const RAGIC_HEADERS = [
 ];
 
 function convertToRagic(rows) {
-  const sourceAccount = document.getElementById('cfg-source').value.trim() || '蝦皮賣場(彰山5222)';
-  const mainCat = document.getElementById('cfg-main-cat').value.trim() || '賣場/通路費用';
-  const subCat = document.getElementById('cfg-sub-cat').value.trim() || '結帳蝦皮';
+  const sourceAccount = document.getElementById('cfg-source').value.trim() || '桑爹賣場(玉山5222)';
+  const mainCat = document.getElementById('cfg-main-cat').value.trim() || '賣場/通路銷售';
+  const subCat = document.getElementById('cfg-sub-cat').value.trim() || '蝦皮桑爹';
 
   return rows.map(row => {
     const absAmt = Math.abs(row.amount);
