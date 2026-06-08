@@ -206,7 +206,7 @@ tr:hover td { background: var(--gray-50); }
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
 
-  <div class="sidebar-footer">v1.2 · Feebit © 2026</div>
+  <div class="sidebar-footer">v1.3 · Feebit © 2026</div>
 </div>
 
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
@@ -218,7 +218,7 @@ tr:hover td { background: var(--gray-50); }
       <button class="hamburger" onclick="toggleSidebar()">☰</button>
       <span class="topbar-title">蝦皮撥款轉換</span>
     </div>
-    <span class="topbar-badge">v1.2</span>
+    <span class="topbar-badge">v1.3</span>
   </div>
 
   <div class="page">
@@ -275,12 +275,12 @@ tr:hover td { background: var(--gray-50); }
                 <th>交易日期</th>
                 <th>交易類型</th>
                 <th>帳戶幣別</th>
-                <th>從帳戶收</th>
+                <th>自帳戶</th>
                 <th>主幣別</th>
-                <th>外幣金額</th>
+                <th>原幣金額</th>
                 <th>主幣別金額</th>
-                <th>主類別</th>
-                <th>子類別</th>
+                <th>主分類</th>
+                <th>子分類</th>
                 <th>描述</th>
               </tr>
             </thead>
@@ -387,8 +387,8 @@ function parseShopeeExcel(arrayBuffer) {
 
 // ── 轉換邏輯 ─────────────────────────────────
 const RAGIC_HEADERS = [
-  '交易日期','交易類型','帳戶幣別','從帳戶收','主幣別',
-  '外幣金額','主幣別金額','主類別','子類別','描述'
+  '交易日期','交易類型','帳戶幣別','自帳戶','主幣別',
+  '原幣金額','主幣別金額','主分類','子分類','描述'
 ];
 
 function convertToRagic(rows) {
