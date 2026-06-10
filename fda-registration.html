@@ -866,7 +866,6 @@ function renderProductTable() {
 
     const suggested = suggestTemplate(p.name);
     const templateOpts = TEMPLATES.map(t => `<option value="${t}" ${t===suggested?'selected':''}>${t}</option>`).join('');
-    const isHidden = !!st.hidden;
     const expiryBadge = getExpiryBadge(st.expiry);
     const expSt = getExpiryStatus(st.expiry);
     if (expSt === 'expired') expiredCount++;
