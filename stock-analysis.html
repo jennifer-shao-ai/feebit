@@ -374,20 +374,42 @@ async function stockHandleFile(file) {
     text = text.replace(/^\uFEFF/, '');
     const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     if (!lines.length) { alert('無法解析檔案'); return; }
+    // 用標題列動態對應欄位，避免欄位順序異動導致資料錯位
+    const headerFields = stockParseLine(lines[0]);
+    const colIdx = {};
+    headerFields.forEach((h, i) => { colIdx[h.trim()] = i; });
+    const ci = (names) => { for (const n of names) { if (colIdx[n] !== undefined) return colIdx[n]; } return -1; };
+    const iCode   = ci(['產品代號','商品代號','品號']);
+    const iName   = ci(['產品名稱','商品名稱','品名']);
+    const iEan    = ci(['EAN13碼','EAN13','EAN']);
+    const iStatus = ci(['商品狀態','販售狀態','狀態']);
+    const iQty    = ci(['數量','庫存數量','現有庫存']);
+    const iSafety = ci(['安全存量','安全庫存']);
+    const iLoc    = ci(['儲位','庫位']);
+    const iUpd    = ci(['Last Update Date','更新日期']);
+    const iCre    = ci(['Create Date','建立日期']);
+    if (iCode === -1 || iQty === -1) { alert('找不到必要欄位（產品代號、數量），請確認 CSV 格式'); return; }
     stockProducts = [];
     for (let i = 1; i < lines.length; i++) {
       const f = stockParseLine(lines[i]);
-      if (f.length < 8) continue;
-      const code = (f[0] || '').trim();
+      if (f.length < 3) continue;
+      const code = (iCode >= 0 ? f[iCode] : '').trim();
       if (!code) continue;
       if (stockIsBundle(code)) continue;
       if (stockIsExcluded(code)) continue;
-      const qty = stockCleanNum(f[7]);
-      const safety = stockCleanNum(f[2]);
+      const qty = stockCleanNum(iQty >= 0 ? f[iQty] : '');
+      const safety = stockCleanNum(iSafety >= 0 ? f[iSafety] : '');
       stockProducts.push({
-        code, name: f[1] || '', safety, ean: f[3] || '',
-        status: f[4] || '', status2: f[5] || '', loc: f[6] || '',
-        qty, update: f[8] || '', create: f[9] || '',
+        code,
+        name:    iName   >= 0 ? (f[iName]   || '') : '',
+        safety,
+        ean:     iEan    >= 0 ? (f[iEan]    || '') : '',
+        status:  iStatus >= 0 ? (f[iStatus] || '') : '',
+        status2: '',
+        loc:     iLoc    >= 0 ? (f[iLoc]    || '') : '',
+        qty,
+        update:  iUpd    >= 0 ? (f[iUpd]    || '') : '',
+        create:  iCre    >= 0 ? (f[iCre]    || '') : '',
         suggest: stockSuggestOrder(safety, qty),
         color: stockGetColor(qty, safety),
         isPurple: stockIsPurple(qty, safety),
