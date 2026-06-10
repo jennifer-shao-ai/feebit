@@ -1,0 +1,2121 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FDA 化粧品登錄 · 飛比特營運工具箱</title>
+<link rel="icon" href="favicon.svg">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+.sortable-th{cursor:pointer;user-select:none;white-space:nowrap}.sortable-th:hover{background:var(--gray-100)}.sortable-th .sort-arrow{font-size:10px;color:var(--gray-400);margin-left:3px}
+.step-bar{display:flex;align-items:center;gap:0;margin-bottom:24px}
+.step-bar .step{display:flex;align-items:center;gap:8px;padding:10px 20px;border-radius:var(--radius);font-size:13px;font-weight:600;color:var(--gray-400);background:white;border:1px solid var(--gray-200);flex:1;justify-content:center;position:relative}
+.step-bar .step.active{background:var(--primary);color:white;border-color:var(--primary)}
+.step-bar .step.done{background:#dcfce7;color:var(--success);border-color:#bbf7d0}
+.step-bar .step-arrow{font-size:18px;color:var(--gray-400);flex-shrink:0;margin:0 4px}
+.product-table input[type=checkbox]{width:16px;height:16px;cursor:pointer}
+.template-badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600}
+.badge-single{background:#dbeafe;color:#1d4ed8}
+.badge-series{background:#ede9fe;color:#6d28d9}
+.badge-combo-single{background:#fef3c7;color:#d97706}
+.badge-combo-series{background:#fce7f3;color:#9d174d}
+.accordion-card{background:white;border-radius:var(--radius);border:1px solid var(--gray-200);margin-bottom:12px;overflow:hidden}
+.accordion-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;font-weight:600;font-size:14px;user-select:none}
+.accordion-header:hover{background:var(--gray-50)}
+.accordion-body{display:none;border-top:1px solid var(--gray-200)}
+.accordion-body.open{display:block}
+.sub-tabs{display:flex;gap:0;border-bottom:1px solid var(--gray-200);background:var(--gray-50);overflow-x:auto}
+.sub-tab{padding:8px 16px;font-size:13px;font-weight:500;color:var(--gray-600);cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;background:none;border-top:none;border-left:none;border-right:none;transition:all 0.15s}
+.sub-tab.active{color:var(--primary);border-bottom-color:var(--primary);background:white}
+.sub-tab:hover:not(.active){background:var(--gray-100)}
+.sub-tab-pane{display:none;padding:16px}
+.sub-tab-pane.active{display:block}
+.form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:12px}
+.form-group-inline{display:flex;flex-direction:column;gap:4px}
+.form-group-inline label{font-size:12px;font-weight:600;color:var(--gray-600)}
+.form-group-inline input,.form-group-inline select,.form-group-inline textarea{padding:7px 10px;border:1px solid var(--gray-200);border-radius:6px;font-size:13px;outline:none;transition:border-color 0.15s;background:white;width:100%}
+.form-group-inline input:focus,.form-group-inline select:focus,.form-group-inline textarea:focus{border-color:var(--primary)}
+.form-group-inline input.error,.form-group-inline select.error{border-color:var(--danger)}
+.form-group-inline textarea{resize:vertical;min-height:60px}
+.radio-group{display:flex;gap:12px;align-items:center;padding:7px 0}
+.radio-group label{display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;font-weight:400;color:var(--gray-800)}
+.radio-group input[type=radio]{width:14px;height:14px;cursor:pointer}
+.multi-select{height:80px;padding:4px}
+.multi-select option{padding:3px 8px;border-radius:4px}
+.factory-row{display:grid;grid-template-columns:1fr 1fr 100px 120px 36px;gap:8px;align-items:start;padding:8px 0;border-bottom:1px solid var(--gray-100)}
+.factory-row:last-child{border-bottom:none}
+.ingredient-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:8px}
+.ingredient-table th{background:var(--gray-50);padding:7px 10px;text-align:left;font-size:12px;font-weight:600;border-bottom:1px solid var(--gray-200)}
+.ingredient-table td{padding:5px 6px;border-bottom:1px solid var(--gray-100);vertical-align:top}
+.ingredient-table input,.ingredient-table select{padding:5px 8px;border:1px solid var(--gray-200);border-radius:4px;font-size:12px;width:100%;outline:none}
+.ingredient-table input:focus,.ingredient-table select:focus{border-color:var(--primary)}
+.btn-icon{background:none;border:1px solid var(--gray-200);border-radius:4px;cursor:pointer;padding:4px 8px;font-size:14px;color:var(--gray-600);transition:all 0.15s}
+.btn-icon:hover{background:var(--danger);border-color:var(--danger);color:white}
+.variant-card{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:6px;padding:12px;margin-bottom:8px}
+.variant-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;font-size:13px;font-weight:600;cursor:pointer}
+.combination-row{display:grid;gap:8px;align-items:start;padding:8px 0;border-bottom:1px solid var(--gray-100)}
+.combination-row:last-child{border-bottom:none}
+.step-actions{display:flex;justify-content:space-between;align-items:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--gray-200)}
+.preview-product{background:white;border:1px solid var(--gray-200);border-radius:var(--radius);padding:14px 16px;margin-bottom:8px}
+.preview-product .pname{font-weight:600;font-size:14px;margin-bottom:6px}
+.preview-product .pmeta{display:flex;gap:12px;font-size:12px;color:var(--gray-600);flex-wrap:wrap}
+.export-group{background:white;border:1px solid var(--gray-200);border-radius:var(--radius);padding:16px;margin-bottom:12px}
+.export-group h3{font-size:14px;font-weight:600;margin-bottom:10px}
+.error-msg{font-size:11px;color:var(--danger);margin-top:2px}
+.ragic-key-row{display:flex;gap:8px;align-items:flex-end;margin-bottom:16px}
+.ragic-key-row .form-group-inline{flex:1}
+.modal-factory .modal{width:680px}
+.factory-lib-row{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--gray-100);font-size:13px}
+.factory-lib-row:hover{background:var(--gray-50)}
+.factory-lib-row .fname{font-weight:600;flex:1}
+.factory-lib-row .fmeta{color:var(--gray-600);font-size:12px}
+.copy-card{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:var(--radius);padding:14px;margin-bottom:10px}
+.copy-card pre{font-size:12px;line-height:1.7;color:var(--gray-800);white-space:pre-wrap;font-family:inherit}
+.sync-result{font-size:13px;padding:6px 10px;border-radius:4px;margin-top:4px}
+.sync-ok{background:#dcfce7;color:var(--success)}
+.sync-err{background:#fee2e2;color:var(--danger)}
+.tag-template{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600;vertical-align:middle}
+select[multiple]{padding:4px}
+.inline-form-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 36px;gap:8px;align-items:end;padding:8px;background:var(--gray-50);border-radius:6px;margin-bottom:8px}
+.batch-toolbar{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:var(--radius);margin-bottom:12px}
+.batch-toolbar .batch-label{font-size:13px;color:var(--gray-700);flex:1}
+.expiry-badge{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600;margin-left:4px;vertical-align:middle}
+.expiry-badge.expired{background:#fee2e2;color:#b91c1c}
+.expiry-badge.soon{background:#ffedd5;color:#c2410c}
+.expiry-badge.warn{background:#fef9c3;color:#a16207}
+#validation-panel{background:white;border:1px solid var(--gray-200);border-radius:var(--radius);padding:16px;margin-bottom:16px}
+#validation-panel .val-header{font-size:14px;font-weight:700;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+#validation-panel .val-product{margin-bottom:10px}
+#validation-panel .val-product-name{font-size:13px;font-weight:600;margin-bottom:4px}
+#validation-panel .val-item{font-size:12px;padding:2px 0 2px 12px;line-height:1.6}
+#validation-panel .val-item.error{color:var(--danger)}
+#validation-panel .val-item.warning{color:#c2410c}
+#validation-panel .val-ok{color:var(--success);font-size:13px;font-weight:600}
+.ing-lib-row{display:flex;gap:6px;align-items:center;margin-bottom:8px;padding:6px 8px;background:var(--gray-50);border-radius:6px}
+.ing-lib-row input[type=text]{flex:1;padding:4px 8px;border:1px solid var(--gray-200);border-radius:4px;font-size:12px;outline:none}
+.ing-lib-row input[type=text]:focus{border-color:var(--primary)}
+.ing-lib-dropdown{position:absolute;background:white;border:1px solid var(--gray-200);border-radius:4px;max-height:160px;overflow-y:auto;z-index:100;min-width:220px;box-shadow:0 4px 12px rgba(0,0,0,.1)}
+.ing-lib-dropdown .ing-lib-opt{padding:5px 10px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--gray-100)}
+.ing-lib-dropdown .ing-lib-opt:hover{background:var(--primary);color:white}
+.btn-save-ing{background:none;border:1px solid var(--gray-200);border-radius:4px;cursor:pointer;padding:2px 6px;font-size:12px;color:var(--gray-600);transition:all .15s;margin-left:2px}
+.btn-save-ing:hover{background:#dcfce7;border-color:var(--success);color:var(--success)}
+@media(max-width:768px){
+  .factory-row{grid-template-columns:1fr 1fr;grid-template-rows:auto auto auto}
+  .inline-form-row{grid-template-columns:1fr 1fr;grid-template-rows:repeat(3,auto)}
+  .step-bar .step{font-size:11px;padding:8px 8px}
+}
+</style>
+</head>
+<body>
+
+<!-- ── SIDEBAR ── -->
+<div id="sidebar">
+  <div class="sidebar-logo">
+    <div class="brand">飛比特 Feebit</div>
+    <div class="sub">營運工具箱</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">總覽</div>
+    <a class="nav-item" href="index.html"><span class="icon">🏠</span> 首頁</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">財務</div>
+    <a class="nav-item" href="bank-converter.html"><span class="icon">🏦</span> 帳務轉換</a>
+    <div class="nav-item soon"><span class="icon">💰</span> 定價試算<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">行銷</div>
+    <div class="nav-item soon"><span class="icon">📢</span> 廣告文案<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">客服</div>
+    <div class="nav-item soon"><span class="icon">💬</span> 客服回覆<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">庫存</div>
+    <a class="nav-item" href="stock-analysis.html"><span class="icon">📦</span> 庫存訂貨分析</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">研發</div>
+    <a class="nav-item" href="research-notes.html"><span class="icon">📚</span> 研發筆記</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">法規登錄</div>
+    <a class="nav-item active" href="fda-registration.html"><span class="icon">📋</span> FDA 化粧品登錄</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">生活</div>
+    <a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span> 旅行規劃</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">系統</div>
+    <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
+  </div>
+  <div class="sidebar-footer">v1.6 · Feebit © 2026</div>
+</div>
+
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<!-- ── MAIN ── -->
+<div id="main">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="btn-hamburger" onclick="openSidebar()">☰</button>
+      <span class="topbar-title">FDA 化粧品登錄</span>
+      <span class="topbar-badge">法規登錄</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:6px">v1.6</span>
+    </div>
+  </div>
+
+  <div class="page">
+    <!-- Main Tabs -->
+    <div class="tabs" style="margin-bottom:20px">
+      <div class="tab active" onclick="switchMainTab('register')">登錄作業</div>
+      <div class="tab" onclick="switchMainTab('factories')">工廠管理</div>
+      <div class="tab" onclick="switchMainTab('settings')">設定</div>
+    </div>
+
+    <!-- ═══════════════════════════ TAB: 登錄作業 ═══════════════════════════ -->
+    <div id="tab-register" class="tab-content active">
+
+      <!-- Step Bar -->
+      <div class="step-bar">
+        <div class="step active" id="stepbar-1"><span>① 選取產品</span></div>
+        <div class="step-arrow">›</div>
+        <div class="step" id="stepbar-2"><span>② 填寫資料</span></div>
+        <div class="step-arrow">›</div>
+        <div class="step" id="stepbar-3"><span>③ 預覽下載</span></div>
+      </div>
+
+      <!-- STEP 1 -->
+      <div id="step-1">
+        <div class="card">
+          <div class="card-header">
+            <h2>從 Ragic 載入產品</h2>
+          </div>
+          <div class="ragic-key-row">
+            <div class="form-group-inline">
+              <label>Ragic API Key</label>
+              <input type="password" id="ragic-key-input" placeholder="輸入 API Key" value="">
+            </div>
+            <button class="btn btn-outline" onclick="saveRagicKey()">儲存</button>
+            <button class="btn btn-primary" id="btn-load-ragic" onclick="loadFromRagic()">從 Ragic 載入</button>
+          </div>
+          <div id="ragic-status" style="font-size:13px;color:var(--gray-600);margin-bottom:12px"></div>
+
+          <div id="product-table-wrap" style="display:none">
+            <!-- toolbar -->
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+              <div style="font-size:12px;color:var(--gray-600);margin-right:auto" id="product-count-label"></div>
+              <!-- 大分類篩選 -->
+              <label style="font-size:12px;color:var(--gray-600)">大分類</label>
+              <select id="filter-category" onchange="renderProductTable()" style="font-size:12px;padding:4px 8px;border:1px solid var(--gray-200);border-radius:4px">
+                <option value="">全部</option>
+              </select>
+              <!-- 顯示已隱藏 -->
+              <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--gray-600);cursor:pointer">
+                <input type="checkbox" id="show-hidden-chk" onchange="renderProductTable()">
+                顯示已隱藏
+              </label>
+            </div>
+            <div class="table-wrapper">
+              <table class="product-table">
+                <thead><tr>
+                  <th><input type="checkbox" id="chk-all" onchange="toggleAllProducts(this.checked)"></th>
+                  <th class="sortable-th" onclick="cycleSort('code')" id="th-code">產品代號 <span class="sort-arrow"></span></th>
+                  <th class="sortable-th" onclick="cycleSort('name')" id="th-name">產品名稱 <span class="sort-arrow"></span></th>
+                  <th class="sortable-th" onclick="cycleSort('category')" id="th-category">大分類 <span class="sort-arrow"></span></th>
+                  <th>數量</th><th>廠商代號</th><th>模板類型</th>
+                  <th style="white-space:nowrap">登錄編號（已完成）</th>
+                  <th style="white-space:nowrap">到期日</th>
+                  <th></th>
+                </tr></thead>
+                <tbody id="product-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+            <button class="btn btn-outline" onclick="addManualProduct()">＋ 手動新增產品</button>
+          </div>
+        </div>
+
+        <!-- 模板類型說明 -->
+        <div class="card" style="margin-top:16px;background:var(--gray-50);border:1px solid var(--gray-200)">
+          <div style="font-size:13px;font-weight:700;color:var(--gray-800);margin-bottom:12px">模板類型說明</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div style="background:white;border-radius:var(--radius);padding:12px;border-left:3px solid #2563eb">
+              <div style="font-weight:700;font-size:13px;color:#1d4ed8;margin-bottom:4px">非組合式｜單一產品</div>
+              <div style="font-size:12px;color:var(--gray-600);line-height:1.6">
+                同一個登錄編號，只有一款配方（無色號差異）。<br>
+                <strong>例：</strong>保濕乳液、洗面乳、化妝水<br>
+                👉 最常用的類型
+              </div>
+            </div>
+            <div style="background:white;border-radius:var(--radius);padding:12px;border-left:3px solid #7c3aed">
+              <div style="font-weight:700;font-size:13px;color:#6d28d9;margin-bottom:4px">非組合式｜系列產品</div>
+              <div style="font-size:12px;color:var(--gray-600);line-height:1.6">
+                同一個登錄編號，但有多個色號或型號，每個色號成分配方可能不同。<br>
+                <strong>例：</strong>氣墊粉底（#21 象牙色、#23 自然色）、眼影盤各色號<br>
+                👉 彩妝類最常用
+              </div>
+            </div>
+            <div style="background:white;border-radius:var(--radius);padding:12px;border-left:3px solid #d97706">
+              <div style="font-weight:700;font-size:13px;color:#b45309;margin-bottom:4px">組合式｜單一產品</div>
+              <div style="font-size:12px;color:var(--gray-600);line-height:1.6">
+                禮盒或套組，包含多個不同品項（不同劑型/用途/種類），用同一個登錄編號一起申報。<br>
+                <strong>例：</strong>保濕禮盒（化妝水＋乳液＋面膜）<br>
+                👉 需分別填每個品項的劑型、用途、種類
+              </div>
+            </div>
+            <div style="background:white;border-radius:var(--radius);padding:12px;border-left:3px solid #9d174d">
+              <div style="font-weight:700;font-size:13px;color:#9d174d;margin-bottom:4px">組合式｜系列產品</div>
+              <div style="font-size:12px;color:var(--gray-600);line-height:1.6">
+                禮盒套組，且同時有多個色號版本。<br>
+                <strong>例：</strong>唇妝禮盒（口紅＋唇線筆），且有多個色系版本<br>
+                👉 最複雜，確定是這種情況才選
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:10px;font-size:11px;color:var(--gray-400)">
+            ※ 判斷重點：是否為<strong>組合禮盒</strong>（組合式）、同一商品是否有<strong>不同色號/型號</strong>（系列）
+          </div>
+        </div>
+
+        <div class="step-actions" style="border-top:none;padding-top:0">
+          <div></div>
+          <button class="btn btn-primary" onclick="goToStep2()">確認選取，填寫資料 →</button>
+        </div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div id="step-2" style="display:none">
+        <div class="batch-toolbar" id="batch-toolbar">
+          <span class="batch-label" id="batch-selected-label">已選取 0 個商品</span>
+          <button class="btn btn-outline" style="font-size:13px" onclick="openBatchFactoryModal()">批次設定製造廠</button>
+        </div>
+        <div id="accordion-container"></div>
+        <div class="step-actions">
+          <button class="btn btn-outline" onclick="goToStep1()">← 重新選取</button>
+          <button class="btn btn-primary" onclick="goToStep3()">預覽下載 →</button>
+        </div>
+      </div>
+
+      <!-- STEP 3 -->
+      <div id="step-3" style="display:none">
+        <div id="validation-panel" style="display:none">
+          <div class="val-header">
+            <span>資料檢查結果</span>
+            <button class="btn btn-outline" style="font-size:12px;padding:4px 10px" onclick="runValidation()">重新檢查</button>
+          </div>
+          <div id="validation-content"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h2>預覽摘要</h2></div>
+          <div id="preview-summary"></div>
+        </div>
+
+        <div id="export-groups"></div>
+
+        <div class="card" id="ragic-sync-section" style="display:none">
+          <h2 style="margin-bottom:10px">同步回 Ragic</h2>
+          <p style="font-size:13px;color:var(--gray-600);margin-bottom:12px">將登錄編號等資料寫回 Ragic 對應紀錄</p>
+          <div id="sync-products-list"></div>
+          <button class="btn btn-primary" style="margin-top:12px" onclick="doRagicSync()">執行同步</button>
+        </div>
+
+        <div class="step-actions">
+          <button class="btn btn-outline" onclick="goToStep2()">← 返回填寫</button>
+          <div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════ TAB: 工廠管理 ═══════════════════════════ -->
+    <div id="tab-factories" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <h2>工廠庫</h2>
+          <button class="btn btn-primary" onclick="showAddFactoryForm()">＋ 新增工廠</button>
+        </div>
+        <div id="add-factory-form" style="display:none;margin-bottom:16px">
+          <div class="inline-form-row" id="new-factory-row">
+            <div class="form-group-inline"><label>工廠登記編號</label><input type="text" id="nf-regno" placeholder="選填"></div>
+            <div class="form-group-inline"><label>工廠名稱 *</label><input type="text" id="nf-name" placeholder="必填"></div>
+            <div class="form-group-inline"><label>工廠地址 *</label><input type="text" id="nf-addr" placeholder="必填"></div>
+            <div class="form-group-inline"><label>國別 *</label><select id="nf-country"></select></div>
+            <button class="btn btn-primary" onclick="saveNewFactory()" style="align-self:flex-end">新增</button>
+          </div>
+        </div>
+        <div id="factory-list-container">
+          <div style="color:var(--gray-400);font-size:13px;padding:20px 0;text-align:center">尚未新增工廠</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h2>FDA 後台快速建立格式</h2></div>
+        <p style="font-size:13px;color:var(--gray-600);margin-bottom:16px">FDA 後台「製造場所」頁面需逐筆建立，可複製下方資料逐欄貼入</p>
+        <div id="factory-copy-cards"></div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════ TAB: 設定 ═══════════════════════════ -->
+    <div id="tab-settings" class="tab-content">
+      <div class="card">
+        <h2 style="margin-bottom:14px">Ragic 連線設定</h2>
+        <div class="form-group-inline" style="max-width:480px">
+          <label>Ragic API Key</label>
+          <input type="password" id="settings-ragic-key" placeholder="輸入 API Key">
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h2 style="margin-bottom:6px">回寫至 Ragic 的欄位對應</h2>
+        <p style="font-size:13px;color:var(--gray-600);margin-bottom:16px">填入 Ragic 中對應欄位的欄位名稱（需先在 Ragic 新增自訂欄位）</p>
+        <div class="form-row" style="max-width:600px">
+          <div class="form-group-inline">
+            <label>登錄編號欄位名稱</label>
+            <input type="text" id="settings-field-regid" placeholder="例：FDA登錄編號">
+          </div>
+          <div class="form-group-inline">
+            <label>劑型代碼欄位名稱</label>
+            <input type="text" id="settings-field-form" placeholder="例：劑型代碼">
+          </div>
+          <div class="form-group-inline">
+            <label>產品種類欄位名稱</label>
+            <input type="text" id="settings-field-type" placeholder="例：產品種類代碼">
+          </div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:8px" onclick="saveSettings()">儲存設定</button>
+        <div id="settings-saved" style="display:none;color:var(--success);font-size:13px;margin-top:8px">已儲存</div>
+      </div>
+    </div>
+
+  </div><!-- /page -->
+</div><!-- /main -->
+
+<!-- ── BATCH FACTORY MODAL ── -->
+<div id="batch-factory-modal" class="modal-backdrop" style="display:none">
+  <div class="modal modal-factory" style="width:520px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h2>批次設定製造廠</h2>
+      <button onclick="closeBatchFactoryModal()" style="border:none;background:none;cursor:pointer;font-size:20px;color:var(--gray-400)">✕</button>
+    </div>
+    <div class="form-group-inline" style="margin-bottom:12px">
+      <label>選擇工廠</label>
+      <select id="batch-factory-select" style="padding:7px 10px;border:1px solid var(--gray-200);border-radius:6px;font-size:13px;width:100%">
+        <option value="">-- 請選擇工廠 --</option>
+      </select>
+    </div>
+    <div class="form-group-inline" style="margin-bottom:16px">
+      <label>製造/包裝 類型</label>
+      <div class="radio-group">
+        <label><input type="radio" name="batch-mfg-type" value="A" checked> A - 製造</label>
+        <label><input type="radio" name="batch-mfg-type" value="B"> B - 包裝</label>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="closeBatchFactoryModal()">取消</button>
+      <button class="btn btn-primary" onclick="applyBatchFactory()">套用至全部商品</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── FACTORY MODAL ── -->
+<div id="factory-modal" class="modal-backdrop" style="display:none">
+  <div class="modal modal-factory" style="width:680px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h2>選擇工廠</h2>
+      <button onclick="closeFactoryModal()" style="border:none;background:none;cursor:pointer;font-size:20px;color:var(--gray-400)">✕</button>
+    </div>
+    <div id="factory-modal-list"></div>
+    <div style="margin-top:12px">
+      <button class="btn btn-outline" onclick="showInlineFactoryForm()">＋ 直接輸入新工廠</button>
+    </div>
+    <div id="inline-factory-form" style="display:none;margin-top:12px">
+      <div class="form-row">
+        <div class="form-group-inline"><label>工廠登記編號</label><input type="text" id="if-regno" placeholder="選填"></div>
+        <div class="form-group-inline"><label>工廠名稱 *</label><input type="text" id="if-name"></div>
+        <div class="form-group-inline"><label>工廠地址 *</label><input type="text" id="if-addr"></div>
+        <div class="form-group-inline"><label>國別 *</label><select id="if-country"></select></div>
+      </div>
+      <button class="btn btn-primary" onclick="addInlineFactory()">新增並選取</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════
+// CODE TABLES
+// ════════════════════════════════════════════════════════
+const FORMULATION_CODES = {"F01":"粉劑","F02":"液劑","F03":"乳劑","F04":"油劑","F05":"油膏","F06":"固形","F07":"眉筆","F08":"噴霧劑","F09":"非手工香皂","F10":"手工香皂"};
+const USE_CODES = {"01":"防曬","02":"染髮","03":"燙髮","04":"止汗制臭","05":"美白","06":"抗菌","07":"收斂","08":"髮用造型","09":"護髮","10":"清潔頭髮","11":"清潔臉部","12":"清潔身體","13":"彩妝","14":"潤膚","15":"保濕","16":"軟化角質","17":"去除角質","18":"預防面皰、青春痘","20":"脫色脫染","21":"牙齒美白","22":"刺激嗅覺（香水、香膏類）","23":"清潔牙齒","24":"清潔口腔","99":"其他"};
+const PRODUCT_TYPE_CODES = {"0101":"洗髮用-洗髮精、洗髮乳、洗髮霜","0102":"洗髮用-其他類","0201":"洗臉卸粧-洗面乳、洗面霜、洗面凝膠","0202":"洗臉卸粧-卸粧油、卸粧乳、卸粧液","0203":"洗臉卸粧-其他類","0301":"沐浴-沐浴油、沐浴乳、沐浴凝膠","0302":"沐浴-浴鹽","0303":"沐浴-其他類","0401":"香皂類-香皂","0402":"香皂類-其他類","0501":"頭髮-頭髮滋養液、護髮乳、護髮霜","0502":"頭髮-造型噴霧、定型髮霜、髮膠、髮蠟","0503":"頭髮-潤髮劑","0504":"頭髮-髮表著色劑","0505":"頭髮-染髮劑","0506":"頭髮-脫色、脫染劑","0507":"頭髮-燙髮劑","0508":"頭髮-其他類","0601":"化粧水/油/面霜-化粧水、化粧用油","0602":"化粧水/油/面霜-保養皮膚用乳液、乳霜、凝膠","0603":"化粧水/油/面霜-剃鬍水、剃鬍膏","0604":"化粧水/油/面霜-剃鬍後用","0605":"化粧水/油/面霜-護手乳、護手霜","0606":"化粧水/油/面霜-助曬乳、助曬霜","0607":"化粧水/油/面霜-防曬乳、防曬霜","0608":"化粧水/油/面霜-糊狀(泥膏狀)面膜","0609":"化粧水/油/面霜-面膜","0610":"化粧水/油/面霜-其他類","0701":"香氛-香水、香膏、香粉","0702":"香氛-爽身粉","0703":"香氛-腋臭防止劑","0704":"香氛-其他類","0801":"止汗制臭-止汗劑","0802":"止汗制臭-制臭劑","0803":"止汗制臭-其他類","0901":"唇用-唇膏","0902":"唇用-唇蜜、唇油","0903":"唇用-唇膜","0904":"唇用-其他類","1001":"覆敷-粉底液、粉底霜","1002":"覆敷-粉膏、粉餅","1003":"覆敷-蜜粉","1004":"覆敷-臉部彩粧品","1005":"覆敷-定粧定色粉、劑","1006":"覆敷-其他類","1101":"眼部-眼霜、眼膠","1102":"眼部-眼影","1103":"眼部-眼線","1104":"眼部-眼部用卸粧油、卸粧乳","1105":"眼部-眼膜","1106":"眼部-睫毛膏","1107":"眼部-眉筆、眉粉、眉膏、眉膠","1108":"眼部-其他類","1201":"指甲-指甲油","1202":"指甲-指甲油卸除液","1203":"指甲-指甲用乳、指甲用霜","1204":"指甲-其他類","1301":"美白牙齒-牙齒美白劑","1302":"美白牙齒-牙齒美白牙膏","1401":"非藥用牙膏、漱口水-非藥用牙膏","1402":"非藥用牙膏、漱口水-非藥用漱口水"};
+const LIMITED_ING_CODES = {"1":"防曬劑","2":"染髮劑","5":"燙髮劑","7":"防腐劑","8":"抗菌","9":"色素","11":"抑制黑色素形成","16":"潤膚","18":"收斂","20":"止汗制臭劑","21":"抗菌、制臭","22":"美白牙齒","23":"軟化角質、面皰預防","24":"面皰預防(面霜乳液等)","ZZ":"其他"};
+const COUNTRY_CODES = {"AD":"安道爾","AE":"阿拉伯聯合大公國","AF":"阿富汗","AG":"安地卡","AL":"阿爾巴尼亞","AM":"亞美尼亞","AO":"安哥拉","AR":"阿根廷","AT":"奧地利","AU":"澳大利亞","AZ":"亞塞拜然","BA":"波士尼亞赫塞哥維納","BD":"孟加拉","BE":"比利時","BF":"布吉納法索","BG":"保加利亞","BH":"巴林","BJ":"貝寧","BN":"汶萊","BO":"玻利維亞","BR":"巴西","BT":"不丹","BY":"白俄羅斯","CA":"加拿大","CD":"剛果民主共和國","CF":"中非共和國","CG":"剛果共和國","CH":"瑞士","CI":"象牙海岸","CL":"智利","CM":"喀麥隆","CN":"中華人民共和國","CO":"哥倫比亞","CR":"哥斯大黎加","CU":"古巴","CV":"維德角","CY":"賽普勒斯","CZ":"捷克","DE":"德意志(德國)","DJ":"吉布地","DK":"丹麥","DO":"多明尼加","DZ":"阿爾及利亞","EC":"厄瓜多爾","EE":"愛沙尼亞","EG":"埃及","ER":"厄利垂亞","ES":"西班牙","ET":"衣索比亞","FI":"芬蘭","FJ":"斐濟","FR":"法蘭西(法國)","GA":"加彭","GB":"英國","GE":"喬治亞","GH":"迦納","GM":"甘比亞","GN":"幾內亞","GQ":"赤道幾內亞","GR":"希臘","GT":"瓜地馬拉","GW":"幾內亞比索","GY":"蓋亞那","HK":"香港","HN":"宏都拉斯","HR":"克羅埃西亞","HT":"海地","HU":"匈牙利","ID":"印尼","IE":"愛爾蘭","IL":"以色列","IN":"印度","IQ":"伊拉克","IR":"伊朗","IS":"冰島","IT":"義大利","JM":"牙買加","JO":"約旦","JP":"日本","KE":"肯亞","KG":"吉爾吉斯","KH":"柬埔寨","KI":"吉里巴斯","KM":"葛摩","KN":"聖克里斯多福及尼維斯","KP":"北韓","KR":"大韓民國(南韓)","KW":"科威特","KZ":"哈薩克","LA":"寮國","LB":"黎巴嫩","LK":"斯里蘭卡","LR":"賴比瑞亞","LS":"賴索托","LT":"立陶宛","LU":"盧森堡","LV":"拉脫維亞","LY":"利比亞","MA":"摩洛哥","MC":"摩納哥","MD":"摩爾多瓦","ME":"蒙特內哥羅","MG":"馬達加斯加","ML":"馬利","MM":"緬甸","MN":"蒙古","MR":"茅利塔尼亞","MT":"馬爾他","MU":"模里西斯","MV":"馬爾地夫","MW":"馬拉威","MX":"墨西哥","MY":"馬來西亞","MZ":"莫三比克","NA":"納米比亞","NE":"尼日","NG":"奈及利亞","NI":"尼加拉瓜","NL":"荷蘭","NO":"挪威","NP":"尼泊爾","NR":"諾魯","NZ":"紐西蘭","OM":"阿曼","PA":"巴拿馬","PE":"秘魯","PG":"巴布亞紐幾內亞","PH":"菲律賓","PK":"巴基斯坦","PL":"波蘭","PT":"葡萄牙","PW":"帛琉","PY":"巴拉圭","QA":"卡達","RO":"羅馬尼亞","RS":"塞爾維亞","RU":"俄羅斯","RW":"盧安達","SA":"沙烏地阿拉伯","SB":"所羅門群島","SC":"塞席爾","SD":"蘇丹","SE":"瑞典","SG":"新加坡","SI":"斯洛維尼亞","SK":"斯洛伐克","SL":"獅子山","SM":"聖馬利諾","SN":"塞內加爾","SO":"索馬利亞","SR":"蘇利南","SS":"南蘇丹","ST":"聖多美普林西比","SV":"薩爾瓦多","SY":"敘利亞","SZ":"史瓦濟蘭","TD":"查德","TG":"多哥","TH":"泰國","TJ":"塔吉克","TL":"東帝汶","TM":"土庫曼","TN":"突尼西亞","TO":"東加","TR":"土耳其","TT":"千里達及托巴哥","TV":"吐瓦魯","TW":"臺灣","TZ":"坦尚尼亞","UA":"烏克蘭","UG":"烏干達","US":"美國","UY":"烏拉圭","UZ":"烏茲別克","VA":"梵蒂岡","VC":"聖文森及格瑞那丁","VE":"委內瑞拉","VN":"越南","VU":"萬那杜","WS":"薩摩亞","YE":"葉門","ZA":"南非","ZM":"尚比亞","ZW":"辛巴威"};
+const UNIT_CODES = {"W":"%(w/w) 重量百分比","V":"%(v/v) 體積百分比"};
+const TEMPLATES = ["非組合式單一產品","非組合式系列產品","組合式單一產品","組合式系列產品"];
+
+// ════════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════════
+const KEY_KEY      = 'fb_fda_ragic_key';
+const KEY_FACTORIES= 'fb_fda_factories';
+const KEY_FORMS    = 'fb_fda_forms';
+const KEY_SETTINGS = 'fb_fda_settings';
+const KEY_STATUS   = 'fb_fda_product_status';
+const KEY_ING_LIB  = 'fb_fda_ing_lib';
+
+let loadedProducts = [];   // [{id, code, name, supplier, brand, ragicId}]
+let selectedProducts = []; // subset with templateType added
+let currentStep = 1;
+let _sortField = '';
+let _sortDir = '';
+
+function cycleSort(field) {
+  if (_sortField !== field) { _sortField = field; _sortDir = 'asc'; }
+  else if (_sortDir === 'asc') { _sortDir = 'desc'; }
+  else { _sortField = ''; _sortDir = ''; }
+  renderProductTable();
+}
+
+function updateSortHeaders() {
+  ['code','name','category'].forEach(f => {
+    const th = document.getElementById('th-' + f);
+    if (!th) return;
+    const arrow = th.querySelector('.sort-arrow');
+    if (!arrow) return;
+    if (_sortField === f) arrow.textContent = _sortDir === 'asc' ? '↑' : '↓';
+    else arrow.textContent = '';
+  });
+}
+let factoryModalCallback = null;
+
+function getFactories() { try { return JSON.parse(localStorage.getItem(KEY_FACTORIES))||[]; } catch(e){return[];} }
+function saveFactories(arr) { localStorage.setItem(KEY_FACTORIES, JSON.stringify(arr)); }
+function getForms() { try { return JSON.parse(localStorage.getItem(KEY_FORMS))||{}; } catch(e){return{};} }
+function saveForms(obj) { localStorage.setItem(KEY_FORMS, JSON.stringify(obj)); }
+function getSettings() { try { return JSON.parse(localStorage.getItem(KEY_SETTINGS))||{}; } catch(e){return{};} }
+function saveSettingsStore(obj) { localStorage.setItem(KEY_SETTINGS, JSON.stringify(obj)); }
+function getProductStatus() { try { return JSON.parse(localStorage.getItem(KEY_STATUS))||{}; } catch(e){return{};} }
+function saveProductStatus(obj) { localStorage.setItem(KEY_STATUS, JSON.stringify(obj)); }
+function getIngLib() { try { return JSON.parse(localStorage.getItem(KEY_ING_LIB))||[]; } catch(e){return[];} }
+function saveIngLib(arr) { localStorage.setItem(KEY_ING_LIB, JSON.stringify(arr)); }
+function addToIngLib(name, limCode) {
+  if (!name.trim()) return;
+  const lib = getIngLib();
+  if (lib.some(x => x.name === name.trim())) return;
+  lib.push({ id: uid(), name: name.trim(), limCode: limCode||'' });
+  saveIngLib(lib);
+}
+function setProductField(code, field, value) {
+  const s = getProductStatus();
+  if (!s[code]) s[code] = {};
+  s[code][field] = value;
+  saveProductStatus(s);
+  updateProductRowStyle(code);
+}
+function toggleHideProduct(code) {
+  const s = getProductStatus();
+  if (!s[code]) s[code] = {};
+  s[code].hidden = !s[code].hidden;
+  saveProductStatus(s);
+  renderProductTable();
+}
+function updateProductRowStyle(code) {
+  const s = getProductStatus()[code] || {};
+  const row = document.querySelector(`tr[data-code="${CSS.escape(code)}"]`);
+  if (!row) return;
+  if (s.regId && s.regId.trim()) {
+    row.style.background = '#f0fdf4';
+  } else {
+    row.style.background = '';
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════════════
+function buildSelect(codes, placeholder, selectedVal, attrs) {
+  let html = `<select ${attrs||''}>`;
+  if (placeholder) html += `<option value="">${placeholder}</option>`;
+  for (const [k,v] of Object.entries(codes)) {
+    html += `<option value="${k}" ${selectedVal===k?'selected':''}>${k} - ${v}</option>`;
+  }
+  return html + '</select>';
+}
+
+function buildCountrySelect(id, selectedVal) {
+  let html = `<select id="${id}"><option value="">選擇國別</option>`;
+  for (const [k,v] of Object.entries(COUNTRY_CODES)) {
+    html += `<option value="${k}" ${selectedVal===k?'selected':''}>${k} - ${v}</option>`;
+  }
+  return html + '</select>';
+}
+
+function templateBadge(t) {
+  const cls = t==='非組合式單一產品'?'badge-single':t==='非組合式系列產品'?'badge-series':t==='組合式單一產品'?'badge-combo-single':'badge-combo-series';
+  return `<span class="template-badge ${cls}">${t}</span>`;
+}
+
+function suggestTemplate(name) {
+  const n = name.toLowerCase();
+  const isCombo = /組合|禮盒|set|kit/i.test(n);
+  const isSeries = /系列|色號|#\d/.test(n);
+  if (isCombo && isSeries) return '組合式系列產品';
+  if (isCombo) return '組合式單一產品';
+  if (isSeries) return '非組合式系列產品';
+  return '非組合式單一產品';
+}
+
+function isCombo(t) { return t && t.startsWith('組合式'); }
+function isSeries(t) { return t && t.includes('系列'); }
+function isComboSeries(t) { return t === '組合式系列產品'; }
+function isComboSingle(t) { return t === '組合式單一產品'; }
+
+function yyyymmdd() {
+  const d = new Date();
+  return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function uid() { return '_' + Math.random().toString(36).slice(2,9); }
+
+// ════════════════════════════════════════════════════════
+// MAIN TABS
+// ════════════════════════════════════════════════════════
+function switchMainTab(name) {
+  ['register','factories','settings'].forEach((n,i) => {
+    document.querySelectorAll('.tabs .tab')[i].classList.toggle('active', n===name);
+    document.getElementById('tab-'+n).classList.toggle('active', n===name);
+  });
+  if (name==='factories') renderFactoriesTab();
+  if (name==='settings') loadSettingsForm();
+}
+
+// ════════════════════════════════════════════════════════
+// STEP NAVIGATION
+// ════════════════════════════════════════════════════════
+function showStep(n) {
+  currentStep = n;
+  [1,2,3].forEach(i => {
+    document.getElementById('step-'+i).style.display = i===n ? 'block' : 'none';
+    const sb = document.getElementById('stepbar-'+i);
+    sb.classList.remove('active','done');
+    if (i < n) sb.classList.add('done');
+    else if (i === n) sb.classList.add('active');
+  });
+}
+
+function goToStep1() { showStep(1); }
+
+function goToStep2() {
+  const checked = document.querySelectorAll('#product-tbody input[type=checkbox]:checked');
+  if (!checked.length) { alert('請至少選取一項產品'); return; }
+  selectedProducts = [];
+  checked.forEach(chk => {
+    const row = chk.closest('tr');
+    const idx = parseInt(chk.dataset.idx);
+    const p = loadedProducts[idx];
+    const templateSel = row.querySelector('select.template-sel');
+    const templateType = templateSel ? templateSel.value : '非組合式單一產品';
+    selectedProducts.push({ ...p, templateType });
+  });
+  buildAccordions();
+  showStep(2);
+}
+
+function goToStep3() {
+  collectAllForms();
+  buildPreview();
+  showStep(3);
+}
+
+// ════════════════════════════════════════════════════════
+// RAGIC LOAD
+// ════════════════════════════════════════════════════════
+function saveRagicKey() {
+  const key = document.getElementById('ragic-key-input').value.trim();
+  localStorage.setItem(KEY_KEY, key);
+  document.getElementById('settings-ragic-key').value = key;
+  setStatus('ragic-status', 'API Key 已儲存', 'success');
+}
+
+async function loadFromRagic() {
+  const key = document.getElementById('ragic-key-input').value.trim() || localStorage.getItem(KEY_KEY);
+  if (!key) { alert('請先輸入 Ragic API Key'); return; }
+  const btn = document.getElementById('btn-load-ragic');
+  btn.textContent = '載入中...'; btn.disabled = true;
+  setStatus('ragic-status', '連線中...', 'loading');
+  try {
+    const url = `https://ap13.ragic.com/feebit50968407/product/16?api&APIKey=${encodeURIComponent(key)}&limit=9999`;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    loadedProducts = [];
+    for (const [id, row] of Object.entries(data)) {
+      if (isNaN(parseInt(id))) continue;
+      loadedProducts.push({
+        ragicId: id,
+        code: row['產品代號'] || '',
+        name: row['產品名稱'] || '',
+        supplier: row['廠商代號'] || '',
+        brand: row['品牌'] || '',
+        qty: row['數量'] || '',
+        category: row['大類名稱'] || ''
+      });
+    }
+    if (!loadedProducts.length) { setStatus('ragic-status', '查無資料', 'warning'); }
+    else { setStatus('ragic-status', `已載入 ${loadedProducts.length} 筆產品`, 'success'); }
+    autoHideNewProducts();
+    renderProductTable();
+  } catch(e) {
+    setStatus('ragic-status', '載入失敗：' + e.message, 'error');
+  }
+  btn.textContent = '從 Ragic 載入'; btn.disabled = false;
+}
+
+function shouldAutoHide(code) {
+  if (!code) return false;
+  if (code[2] === '9') return true;
+  if (code.includes('-9')) return true;
+  return false;
+}
+
+function autoHideNewProducts() {
+  const s = getProductStatus();
+  let changed = false;
+  loadedProducts.forEach((p, i) => {
+    const code = p.code || ('__manual_'+i);
+    if (s[code] !== undefined) return;
+    if (shouldAutoHide(code)) {
+      s[code] = { hidden: true };
+      changed = true;
+    }
+  });
+  if (changed) saveProductStatus(s);
+}
+
+function setStatus(elId, msg, type) {
+  const el = document.getElementById(elId);
+  const colors = { success: 'var(--success)', error: 'var(--danger)', warning: 'var(--warning)', loading: 'var(--gray-600)' };
+  el.style.color = colors[type] || 'var(--gray-600)';
+  el.textContent = msg;
+}
+
+function refreshCategoryFilter() {
+  const sel = document.getElementById('filter-category');
+  if (!sel) return;
+  const current = sel.value;
+  const cats = [...new Set(loadedProducts.map(p => p.category).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">全部</option>' + cats.map(c => `<option value="${c}" ${c===current?'selected':''}>${c}</option>`).join('');
+}
+
+function getExpiryBadge(expiryStr) {
+  if (!expiryStr) return '';
+  const today = new Date('2026-06-10');
+  const exp = new Date(expiryStr);
+  if (isNaN(exp.getTime())) return '';
+  const diffMs = exp - today;
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) return '<span class="expiry-badge expired">已到期</span>';
+  if (diffDays <= 60) return '<span class="expiry-badge soon">快到期</span>';
+  if (diffDays <= 180) return '<span class="expiry-badge warn">注意</span>';
+  return '';
+}
+
+function getExpiryStatus(expiryStr) {
+  if (!expiryStr) return 'ok';
+  const today = new Date('2026-06-10');
+  const exp = new Date(expiryStr);
+  if (isNaN(exp.getTime())) return 'ok';
+  const diffDays = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) return 'expired';
+  if (diffDays <= 60) return 'soon';
+  if (diffDays <= 180) return 'warn';
+  return 'ok';
+}
+
+function renderProductTable() {
+  refreshCategoryFilter();
+  const tbody = document.getElementById('product-tbody');
+  tbody.innerHTML = '';
+  const showHidden = document.getElementById('show-hidden-chk')?.checked;
+  const filterCat = document.getElementById('filter-category')?.value || '';
+  const [sortField, sortDir] = [_sortField, _sortDir];
+  const statusMap = getProductStatus();
+  let visible = 0, hidden = 0;
+  let expiredCount = 0, soonCount = 0, warnCount = 0;
+
+  const indexed = loadedProducts.map((p, i) => ({ p, i }));
+
+  indexed.sort((a, b) => {
+    let va = a.p[sortField] || '';
+    let vb = b.p[sortField] || '';
+    if (sortField === 'category') { va = a.p.category||''; vb = b.p.category||''; }
+    const cmp = String(va).localeCompare(String(vb), 'zh-TW', { numeric: true });
+    return sortDir === 'desc' ? -cmp : cmp;
+  });
+
+  indexed.forEach(({ p, i }) => {
+    const code = p.code || ('__manual_'+i);
+    const st = statusMap[code] || {};
+    if (st.hidden && !showHidden) { hidden++; return; }
+    if (filterCat && p.category !== filterCat) return;
+    visible++;
+
+    const suggested = suggestTemplate(p.name);
+    const templateOpts = TEMPLATES.map(t => `<option value="${t}" ${t===suggested?'selected':''}>${t}</option>`).join('');
+    const isHidden = !!st.hidden;
+    const expiryBadge = getExpiryBadge(st.expiry);
+    const expSt = getExpiryStatus(st.expiry);
+    if (expSt === 'expired') expiredCount++;
+    else if (expSt === 'soon') soonCount++;
+    else if (expSt === 'warn') warnCount++;
+
+    const tr = document.createElement('tr');
+    tr.setAttribute('data-code', code);
+    if (st.regId && st.regId.trim()) tr.style.background = '#f0fdf4';
+    if (isHidden) tr.style.opacity = '0.5';
+    tr.innerHTML = `
+      <td><input type="checkbox" data-idx="${i}" ${isHidden?'':'checked'}></td>
+      <td style="font-size:12px">${p.code||'-'}</td>
+      <td style="font-weight:500">${p.name}</td>
+      <td style="font-size:12px;color:var(--gray-600)">${p.category||'-'}</td>
+      <td style="font-size:12px;text-align:right">${p.qty||'-'}</td>
+      <td style="font-size:12px;color:var(--gray-600)">${p.supplier||'-'}</td>
+      <td><select class="template-sel" style="font-size:12px;padding:4px 6px;border:1px solid var(--gray-200);border-radius:4px;width:150px">${templateOpts}</select></td>
+      <td><input type="text" value="${st.regId||''}" placeholder="填入已取得的登錄編號"
+        style="font-size:12px;padding:4px 6px;border:1px solid var(--gray-200);border-radius:4px;width:170px"
+        onchange="setProductField('${code}','regId',this.value)"></td>
+      <td><input type="date" value="${st.expiry||''}"
+        style="font-size:12px;padding:4px 6px;border:1px solid var(--gray-200);border-radius:4px"
+        onchange="setProductField('${code}','expiry',this.value)">${expiryBadge}</td>
+      <td><button title="${isHidden?'取消隱藏':'隱藏此商品'}" onclick="toggleHideProduct('${code}')"
+        style="border:none;background:none;cursor:pointer;font-size:16px;padding:2px 6px;color:${isHidden?'var(--success)':'var(--gray-400)'}">${isHidden?'👁':'🚫'}</button></td>`;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('product-table-wrap').style.display = 'block';
+  document.getElementById('chk-all').checked = true;
+  const label = document.getElementById('product-count-label');
+  if (label) {
+    let txt = `顯示 ${visible} 筆${hidden ? `，已隱藏 ${hidden} 筆` : ''}`;
+    const issues = [];
+    if (expiredCount) issues.push(`<span style="color:#b91c1c">${expiredCount} 筆已到期</span>`);
+    if (soonCount) issues.push(`<span style="color:#c2410c">${soonCount} 筆快到期</span>`);
+    if (warnCount) issues.push(`<span style="color:#a16207">${warnCount} 筆注意</span>`);
+    if (issues.length) txt += '，' + issues.join('，');
+    label.innerHTML = txt;
+  }
+  updateSortHeaders();
+}
+
+function toggleAllProducts(checked) {
+  document.querySelectorAll('#product-tbody input[type=checkbox]').forEach(c => c.checked = checked);
+}
+
+function addManualProduct() {
+  const code = prompt('產品代號（可留空）：') || '';
+  const name = prompt('產品名稱 *：');
+  if (!name) return;
+  const supplier = prompt('廠商代號（可留空）：') || '';
+  loadedProducts.push({ ragicId: null, code, name, supplier, brand: '' });
+  renderProductTable();
+  document.getElementById('product-table-wrap').style.display = 'block';
+}
+
+// ════════════════════════════════════════════════════════
+// ACCORDION / STEP 2
+// ════════════════════════════════════════════════════════
+function buildAccordions() {
+  const container = document.getElementById('accordion-container');
+  container.innerHTML = '';
+  const forms = getForms();
+  // Update batch toolbar count
+  const batchLabel = document.getElementById('batch-selected-label');
+  if (batchLabel) batchLabel.textContent = `已選取 ${selectedProducts.length} 個商品`;
+  selectedProducts.forEach((p, pi) => {
+    const saved = forms[p.code || ('__manual_'+pi)] || {};
+    const el = document.createElement('div');
+    el.className = 'accordion-card';
+    el.id = 'acc-' + pi;
+    el.innerHTML = buildAccordionHTML(p, pi, saved);
+    container.appendChild(el);
+    initAccordionEvents(pi, p, saved);
+  });
+}
+
+function buildAccordionHTML(p, pi, saved) {
+  const tmpl = p.templateType;
+  const comboOnly = isCombo(tmpl);
+  const seriesProd = isSeries(tmpl);
+  const showComboTab = isCombo(tmpl);
+
+  const tabs = ['基本資訊','製造場所','全成分'];
+  if (showComboTab) tabs.push('組合資訊');
+  const tabHeaders = tabs.map((t,i) => `<button class="sub-tab${i===0?' active':''}" onclick="switchSubTab(${pi},${i})">${t}</button>`).join('');
+  const tabPanes = tabs.map((t,i) => `<div class="sub-tab-pane${i===0?' active':''}" id="pane-${pi}-${i}" data-tab="${t}"></div>`).join('');
+
+  return `
+    <div class="accordion-header" onclick="toggleAccordion(${pi})">
+      <span>${p.name || '（手動新增）'} ${templateBadge(tmpl)}</span>
+      <span style="color:var(--gray-400);font-size:18px" id="acc-arrow-${pi}">▼</span>
+    </div>
+    <div class="accordion-body open" id="acc-body-${pi}">
+      <div class="sub-tabs">${tabHeaders}</div>
+      ${tabPanes}
+    </div>`;
+}
+
+function toggleAccordion(pi) {
+  const body = document.getElementById('acc-body-'+pi);
+  const arrow = document.getElementById('acc-arrow-'+pi);
+  const open = body.classList.toggle('open');
+  arrow.textContent = open ? '▼' : '▶';
+}
+
+function switchSubTab(pi, ti) {
+  const body = document.getElementById('acc-body-'+pi);
+  body.querySelectorAll('.sub-tab').forEach((t,i) => t.classList.toggle('active', i===ti));
+  body.querySelectorAll('.sub-tab-pane').forEach((p,i) => p.classList.toggle('active', i===ti));
+}
+
+function initAccordionEvents(pi, p, saved) {
+  const tmpl = p.templateType;
+  renderBasicPane(pi, p, saved);
+  renderFactoryPane(pi, p, saved);
+  renderIngredientPane(pi, p, saved);
+  if (isCombo(tmpl)) renderComboPane(pi, p, saved);
+}
+
+// ─── BASIC INFO PANE ─────────────────────────────────
+function renderBasicPane(pi, p, saved) {
+  const pane = document.getElementById(`pane-${pi}-0`);
+  const tmpl = p.templateType;
+  const combo = isCombo(tmpl);
+  const s = saved.basic || {};
+
+  let typeUseForm = '';
+  if (!combo) {
+    typeUseForm = `
+      <div class="form-row">
+        <div class="form-group-inline">
+          <label>產品種類(代碼)</label>
+          ${buildSelect(PRODUCT_TYPE_CODES, '選擇種類', s.productType||'', `id="bi-type-${pi}" class="bi-field" data-field="productType"`)}
+        </div>
+        <div class="form-group-inline">
+          <label>產品劑型(代碼)</label>
+          ${buildSelect(FORMULATION_CODES, '選擇劑型', s.formulation||'', `id="bi-form-${pi}" class="bi-field" data-field="formulation"`)}
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group-inline">
+          <label>產品用途(代碼)（可多選）</label>
+          <select id="bi-use-${pi}" class="bi-field multi-select" data-field="useCode" multiple>
+            ${Object.entries(USE_CODES).map(([k,v]) => `<option value="${k}" ${(s.useCode||'').split(',').includes(k)?'selected':''}>${k} - ${v}</option>`).join('')}
+          </select>
+        </div>
+      </div>`;
+  }
+
+  pane.innerHTML = `
+    <div class="form-row">
+      <div class="form-group-inline">
+        <label>登錄編號（14碼英數字）</label>
+        <input type="text" id="bi-regid-${pi}" class="bi-field" data-field="regId" maxlength="14" placeholder="14碼英數字，不含統一編號" value="${s.regId||''}">
+        <div class="error-msg" id="err-regid-${pi}"></div>
+      </div>
+      <div class="form-group-inline">
+        <label>國產/輸入</label>
+        <div class="radio-group">
+          <label><input type="radio" name="origin-${pi}" value="A" ${(s.origin||'B')==='A'?'checked':''}> A - 國產</label>
+          <label><input type="radio" name="origin-${pi}" value="B" ${(s.origin||'B')==='B'?'checked':''}> B - 輸入</label>
+        </div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group-inline">
+        <label>產品品牌</label>
+        <input type="text" id="bi-brand-${pi}" class="bi-field" data-field="brand" value="${s.brand || p.brand || ''}">
+      </div>
+      <div class="form-group-inline">
+        <label>聯絡人</label>
+        <input type="text" id="bi-contact-${pi}" class="bi-field" data-field="contact" value="${s.contact||'飛比特國際有限公司'}">
+      </div>
+    </div>
+    ${typeUseForm}
+    <div class="form-row">
+      <div class="form-group-inline">
+        <label>使用注意事項</label>
+        <textarea id="bi-note-${pi}" class="bi-field" data-field="note" rows="2">${s.note||''}</textarea>
+      </div>
+    </div>`;
+
+  pane.querySelector(`#bi-regid-${pi}`).addEventListener('input', function() {
+    const v = this.value;
+    const errEl = document.getElementById(`err-regid-${pi}`);
+    if (v && !/^[A-Za-z0-9]{14}$/.test(v)) {
+      errEl.textContent = '需為恰好 14 碼英數字';
+      this.classList.add('error');
+    } else {
+      errEl.textContent = '';
+      this.classList.remove('error');
+    }
+    autoSaveForm(pi);
+  });
+  pane.querySelectorAll('.bi-field').forEach(el => {
+    el.addEventListener('change', () => autoSaveForm(pi));
+    if (el.tagName==='INPUT' || el.tagName==='TEXTAREA') el.addEventListener('input', () => autoSaveForm(pi));
+  });
+  pane.querySelectorAll(`input[name="origin-${pi}"]`).forEach(r => r.addEventListener('change', () => autoSaveForm(pi)));
+}
+
+// ─── FACTORY PANE ─────────────────────────────────────
+function renderFactoryPane(pi, p, saved) {
+  const pane = document.getElementById(`pane-${pi}-1`);
+  const factories = saved.factories || [];
+  pane.innerHTML = `<div id="factory-rows-${pi}"></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn btn-outline" style="font-size:13px" onclick="openFactoryModal(${pi})">從工廠庫新增</button>
+      <button class="btn btn-outline" style="font-size:13px" onclick="addInlineFactoryRow(${pi})">直接輸入</button>
+    </div>`;
+  renderFactoryRows(pi, factories);
+}
+
+function renderFactoryRows(pi, factories) {
+  const container = document.getElementById(`factory-rows-${pi}`);
+  container.innerHTML = '';
+  if (!factories.length) {
+    container.innerHTML = '<div style="color:var(--gray-400);font-size:13px;padding:8px 0">尚未新增製造場所</div>';
+    return;
+  }
+  factories.forEach((f, fi) => {
+    const div = document.createElement('div');
+    div.className = 'factory-row';
+    div.innerHTML = `
+      <div class="form-group-inline"><label>廠商名稱</label><input type="text" value="${f.name||''}" onchange="updateFactoryField(${pi},${fi},'name',this.value)"></div>
+      <div class="form-group-inline"><label>工廠地址</label><input type="text" value="${f.address||''}" onchange="updateFactoryField(${pi},${fi},'address',this.value)"></div>
+      <div class="form-group-inline"><label>國別</label>${buildCountrySelect(`fc-country-${pi}-${fi}`, f.country||'')}</div>
+      <div class="form-group-inline"><label>製造/包裝</label>
+        <select onchange="updateFactoryField(${pi},${fi},'mfgType',this.value)">
+          <option value="A" ${f.mfgType==='A'?'selected':''}>A - 製造</option>
+          <option value="B" ${f.mfgType==='B'?'selected':''}>B - 包裝</option>
+        </select>
+      </div>
+      <div style="padding-top:20px"><button class="btn-icon" onclick="removeFactoryRow(${pi},${fi})">✕</button></div>`;
+    container.appendChild(div);
+    div.querySelector(`#fc-country-${pi}-${fi}`).addEventListener('change', function() {
+      updateFactoryField(pi, fi, 'country', this.value);
+    });
+  });
+}
+
+function updateFactoryField(pi, fi, field, val) {
+  const forms = getForms();
+  const key = selectedProducts[pi].code || ('__manual_'+pi);
+  if (!forms[key]) forms[key] = {};
+  if (!forms[key].factories) forms[key].factories = [];
+  if (!forms[key].factories[fi]) forms[key].factories[fi] = {};
+  forms[key].factories[fi][field] = val;
+  saveForms(forms);
+}
+
+function removeFactoryRow(pi, fi) {
+  const forms = getForms();
+  const key = selectedProducts[pi].code || ('__manual_'+pi);
+  if (forms[key] && forms[key].factories) {
+    forms[key].factories.splice(fi, 1);
+    saveForms(forms);
+    renderFactoryRows(pi, forms[key].factories);
+  }
+}
+
+function openFactoryModal(pi) {
+  factoryModalCallback = (factory) => {
+    const forms = getForms();
+    const key = selectedProducts[pi].code || ('__manual_'+pi);
+    if (!forms[key]) forms[key] = {};
+    if (!forms[key].factories) forms[key].factories = [];
+    forms[key].factories.push({
+      regNo: factory.regNo || '',
+      name: factory.name,
+      address: factory.address,
+      country: factory.country,
+      mfgType: 'A'
+    });
+    saveForms(forms);
+    renderFactoryRows(pi, forms[key].factories);
+    closeFactoryModal();
+  };
+  const list = document.getElementById('factory-modal-list');
+  const factories = getFactories();
+  list.innerHTML = '';
+  if (!factories.length) {
+    list.innerHTML = '<div style="color:var(--gray-400);font-size:13px;padding:16px">工廠庫為空，請先在「工廠管理」分頁新增</div>';
+  } else {
+    factories.forEach(f => {
+      const row = document.createElement('div');
+      row.className = 'factory-lib-row';
+      row.innerHTML = `<span class="fname">${f.name}</span><span class="fmeta">${f.country} · ${f.address}</span>
+        <button class="btn btn-primary" style="font-size:12px;padding:4px 10px">選取</button>`;
+      row.querySelector('button').onclick = () => factoryModalCallback(f);
+      list.appendChild(row);
+    });
+  }
+  document.getElementById('inline-factory-form').style.display = 'none';
+  populateCountrySelect('if-country');
+  document.getElementById('factory-modal').style.display = 'flex';
+}
+
+function addInlineFactoryRow(pi) {
+  const regNo = prompt('工廠登記編號（選填）：') || '';
+  const name = prompt('工廠名稱 *：');
+  if (!name) return;
+  const address = prompt('工廠地址 *：');
+  if (!address) return;
+  const countryCode = prompt('國別代碼（例 JP、CN、KR）：') || 'TW';
+  const forms = getForms();
+  const key = selectedProducts[pi].code || ('__manual_'+pi);
+  if (!forms[key]) forms[key] = {};
+  if (!forms[key].factories) forms[key].factories = [];
+  forms[key].factories.push({ regNo, name, address, country: countryCode.toUpperCase(), mfgType: 'A' });
+  saveForms(forms);
+  renderFactoryRows(pi, forms[key].factories);
+}
+
+function closeFactoryModal() {
+  document.getElementById('factory-modal').style.display = 'none';
+  factoryModalCallback = null;
+}
+
+function showInlineFactoryForm() {
+  document.getElementById('inline-factory-form').style.display = 'block';
+}
+
+function addInlineFactory() {
+  const regNo = document.getElementById('if-regno').value.trim();
+  const name = document.getElementById('if-name').value.trim();
+  const addr = document.getElementById('if-addr').value.trim();
+  const country = document.getElementById('if-country').value;
+  if (!name || !addr || !country) { alert('請填寫工廠名稱、地址、國別'); return; }
+  if (factoryModalCallback) factoryModalCallback({ regNo, name, address: addr, country, mfgType: 'A' });
+}
+
+// ─── INGREDIENT PANE ─────────────────────────────────
+function renderIngredientPane(pi, p, saved) {
+  const pane = document.getElementById(`pane-${pi}-2`);
+  const tmpl = p.templateType;
+  const series = isSeries(tmpl);
+  const s = saved.ingredients || {};
+
+  if (!series) {
+    pane.innerHTML = buildSingleIngredientBlock(pi, 'main', s);
+  } else {
+    const variants = s.variants || [{ variantId: uid(), variantName: '', ingredients: [] }];
+    pane.innerHTML = `<div id="variants-${pi}"></div>
+      <button class="btn btn-outline" style="font-size:13px;margin-top:8px" onclick="addVariant(${pi})">＋ 新增色號/型號</button>`;
+    renderVariants(pi, variants);
+  }
+}
+
+function buildSingleIngredientBlock(pi, varKey, s) {
+  return `
+    <div class="form-row">
+      <div class="form-group-inline"><label>產品中文品名</label><input type="text" id="ing-zhname-${pi}-${varKey}" value="${(s.zhName||'')}" placeholder="多個用逗號分隔" oninput="autoSaveForm(${pi})"></div>
+      <div class="form-group-inline"><label>產品英文品名</label><input type="text" id="ing-enname-${pi}-${varKey}" value="${(s.enName||'')}" oninput="autoSaveForm(${pi})"></div>
+      <div class="form-group-inline"><label>單位(代碼)</label>
+        <select id="ing-unit-${pi}-${varKey}" onchange="autoSaveForm(${pi})">
+          <option value="">選擇單位</option>
+          ${Object.entries(UNIT_CODES).map(([k,v])=>`<option value="${k}" ${s.unit===k?'selected':''}>${k} - ${v}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="ing-lib-row" style="position:relative">
+      <span style="font-size:12px;color:var(--gray-600);white-space:nowrap">從成分庫選取</span>
+      <div style="position:relative;flex:1">
+        <input type="text" id="ing-lib-search-${pi}-${varKey}" placeholder="搜尋成分名稱..." autocomplete="off"
+          oninput="filterIngLib('${pi}','${varKey}',this.value)"
+          style="width:100%;padding:4px 8px;border:1px solid var(--gray-200);border-radius:4px;font-size:12px;outline:none">
+        <div id="ing-lib-dropdown-${pi}-${varKey}" class="ing-lib-dropdown" style="display:none"></div>
+      </div>
+      <button class="btn btn-outline" style="font-size:12px;padding:4px 10px;white-space:nowrap" onclick="addIngFromLib('${pi}','${varKey}')">新增</button>
+    </div>
+    <div class="table-wrapper"><table class="ingredient-table">
+      <thead><tr><th>成分名稱</th><th>限量成分用途(代碼)</th><th>含量類別</th><th>含量數值</th><th></th></tr></thead>
+      <tbody id="ing-tbody-${pi}-${varKey}"></tbody>
+    </table></div>
+    <button class="btn btn-outline" style="font-size:12px;margin-top:4px" onclick="addIngredientRow('${pi}','${varKey}')">＋ 新增成分</button>`;
+}
+
+function renderVariants(pi, variants) {
+  const container = document.getElementById(`variants-${pi}`);
+  container.innerHTML = '';
+  variants.forEach((v, vi) => {
+    const div = document.createElement('div');
+    div.className = 'variant-card';
+    div.id = `variant-${pi}-${vi}`;
+    div.innerHTML = `
+      <div class="variant-header">
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="text" value="${v.variantName||''}" placeholder="型號或色號" style="width:180px;padding:5px 8px;border:1px solid var(--gray-200);border-radius:4px;font-size:13px"
+            onchange="updateVariantName(${pi},${vi},this.value)" oninput="updateVariantName(${pi},${vi},this.value)">
+          <span style="font-size:12px;color:var(--gray-600)">色號/型號 ${vi+1}</span>
+        </div>
+        <button class="btn-icon" onclick="removeVariant(${pi},${vi})">✕</button>
+      </div>
+      ${buildSingleIngredientBlock(pi, vi, v)}`;
+    container.appendChild(div);
+    renderIngredientRows(pi, vi, v.ingredients || []);
+  });
+}
+
+function addVariant(pi) {
+  const forms = getForms();
+  const key = selectedProducts[pi].code || ('__manual_'+pi);
+  if (!forms[key]) forms[key] = {};
+  if (!forms[key].ingredients) forms[key].ingredients = {};
+  if (!forms[key].ingredients.variants) forms[key].ingredients.variants = [];
+  forms[key].ingredients.variants.push({ variantId: uid(), variantName: '', ingredients: [] });
+  saveForms(forms);
+  renderVariants(pi, forms[key].ingredients.variants);
+}
+
+function removeVariant(pi, vi) {
+  const forms = getForms();
+  const key = selectedProducts[pi].code || ('__manual_'+pi);
+  forms[key].ingredients.variants.splice(vi, 1);
+  saveForms(forms);
+  renderVariants(pi, forms[key].ingredients.variants);
+}
+
+function updateVariantName(pi, vi, val) {
+  const forms = getForms();
+  const key = selectedProducts[pi].code || ('__manual_'+pi);
+  if (!forms[key]) forms[key] = {};
+  if (!forms[key].ingredients) forms[key].ingredients = {};
+  if (!forms[key].ingredients.variants) forms[key].ingredients.variants = [];
+  if (!forms[key].ingredients.variants[vi]) forms[key].ingredients.variants[vi] = {};
+  forms[key].ingredients.variants[vi].variantName = val;
+  saveForms(forms);
+}
+
+function renderIngredientRows(pi, varKey, rows) {
+  const tbody = document.getElementById(`ing-tbody-${pi}-${varKey}`);
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  (rows||[]).forEach((r, ri) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="text" value="${r.name||''}" placeholder="INCI 名稱" onchange="updateIngRow(${pi},'${varKey}',${ri},'name',this.value)"></td>
+      <td>${buildSelect(LIMITED_ING_CODES, '無', r.limCode||'', `onchange="updateIngRow(${pi},'${varKey}',${ri},'limCode',this.value)"`)}</td>
+      <td><select onchange="updateIngRow(${pi},'${varKey}',${ri},'qtyType',this.value);toggleQtyInput(this)">
+        <option value="A" ${r.qtyType==='A'?'selected':''}>A - 適量</option>
+        <option value="B" ${r.qtyType==='B'?'selected':''}>B - 標誌量</option>
+      </select></td>
+      <td><input type="text" value="${r.qtyVal||''}" placeholder="含量數值" ${r.qtyType==='A'?'disabled':''} onchange="updateIngRow(${pi},'${varKey}',${ri},'qtyVal',this.value)"></td>
+      <td style="white-space:nowrap">
+        <button class="btn-icon" onclick="removeIngRow(${pi},'${varKey}',${ri})">✕</button>
+        <button class="btn-save-ing" title="存入成分庫" onclick="saveIngRowToLib(${pi},'${varKey}',${ri})">💾</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function toggleQtyInput(sel) {
+  const input = sel.closest('tr').querySelectorAll('input')[1];
+  if (input) input.disabled = sel.value === 'A';
+}
+
+function updateIngRow(pi, varKey, ri, field, val) {
+  const forms = getForms();
+  const key = selectedProducts[pi].code || ('__manual_'+pi);
+  if (!forms[key]) forms[key] = {};
+  if (!forms[key].ingredients) forms[key].ingredients = {};
+  const tmpl = selectedProducts[pi].templateType;
+  if (isSeries(tmpl)) {
+    if (!forms[key].ingredients.variants) forms[key].ingredients.variants = [];
+    const vi = parseInt(varKey);
+    if (!forms[key].ingredients.variants[vi]) forms[key].ingredients.variants[vi] = {};
+    if (!forms[key].ingredients.variants[vi].ingredients) forms[key].ingredients.variants[vi].ingredients = [];
+    if (!forms[key].ingredients.variants[vi].ingredients[ri]) forms[key].ingredients.variants[vi].ingredients[ri] = {};
+    forms[key].ingredients.variants[vi].ingredients[ri][field] = val;
+  } else {
+    if (!forms[key].ingredients.rows) forms[key].ingredients.rows = [];
+    if (!forms[key].ingredients.rows[ri]) forms[key].ingredients.rows[ri] = {};
+    forms[key].ingredients.rows[ri][field] = val;
+  }
+  saveForms(forms);
+}
+
+function addIngredientRow(pi, varKey) {
+  const forms = getForms();
+  const key = selectedProducts[pi].code || ('__manual_'+pi);
+  if (!forms[key]) forms[key] = {};
+  if (!forms[key].ingredients) forms[key].ingredients = {};
+  const tmpl = selectedProducts[pi].templateType;
+  const newRow = { name: '', limCode: '', qtyType: 'A', qtyVal: '' };
+  if (isSeries(tmpl)) {
+    const vi = parseInt(varKey);
+    if (!forms[key].ingredients.variants) forms[key].ingredients.variants = [];
+    if (!forms[key].ingredients.variants[vi]) forms[key].ingredients.variants[vi] = { ingredients: [] };
+    if (!forms[key].ingredients.variants[vi].ingredients) forms[key].ingredients.variants[vi].ingredients = [];
+    forms[key].ingredients.variants[vi].ingredients.push(newRow);
+    saveForms(forms);
+    renderIngredientRows(pi, vi, forms[key].ingredients.variants[vi].ingredients);
+  } else {
+    if (!forms[key].ingredients.rows) forms[key].ingredients.rows = [];
+    forms[key].ingredients.rows.push(newRow);
+    saveForms(forms);
+    renderIngredientRows(pi, varKey, forms[key].ingredients.rows);
+  }
+}
+
+function removeIngRow(pi, varKey, ri) {
+  const forms = getForms();
+  const key = selectedProducts[pi].code || ('__manual_'+pi);
+  const tmpl = selectedProducts[pi].templateType;
+  if (isSeries(tmpl)) {
+    const vi = parseInt(varKey);
+    forms[key].ingredients.variants[vi].ingredients.splice(ri, 1);
+    saveForms(forms);
+    renderIngredientRows(pi, vi, forms[key].ingredients.variants[vi].ingredients);
+  } else {
+    forms[key].ingredients.rows.splice(ri, 1);
+    saveForms(forms);
+    renderIngredientRows(pi, varKey, forms[key].ingredients.rows);
+  }
+}
+
+// ─── INGREDIENT LIBRARY HELPERS ──────────────────────
+let _ingLibSelected = {}; // key: "pi-varKey" -> {name, limCode}
+
+function filterIngLib(pi, varKey, query) {
+  const dropdownId = `ing-lib-dropdown-${pi}-${varKey}`;
+  const dropdown = document.getElementById(dropdownId);
+  if (!dropdown) return;
+  const lib = getIngLib();
+  const q = query.trim().toLowerCase();
+  if (!q) { dropdown.style.display = 'none'; return; }
+  const matches = lib.filter(x => x.name.toLowerCase().includes(q));
+  if (!matches.length) { dropdown.style.display = 'none'; return; }
+  dropdown.innerHTML = matches.map(x =>
+    `<div class="ing-lib-opt" data-name="${x.name.replace(/"/g,'&quot;')}" data-limcode="${x.limCode||''}">${x.name}${x.limCode ? ' <span style="color:var(--gray-400)">(' + x.limCode + ')</span>' : ''}</div>`
+  ).join('');
+  dropdown.style.display = 'block';
+  dropdown.querySelectorAll('.ing-lib-opt').forEach(opt => {
+    opt.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      const name = opt.dataset.name;
+      const limCode = opt.dataset.limcode;
+      const searchEl = document.getElementById(`ing-lib-search-${pi}-${varKey}`);
+      if (searchEl) searchEl.value = name;
+      _ingLibSelected[`${pi}-${varKey}`] = { name, limCode };
+      dropdown.style.display = 'none';
+    });
+  });
+  // Hide dropdown on blur
+  const searchEl = document.getElementById(`ing-lib-search-${pi}-${varKey}`);
+  if (searchEl && !searchEl._hasBlurListener) {
+    searchEl._hasBlurListener = true;
+    searchEl.addEventListener('blur', () => setTimeout(() => { dropdown.style.display = 'none'; }, 150));
+  }
+}
+
+function addIngFromLib(pi, varKey) {
+  const sel = _ingLibSelected[`${pi}-${varKey}`];
+  const searchEl = document.getElementById(`ing-lib-search-${pi}-${varKey}`);
+  let name = '', limCode = '';
+  if (sel) {
+    name = sel.name; limCode = sel.limCode;
+  } else if (searchEl && searchEl.value.trim()) {
+    name = searchEl.value.trim();
+  }
+  if (!name) { alert('請先在搜尋框中選擇一個成分'); return; }
+
+  const forms = getForms();
+  const key = selectedProducts[pi].code || ('__manual_'+pi);
+  if (!forms[key]) forms[key] = {};
+  if (!forms[key].ingredients) forms[key].ingredients = {};
+  const tmpl = selectedProducts[pi].templateType;
+  const newRow = { name, limCode: limCode||'', qtyType: 'A', qtyVal: '' };
+  if (isSeries(tmpl)) {
+    const vi = parseInt(varKey);
+    if (!forms[key].ingredients.variants) forms[key].ingredients.variants = [];
+    if (!forms[key].ingredients.variants[vi]) forms[key].ingredients.variants[vi] = { ingredients: [] };
+    if (!forms[key].ingredients.variants[vi].ingredients) forms[key].ingredients.variants[vi].ingredients = [];
+    forms[key].ingredients.variants[vi].ingredients.push(newRow);
+    saveForms(forms);
+    renderIngredientRows(pi, vi, forms[key].ingredients.variants[vi].ingredients);
+  } else {
+    if (!forms[key].ingredients.rows) forms[key].ingredients.rows = [];
+    forms[key].ingredients.rows.push(newRow);
+    saveForms(forms);
+    renderIngredientRows(pi, varKey, forms[key].ingredients.rows);
+  }
+  // Clear search
+  if (searchEl) searchEl.value = '';
+  delete _ingLibSelected[`${pi}-${varKey}`];
+}
+
+function saveIngRowToLib(pi, varKey, ri) {
+  const forms = getForms();
+  const key = selectedProducts[pi].code || ('__manual_'+pi);
+  const f = forms[key] || {};
+  const tmpl = selectedProducts[pi].templateType;
+  let row = null;
+  if (isSeries(tmpl)) {
+    const vi = parseInt(varKey);
+    row = f.ingredients?.variants?.[vi]?.ingredients?.[ri];
+  } else {
+    row = f.ingredients?.rows?.[ri];
+  }
+  if (!row || !row.name) { alert('請先填寫成分名稱'); return; }
+  addToIngLib(row.name, row.limCode || '');
+  // Brief visual feedback
+  const tbody = document.getElementById(`ing-tbody-${pi}-${varKey}`);
+  if (tbody) {
+    const btn = tbody.querySelectorAll('tr')[ri]?.querySelector('.btn-save-ing');
+    if (btn) {
+      const orig = btn.textContent;
+      btn.textContent = '✓';
+      btn.style.color = 'var(--success)';
+      setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 1200);
+    }
+  }
+}
+
+// ─── COMBO PANE ──────────────────────────────────────
+function renderComboPane(pi, p, saved) {
+  const pane = document.getElementById(`pane-${pi}-3`);
+  const tmpl = p.templateType;
+  const comboSeries = isComboSeries(tmpl);
+  const s = saved.combo || { rows: [] };
+  const rows = s.rows || [];
+
+  let headerCols = comboSeries
+    ? '<th>型號或色號</th><th>組合式產品名稱</th><th>產品劑型</th><th>產品用途</th><th>產品種類</th><th></th>'
+    : '<th>組合式產品名稱</th><th>產品劑型</th><th>產品用途</th><th>產品種類</th><th></th>';
+
+  pane.innerHTML = `<div class="table-wrapper"><table class="ingredient-table">
+    <thead><tr>${headerCols}</tr></thead>
+    <tbody id="combo-tbody-${pi}"></tbody>
+  </table></div>
+  <button class="btn btn-outline" style="font-size:12px;margin-top:6px" onclick="addComboRow(${pi})">＋ 新增組合項目</button>`;
+  renderComboRows(pi, rows);
+}
+
+function renderComboRows(pi, rows) {
+  const tbody = document.getElementById(`combo-tbody-${pi}`);
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  const tmpl = selectedProducts[pi].templateType;
+  const comboSeries = isComboSeries(tmpl);
+  rows.forEach((r, ri) => {
+    const tr = document.createElement('tr');
+    let cells = '';
+    if (comboSeries) {
+      cells += `<td><input type="text" value="${r.variantName||''}" placeholder="色號/型號" onchange="updateComboRow(${pi},${ri},'variantName',this.value)"></td>`;
+    }
+    cells += `<td><input type="text" value="${r.comboName||''}" placeholder="組合式產品名稱" onchange="updateComboRow(${pi},${ri},'comboName',this.value)"></td>`;
+    cells += `<td>${buildSelect(FORMULATION_CODES,'劑型',r.formulation||'',`onchange="updateComboRow(${pi},${ri},'formulation',this.value)"`)}</td>`;
+    cells += `<td><select multiple class="multi-select" style="width:120px" onchange="updateComboRowMulti(${pi},${ri},'useCode',this)">
+      ${Object.entries(USE_CODES).map(([k,v])=>`<option value="${k}" ${(r.useCode||'').split(',').includes(k)?'selected':''}>${k}-${v}</option>`).join('')}
+    </select></td>`;
+    cells += `<td>${buildSelect(PRODUCT_TYPE_CODES,'種類',r.productType||'',`onchange="updateComboRow(${pi},${ri},'productType',this.value)"`)}</td>`;
+    cells += `<td><button class="btn-icon" onclick="removeComboRow(${pi},${ri})">✕</button></td>`;
+    tr.innerHTML = cells;
+    tbody.appendChild(tr);
+  });
+}
+
+function updateComboRow(pi, ri, field, val) {
+  const forms = getForms();
+  const key = selectedProducts[pi].code || ('__manual_'+pi);
+  if (!forms[key]) forms[key] = {};
+  if (!forms[key].combo) forms[key].combo = { rows: [] };
+  if (!forms[key].combo.rows[ri]) forms[key].combo.rows[ri] = {};
+  forms[key].combo.rows[ri][field] = val;
+  saveForms(forms);
+}
+
+function updateComboRowMulti(pi, ri, field, sel) {
+  const val = Array.from(sel.selectedOptions).map(o=>o.value).join(',');
+  updateComboRow(pi, ri, field, val);
+}
+
+function addComboRow(pi) {
+  const forms = getForms();
+  const key = selectedProducts[pi].code || ('__manual_'+pi);
+  if (!forms[key]) forms[key] = {};
+  if (!forms[key].combo) forms[key].combo = { rows: [] };
+  forms[key].combo.rows.push({ variantName:'', comboName:'', formulation:'', useCode:'', productType:'' });
+  saveForms(forms);
+  renderComboRows(pi, forms[key].combo.rows);
+}
+
+function removeComboRow(pi, ri) {
+  const forms = getForms();
+  const key = selectedProducts[pi].code || ('__manual_'+pi);
+  forms[key].combo.rows.splice(ri, 1);
+  saveForms(forms);
+  renderComboRows(pi, forms[key].combo.rows);
+}
+
+// ─── AUTO SAVE ────────────────────────────────────────
+function autoSaveForm(pi) {
+  const p = selectedProducts[pi];
+  const key = p.code || ('__manual_'+pi);
+  const forms = getForms();
+  if (!forms[key]) forms[key] = {};
+
+  const regIdEl = document.getElementById(`bi-regid-${pi}`);
+  const brandEl = document.getElementById(`bi-brand-${pi}`);
+  const contactEl = document.getElementById(`bi-contact-${pi}`);
+  const noteEl = document.getElementById(`bi-note-${pi}`);
+  const originEl = document.querySelector(`input[name="origin-${pi}"]:checked`);
+
+  forms[key].basic = forms[key].basic || {};
+  if (regIdEl) forms[key].basic.regId = regIdEl.value;
+  if (brandEl) forms[key].basic.brand = brandEl.value;
+  if (contactEl) forms[key].basic.contact = contactEl.value;
+  if (noteEl) forms[key].basic.note = noteEl.value;
+  if (originEl) forms[key].basic.origin = originEl.value;
+
+  const tmpl = p.templateType;
+  if (!isCombo(tmpl)) {
+    const typeEl = document.getElementById(`bi-type-${pi}`);
+    const formEl = document.getElementById(`bi-form-${pi}`);
+    const useEl = document.getElementById(`bi-use-${pi}`);
+    if (typeEl) forms[key].basic.productType = typeEl.value;
+    if (formEl) forms[key].basic.formulation = formEl.value;
+    if (useEl) forms[key].basic.useCode = Array.from(useEl.selectedOptions).map(o=>o.value).join(',');
+  }
+
+  if (!isSeries(tmpl)) {
+    const zhEl = document.getElementById(`ing-zhname-${pi}-main`);
+    const enEl = document.getElementById(`ing-enname-${pi}-main`);
+    const unitEl = document.getElementById(`ing-unit-${pi}-main`);
+    if (!forms[key].ingredients) forms[key].ingredients = {};
+    if (zhEl) forms[key].ingredients.zhName = zhEl.value;
+    if (enEl) forms[key].ingredients.enName = enEl.value;
+    if (unitEl) forms[key].ingredients.unit = unitEl.value;
+  }
+
+  saveForms(forms);
+}
+
+function collectAllForms() {
+  selectedProducts.forEach((p, pi) => autoSaveForm(pi));
+}
+
+// ─── VALIDATION ──────────────────────────────────────
+function validateAllForms() {
+  const errors = [];
+  const forms = getForms();
+  selectedProducts.forEach((p, pi) => {
+    const key = p.code || ('__manual_'+pi);
+    const f = forms[key] || {};
+    const basic = f.basic || {};
+    const label = p.name || key;
+    if (!basic.regId) errors.push(`[${label}] 登錄編號 為必填`);
+    else if (!/^[A-Za-z0-9]{14}$/.test(basic.regId)) errors.push(`[${label}] 登錄編號 須為 14 碼英數字`);
+  });
+  return errors;
+}
+
+function runValidation() {
+  const panel = document.getElementById('validation-panel');
+  const content = document.getElementById('validation-content');
+  if (!panel || !content) return;
+  panel.style.display = 'block';
+
+  const forms = getForms();
+  const statusMap = getProductStatus();
+  let hasErrors = false;
+  let allOk = true;
+  const parts = [];
+
+  selectedProducts.forEach((p, pi) => {
+    const key = p.code || ('__manual_'+pi);
+    const f = forms[key] || {};
+    const basic = f.basic || {};
+    const st = statusMap[key] || {};
+    const tmpl = p.templateType;
+    const errors = [];
+    const warnings = [];
+
+    // Errors
+    if (!basic.regId || !basic.regId.trim()) {
+      errors.push('❌ 登錄編號 為必填');
+    } else if (!/^[A-Za-z0-9]{14}$/.test(basic.regId)) {
+      errors.push('❌ 登錄編號 須為 14 碼英數字（目前：' + basic.regId.length + ' 碼）');
+    }
+    if (!f.factories || !f.factories.length) {
+      errors.push('❌ 製造場所 為必填，請至少新增一個工廠');
+    }
+    let ingCount = 0;
+    if (f.ingredients) {
+      if (isSeries(tmpl) && f.ingredients.variants) {
+        f.ingredients.variants.forEach(v => ingCount += (v.ingredients||[]).length);
+      } else {
+        ingCount = (f.ingredients.rows||[]).length;
+      }
+    }
+    if (ingCount === 0) {
+      errors.push('❌ 全成分 為必填，請至少新增一筆成分');
+    }
+
+    // Warnings
+    if (!basic.note || !basic.note.trim()) {
+      warnings.push('⚠ 使用注意事項 未填寫');
+    }
+    const expSt = getExpiryStatus(st.expiry);
+    if (expSt === 'expired') warnings.push('⚠ 到期日已過期');
+    else if (expSt === 'soon') warnings.push('⚠ 到期日快到期（60天內）');
+
+    if (errors.length || warnings.length) {
+      allOk = false;
+      if (errors.length) hasErrors = true;
+      let html = `<div class="val-product"><div class="val-product-name">${p.name || key}</div>`;
+      errors.forEach(e => { html += `<div class="val-item error">${e}</div>`; });
+      warnings.forEach(w => { html += `<div class="val-item warning">${w}</div>`; });
+      html += '</div>';
+      parts.push(html);
+    }
+  });
+
+  if (allOk) {
+    content.innerHTML = '<div class="val-ok">✅ 所有必填欄位已完成，可以匯出</div>';
+  } else {
+    content.innerHTML = parts.join('');
+  }
+
+  // Enable/disable export buttons based on errors
+  document.querySelectorAll('#export-groups button').forEach(btn => {
+    btn.disabled = hasErrors;
+    btn.style.opacity = hasErrors ? '0.5' : '';
+    btn.title = hasErrors ? '請先修正錯誤欄位' : '';
+  });
+}
+
+// ─── BATCH FACTORY ────────────────────────────────────
+function openBatchFactoryModal() {
+  const factories = getFactories();
+  const sel = document.getElementById('batch-factory-select');
+  sel.innerHTML = '<option value="">-- 請選擇工廠 --</option>';
+  factories.forEach((f, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = `${f.name} (${f.country})`;
+    sel.appendChild(opt);
+  });
+  // reset radio
+  const radioA = document.querySelector('input[name="batch-mfg-type"][value="A"]');
+  if (radioA) radioA.checked = true;
+  document.getElementById('batch-factory-modal').style.display = 'flex';
+}
+
+function closeBatchFactoryModal() {
+  document.getElementById('batch-factory-modal').style.display = 'none';
+}
+
+function applyBatchFactory() {
+  const selEl = document.getElementById('batch-factory-select');
+  const idx = selEl.value;
+  if (idx === '') { alert('請先選擇工廠'); return; }
+  const factory = getFactories()[parseInt(idx)];
+  if (!factory) { alert('工廠資料不存在'); return; }
+  const mfgType = document.querySelector('input[name="batch-mfg-type"]:checked')?.value || 'A';
+
+  const forms = getForms();
+  selectedProducts.forEach((p, pi) => {
+    const key = p.code || ('__manual_'+pi);
+    if (!forms[key]) forms[key] = {};
+    if (!forms[key].factories) forms[key].factories = [];
+    // Check duplicate: same factory id (or name) + same type
+    const alreadyExists = forms[key].factories.some(f =>
+      f.name === factory.name && f.address === factory.address && f.mfgType === mfgType
+    );
+    if (!alreadyExists) {
+      forms[key].factories.push({
+        regNo: factory.regNo || '',
+        name: factory.name,
+        address: factory.address,
+        country: factory.country,
+        mfgType: mfgType
+      });
+    }
+  });
+  saveForms(forms);
+
+  // Re-render all accordion factory panes
+  selectedProducts.forEach((p, pi) => {
+    const key = p.code || ('__manual_'+pi);
+    const saved = forms[key] || {};
+    renderFactoryPane(pi, p, saved);
+  });
+
+  closeBatchFactoryModal();
+  alert(`已套用至 ${selectedProducts.length} 個商品`);
+}
+
+// ════════════════════════════════════════════════════════
+// STEP 3 PREVIEW
+// ════════════════════════════════════════════════════════
+function buildPreview() {
+  const forms = getForms();
+  const summaryEl = document.getElementById('preview-summary');
+  const groupsEl = document.getElementById('export-groups');
+  const syncEl = document.getElementById('ragic-sync-section');
+
+  summaryEl.innerHTML = `<div class="table-wrapper"><table>
+    <thead><tr><th>產品名稱</th><th>登錄編號</th><th>品牌</th><th>模板類型</th><th>製造場所</th><th>成分數</th></tr></thead>
+    <tbody>${selectedProducts.map((p,pi) => {
+      const key = p.code || ('__manual_'+pi);
+      const f = forms[key] || {};
+      const basic = f.basic || {};
+      const factories = (f.factories||[]).length;
+      const tmpl = p.templateType;
+      let ingCount = 0;
+      if (f.ingredients) {
+        if (isSeries(tmpl) && f.ingredients.variants) {
+          f.ingredients.variants.forEach(v => ingCount += (v.ingredients||[]).length);
+        } else {
+          ingCount = (f.ingredients.rows||[]).length;
+        }
+      }
+      return `<tr>
+        <td>${p.name}</td>
+        <td><code>${basic.regId||'-'}</code></td>
+        <td>${basic.brand||'-'}</td>
+        <td>${templateBadge(tmpl)}</td>
+        <td>${factories}</td>
+        <td>${ingCount}</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
+
+  const byType = {};
+  selectedProducts.forEach((p,pi) => {
+    if (!byType[p.templateType]) byType[p.templateType] = [];
+    byType[p.templateType].push({ p, pi });
+  });
+
+  groupsEl.innerHTML = '';
+  for (const [tmpl, items] of Object.entries(byType)) {
+    const div = document.createElement('div');
+    div.className = 'export-group';
+    div.innerHTML = `<h3>${templateBadge(tmpl)} ${tmpl} (${items.length} 件)</h3>
+      <button class="btn btn-success" onclick="exportExcel('${tmpl}')">產生匯入檔 · ${tmpl}${yyyymmdd()}.xlsx</button>`;
+    groupsEl.appendChild(div);
+  }
+
+  const key0 = localStorage.getItem(KEY_KEY);
+  const settings = getSettings();
+  const hasSyncFields = settings.fieldRegId;
+  const hasRagicIds = selectedProducts.some(p => p.ragicId);
+  if (key0 && hasSyncFields && hasRagicIds) {
+    syncEl.style.display = 'block';
+    const syncList = document.getElementById('sync-products-list');
+    syncList.innerHTML = selectedProducts.map((p,pi) => {
+      if (!p.ragicId) return '';
+      const key = p.code || ('__manual_'+pi);
+      const f = forms[key] || {};
+      const basic = f.basic || {};
+      return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--gray-100);font-size:13px">
+        <span style="flex:1">${p.name}</span>
+        <code style="color:var(--gray-600)">${basic.regId||'無登錄編號'}</code>
+        <div id="sync-result-${pi}"></div>
+      </div>`;
+    }).join('');
+  } else {
+    syncEl.style.display = 'none';
+  }
+  runValidation();
+}
+
+// ════════════════════════════════════════════════════════
+// EXCEL EXPORT
+// ════════════════════════════════════════════════════════
+function exportExcel(templateType) {
+  const forms = getForms();
+  const items = selectedProducts.map((p,pi) => ({ p, pi, key: p.code||('__manual_'+pi) }))
+    .filter(x => x.p.templateType === templateType);
+
+  const wb = XLSX.utils.book_new();
+
+  if (templateType === '非組合式單一產品') {
+    buildSheetNonComboSingle(wb, items, forms);
+  } else if (templateType === '非組合式系列產品') {
+    buildSheetNonComboSeries(wb, items, forms);
+  } else if (templateType === '組合式單一產品') {
+    buildSheetComboSingle(wb, items, forms);
+  } else if (templateType === '組合式系列產品') {
+    buildSheetComboSeries(wb, items, forms);
+  }
+
+  XLSX.writeFile(wb, `${templateType}${yyyymmdd()}.xlsx`);
+}
+
+function addSheet(wb, name, headers, descs, rows) {
+  const data = [headers, descs, ...rows];
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  XLSX.utils.book_append_sheet(wb, ws, name);
+}
+
+function basicRows(items, forms, includeTypeUse) {
+  return items.map(({p, key}) => {
+    const f = forms[key] || {};
+    const b = f.basic || {};
+    const row = [b.regId||'', b.origin||'B', b.brand||''];
+    if (includeTypeUse) row.push(b.productType||'', b.useCode||'', b.formulation||'');
+    row.push(b.note||'', b.contact||'');
+    return row;
+  });
+}
+
+function factoryRows(items, forms, extraCols) {
+  const rows = [];
+  items.forEach(({p, key}) => {
+    const f = forms[key] || {};
+    const factories = f.factories || [];
+    factories.forEach(fac => {
+      const row = [f.basic?.regId||''];
+      if (extraCols) extraCols.forEach(fn => row.push(fn(fac)));
+      row.push(fac.mfgType||'A', fac.regNo||'', fac.name||'', fac.address||'', fac.country||'');
+      rows.push(row);
+    });
+  });
+  return rows;
+}
+
+function ingredientRows(items, forms, includeVariant) {
+  const rows = [];
+  items.forEach(({p, key}) => {
+    const f = forms[key] || {};
+    const ing = f.ingredients || {};
+    const regId = f.basic?.regId || '';
+    if (includeVariant) {
+      (ing.variants||[]).forEach(v => {
+        (v.ingredients||[]).forEach(r => {
+          rows.push([regId, v.variantName||'', ing.zhName||'', ing.enName||'', ing.unit||'', r.name||'', r.limCode||'', r.qtyType||'A', r.qtyType==='B'?r.qtyVal||'':'']);
+        });
+      });
+    } else {
+      (ing.rows||[]).forEach(r => {
+        rows.push([regId, ing.zhName||'', ing.enName||'', ing.unit||'', r.name||'', r.limCode||'', r.qtyType||'A', r.qtyType==='B'?r.qtyVal||'':'']);
+      });
+    }
+  });
+  return rows;
+}
+
+function buildSheetNonComboSingle(wb, items, forms) {
+  addSheet(wb, '產品基本資訊',
+    ['*登錄編號','*國產/輸入(代碼)','產品品牌','*產品種類(代碼)','*產品用途(代碼)','*產品劑型(代碼)','*使用注意事項','*聯絡人'],
+    ['14碼英數字','A=國產 B=輸入','品牌名稱','4碼代碼','2碼代碼可多個','3碼代碼','注意事項說明','聯絡人姓名'],
+    basicRows(items, forms, true));
+  addSheet(wb, '製造包裝作業場所',
+    ['*登錄編號','*製造/包裝(代碼)','*工廠登記編號','*工廠名稱','*工廠地址','*國別(代碼)'],
+    ['同基本資訊登錄編號','A=製造 B=包裝','工廠登記編號','工廠名稱','工廠完整地址','2碼國別代碼'],
+    factoryRows(items, forms, null));
+  addSheet(wb, '全成分',
+    ['*登錄編號','*產品中文品名','*產品英文品名','*單位(代碼)','*成分名稱 ','*限量成分用途','*含量類別(A or B)','*含量 '],
+    ['同基本資訊登錄編號','中文品名','英文品名','W或V','INCI名稱','限量成分代碼','A=適量 B=標誌量','含量數值'],
+    ingredientRows(items, forms, false));
+}
+
+function buildSheetNonComboSeries(wb, items, forms) {
+  addSheet(wb, '產品基本資訊',
+    ['*登錄編號','*國產/輸入(代碼)','產品品牌','*產品種類(代碼)','*產品用途(代碼)','*產品劑型(代碼)','*使用注意事項','*聯絡人'],
+    ['14碼英數字','A=國產 B=輸入','品牌名稱','4碼代碼','2碼代碼','3碼代碼','注意事項','聯絡人'],
+    basicRows(items, forms, true));
+  addSheet(wb, '製造包裝作業場所',
+    ['*登錄編號','*製造/包裝(代碼)','*工廠登記編號','*工廠名稱','*工廠地址','*國別(代碼)'],
+    ['同基本資訊登錄編號','A=製造 B=包裝','工廠登記編號','工廠名稱','工廠完整地址','2碼國別代碼'],
+    factoryRows(items, forms, null));
+  addSheet(wb, '全成分',
+    ['*登錄編號','*型號或色號','*產品中文品名','*產品英文品名','*單位(代碼)','*成分名稱 ','*限量成分用途 ','*含量類別(A or B)','*含量 '],
+    ['同基本資訊登錄編號','色號或型號','中文品名','英文品名','W或V','INCI名稱','限量成分代碼','A=適量 B=標誌量','含量數值'],
+    ingredientRows(items, forms, true));
+}
+
+function buildSheetComboSingle(wb, items, forms) {
+  addSheet(wb, '產品基本資訊',
+    ['*登錄編號','*國產/輸入(代碼)','產品品牌','*使用注意事項','*聯絡人'],
+    ['14碼英數字','A=國產 B=輸入','品牌名稱','注意事項','聯絡人'],
+    basicRows(items, forms, false));
+
+  const comboDataRows = [];
+  items.forEach(({key, p}) => {
+    const f = forms[key] || {};
+    const regId = f.basic?.regId || '';
+    (f.combo?.rows||[]).forEach(r => {
+      comboDataRows.push([regId, r.comboName||'', r.formulation||'', r.useCode||'', r.productType||'']);
+    });
+  });
+  addSheet(wb, '組合產品資訊',
+    ['*登錄編號','*組合式產品名稱','*產品劑型(代碼)','*產品用途(代碼)','*產品種類(代碼)'],
+    ['同基本資訊登錄編號','組合項目名稱','3碼劑型代碼','2碼用途代碼','4碼種類代碼'],
+    comboDataRows);
+
+  const fRows = [];
+  items.forEach(({key, p}) => {
+    const f = forms[key] || {};
+    const regId = f.basic?.regId || '';
+    (f.factories||[]).forEach(fac => {
+      (f.combo?.rows||[]).forEach(r => {
+        fRows.push([regId, r.comboName||'', fac.mfgType||'A', fac.regNo||'', fac.name||'', fac.address||'', fac.country||'']);
+      });
+    });
+  });
+  addSheet(wb, '製造包裝作業場所',
+    ['*登錄編號','*組合式產品名稱','*製造/包裝(代碼)','*工廠登記編號','*工廠名稱','*工廠地址','*國別(代碼)'],
+    ['同基本資訊登錄編號','組合項目名稱','A=製造 B=包裝','工廠登記編號','工廠名稱','工廠完整地址','2碼國別代碼'],
+    fRows);
+
+  const ingRows = [];
+  items.forEach(({key, p}) => {
+    const f = forms[key] || {};
+    const regId = f.basic?.regId || '';
+    const ing = f.ingredients || {};
+    (f.combo?.rows||[]).forEach(r => {
+      (ing.rows||[]).forEach(row => {
+        ingRows.push([regId, r.comboName||'', ing.zhName||'', ing.enName||'', ing.unit||'', row.name||'', row.limCode||'', row.qtyType||'A', row.qtyType==='B'?row.qtyVal||'':'']);
+      });
+    });
+  });
+  addSheet(wb, '全成分',
+    ['*登錄編號','*組合式產品名稱','*產品中文品名','*產品英文品名','*單位(代碼)','*成分名稱 ','*限量成分用途','*含量類別(A or B)','*含量 '],
+    ['同基本資訊登錄編號','組合項目名稱','中文品名','英文品名','W或V','INCI名稱','限量成分代碼','A=適量 B=標誌量','含量數值'],
+    ingRows);
+}
+
+function buildSheetComboSeries(wb, items, forms) {
+  addSheet(wb, '產品基本資訊',
+    ['*登錄編號','*國產/輸入(代碼)','產品品牌','*使用注意事項','*聯絡人'],
+    ['14碼英數字','A=國產 B=輸入','品牌名稱','注意事項','聯絡人'],
+    basicRows(items, forms, false));
+
+  const comboDataRows = [];
+  items.forEach(({key}) => {
+    const f = forms[key] || {};
+    const regId = f.basic?.regId || '';
+    (f.combo?.rows||[]).forEach(r => {
+      comboDataRows.push([regId, r.variantName||'', r.comboName||'', r.formulation||'', r.useCode||'', r.productType||'']);
+    });
+  });
+  addSheet(wb, '組合產品資訊',
+    ['*登錄編號','*型號或色號','*組合式產品名稱','*產品劑型(代碼)','*產品用途(代碼)','*產品種類(代碼)'],
+    ['同基本資訊登錄編號','色號或型號','組合項目名稱','3碼劑型代碼','2碼用途代碼','4碼種類代碼'],
+    comboDataRows);
+
+  const fRows = [];
+  items.forEach(({key}) => {
+    const f = forms[key] || {};
+    const regId = f.basic?.regId || '';
+    (f.factories||[]).forEach(fac => {
+      (f.combo?.rows||[]).forEach(r => {
+        fRows.push([regId, r.variantName||'', r.comboName||'', fac.mfgType||'A', fac.regNo||'', fac.name||'', fac.address||'', fac.country||'']);
+      });
+    });
+  });
+  addSheet(wb, '製造包裝作業場所',
+    ['*登錄編號','*型號或色號','*組合式產品名稱','*製造/包裝(代碼)','*工廠登記編號','*工廠名稱','*工廠地址','*國別(代碼)'],
+    ['同基本資訊登錄編號','色號或型號','組合項目名稱','A=製造 B=包裝','工廠登記編號','工廠名稱','工廠完整地址','2碼國別代碼'],
+    fRows);
+
+  const ingRows = [];
+  items.forEach(({key}) => {
+    const f = forms[key] || {};
+    const regId = f.basic?.regId || '';
+    const ing = f.ingredients || {};
+    (f.combo?.rows||[]).forEach(r => {
+      const varIngreds = (ing.variants||[]).find(v => v.variantName === r.variantName);
+      ((varIngreds && varIngreds.ingredients)||[]).forEach(row => {
+        ingRows.push([regId, r.variantName||'', r.comboName||'', ing.zhName||'', ing.enName||'', ing.unit||'', row.name||'', row.limCode||'', row.qtyType||'A', row.qtyType==='B'?row.qtyVal||'':'']);
+      });
+    });
+  });
+  addSheet(wb, '全成分',
+    ['*登錄編號','*型號或色號','*組合式產品名稱','*產品中文品名','*產品英文品名','*單位(代碼)','*成分名稱 ','*限量成分用途 ','*含量類別(A or B)','*含量 '],
+    ['同基本資訊登錄編號','色號或型號','組合項目名稱','中文品名','英文品名','W或V','INCI名稱','限量成分代碼','A=適量 B=標誌量','含量數值'],
+    ingRows);
+}
+
+// ════════════════════════════════════════════════════════
+// RAGIC SYNC
+// ════════════════════════════════════════════════════════
+async function doRagicSync() {
+  const key = localStorage.getItem(KEY_KEY);
+  const settings = getSettings();
+  const forms = getForms();
+  for (let pi = 0; pi < selectedProducts.length; pi++) {
+    const p = selectedProducts[pi];
+    if (!p.ragicId) continue;
+    const fKey = p.code || ('__manual_'+pi);
+    const f = forms[fKey] || {};
+    const basic = f.basic || {};
+    const body = {};
+    if (settings.fieldRegId && basic.regId) body[settings.fieldRegId] = basic.regId;
+    if (settings.fieldForm && basic.formulation) body[settings.fieldForm] = basic.formulation;
+    if (settings.fieldType && basic.productType) body[settings.fieldType] = basic.productType;
+    if (!Object.keys(body).length) continue;
+    const resultEl = document.getElementById(`sync-result-${pi}`);
+    if (resultEl) resultEl.innerHTML = '<span style="color:var(--gray-400);font-size:12px">同步中...</span>';
+    try {
+      const url = `https://ap13.ragic.com/feebit50968407/product/16/${p.ragicId}?api&APIKey=${encodeURIComponent(key)}`;
+      const resp = await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      if (resultEl) resultEl.innerHTML = '<span class="sync-result sync-ok">✓ 成功</span>';
+    } catch(e) {
+      if (resultEl) resultEl.innerHTML = `<span class="sync-result sync-err">✗ ${e.message}</span>`;
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// FACTORY MANAGEMENT TAB
+// ════════════════════════════════════════════════════════
+function renderFactoriesTab() {
+  renderFactoryList();
+  renderFactoryCopyCards();
+  populateCountrySelect('nf-country');
+}
+
+function renderFactoryList() {
+  const container = document.getElementById('factory-list-container');
+  const factories = getFactories();
+  if (!factories.length) {
+    container.innerHTML = '<div style="color:var(--gray-400);font-size:13px;padding:20px 0;text-align:center">尚未新增工廠</div>';
+    return;
+  }
+  container.innerHTML = `<div class="table-wrapper"><table>
+    <thead><tr><th>工廠登記編號</th><th>工廠名稱</th><th>工廠地址</th><th>國別</th><th></th></tr></thead>
+    <tbody>${factories.map((f,i) => `<tr>
+      <td>${f.regNo||'-'}</td>
+      <td><strong>${f.name}</strong></td>
+      <td>${f.address}</td>
+      <td>${f.country} ${COUNTRY_CODES[f.country]||''}</td>
+      <td><button class="btn btn-outline" style="font-size:12px;padding:4px 8px" onclick="deleteFactory(${i})">刪除</button></td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
+function renderFactoryCopyCards() {
+  const container = document.getElementById('factory-copy-cards');
+  const factories = getFactories();
+  if (!factories.length) { container.innerHTML = ''; return; }
+  container.innerHTML = factories.map((f,i) => `
+    <div class="copy-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <strong style="font-size:14px">${f.name}</strong>
+        <button class="btn btn-outline" style="font-size:12px;padding:4px 10px" onclick="copyFactoryData(${i},this)">複製所有資料</button>
+      </div>
+      <pre>工廠登記編號：${f.regNo||'免填'}
+工廠名稱：${f.name}
+工廠地址：${f.address}
+國別：${f.country} ${COUNTRY_CODES[f.country]||''}</pre>
+    </div>`).join('');
+}
+
+function copyFactoryData(i, btn) {
+  const f = getFactories()[i];
+  const text = `工廠登記編號：${f.regNo||'免填'}\n工廠名稱：${f.name}\n工廠地址：${f.address}\n國別：${f.country} ${COUNTRY_CODES[f.country]||''}`;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✓ 已複製';
+    setTimeout(() => btn.textContent = '複製所有資料', 1500);
+  });
+}
+
+function showAddFactoryForm() {
+  const form = document.getElementById('add-factory-form');
+  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+function saveNewFactory() {
+  const regNo = document.getElementById('nf-regno').value.trim();
+  const name = document.getElementById('nf-name').value.trim();
+  const addr = document.getElementById('nf-addr').value.trim();
+  const country = document.getElementById('nf-country').value;
+  if (!name || !addr || !country) { alert('請填寫工廠名稱、地址、國別'); return; }
+  const factories = getFactories();
+  factories.push({ id: uid(), regNo, name, address: addr, country });
+  saveFactories(factories);
+  document.getElementById('nf-regno').value = '';
+  document.getElementById('nf-name').value = '';
+  document.getElementById('nf-addr').value = '';
+  document.getElementById('nf-country').value = '';
+  document.getElementById('add-factory-form').style.display = 'none';
+  renderFactoryList();
+  renderFactoryCopyCards();
+}
+
+function deleteFactory(i) {
+  if (!confirm('確認刪除此工廠？')) return;
+  const factories = getFactories();
+  factories.splice(i, 1);
+  saveFactories(factories);
+  renderFactoryList();
+  renderFactoryCopyCards();
+}
+
+function populateCountrySelect(id) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  sel.innerHTML = '<option value="">選擇國別</option>';
+  for (const [k,v] of Object.entries(COUNTRY_CODES)) {
+    const opt = document.createElement('option');
+    opt.value = k; opt.textContent = `${k} - ${v}`;
+    sel.appendChild(opt);
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// SETTINGS TAB
+// ════════════════════════════════════════════════════════
+function loadSettingsForm() {
+  const key = localStorage.getItem(KEY_KEY) || '';
+  document.getElementById('settings-ragic-key').value = key;
+  document.getElementById('ragic-key-input').value = key;
+  const s = getSettings();
+  document.getElementById('settings-field-regid').value = s.fieldRegId || '';
+  document.getElementById('settings-field-form').value = s.fieldForm || '';
+  document.getElementById('settings-field-type').value = s.fieldType || '';
+}
+
+function saveSettings() {
+  const key = document.getElementById('settings-ragic-key').value.trim();
+  if (key) {
+    localStorage.setItem(KEY_KEY, key);
+    document.getElementById('ragic-key-input').value = key;
+  }
+  const settings = {
+    fieldRegId: document.getElementById('settings-field-regid').value.trim(),
+    fieldForm: document.getElementById('settings-field-form').value.trim(),
+    fieldType: document.getElementById('settings-field-type').value.trim()
+  };
+  saveSettingsStore(settings);
+  const saved = document.getElementById('settings-saved');
+  saved.style.display = 'block';
+  setTimeout(() => saved.style.display = 'none', 2000);
+}
+
+// ════════════════════════════════════════════════════════
+// SIDEBAR
+// ════════════════════════════════════════════════════════
+function openSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-overlay').classList.add('show'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('show'); }
+
+// ════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════
+(function init() {
+  const key = localStorage.getItem(KEY_KEY) || '';
+  document.getElementById('ragic-key-input').value = key;
+  showStep(1);
+})();
+</script>
+</body>
+</html>
