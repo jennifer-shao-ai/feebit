@@ -421,6 +421,7 @@ function analyze(snaps, receipts = {}) {
 
   // 累計每個商品的實際銷量：期初 + 本期到貨 - 期末
   const salesMap = {};
+  const activePeriodMap = {};  // 每個商品有幾期出現銷量
   for (let i = 1; i < sorted.length; i++) {
     const prev = sorted[i - 1], curr = sorted[i];
     const codes = new Set([...Object.keys(prev.products), ...Object.keys(curr.products)]);
@@ -431,6 +432,7 @@ function analyze(snaps, receipts = {}) {
       const sales   = Math.max(0, prevQty + recv - currQty);
       if (!salesMap[code]) salesMap[code] = 0;
       salesMap[code] += sales;
+      if (sales > 0) activePeriodMap[code] = (activePeriodMap[code] ?? 0) + 1;
     }
   }
 
@@ -442,7 +444,9 @@ function analyze(snaps, receipts = {}) {
     if (currentQty <= 0) continue;
 
     const totalSales = salesMap[code] ?? 0;
-    if (totalSales === 0 || totalDays === 0) {
+    const activePeriods = activePeriodMap[code] ?? 0;
+    // 需至少 2 期有銷量，避免單次爆量拉高月銷估算
+    if (totalSales === 0 || totalDays === 0 || activePeriods < 2) {
       res.noData.push({ code, name: info.name, qty: currentQty });
       continue;
     }
