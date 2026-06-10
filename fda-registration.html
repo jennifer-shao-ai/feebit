@@ -152,7 +152,7 @@ select[multiple]{padding:4px}
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v1.6 · Feebit © 2026</div>
+  <div class="sidebar-footer">v1.7 · Feebit © 2026</div>
 </div>
 
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
@@ -164,7 +164,7 @@ select[multiple]{padding:4px}
       <button class="btn-hamburger" onclick="openSidebar()">☰</button>
       <span class="topbar-title">FDA 化粧品登錄</span>
       <span class="topbar-badge">法規登錄</span>
-      <span style="font-size:11px;color:var(--gray-400);margin-left:6px">v1.6</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:6px">v1.7</span>
     </div>
   </div>
 
@@ -207,6 +207,8 @@ select[multiple]{padding:4px}
           <div id="product-table-wrap" style="display:none">
             <!-- toolbar -->
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+              <input type="text" id="product-search" placeholder="搜尋代號或品名..." oninput="renderProductTable()"
+                style="font-size:12px;padding:4px 10px;border:1px solid var(--gray-200);border-radius:4px;width:180px">
               <div style="font-size:12px;color:var(--gray-600);margin-right:auto" id="product-count-label"></div>
               <!-- 大分類篩選 -->
               <label style="font-size:12px;color:var(--gray-600)">大分類</label>
@@ -390,6 +392,37 @@ select[multiple]{padding:4px}
         <button class="btn btn-primary" style="margin-top:8px" onclick="saveSettings()">儲存設定</button>
         <div id="settings-saved" style="display:none;color:var(--success);font-size:13px;margin-top:8px">已儲存</div>
       </div>
+
+      <div class="card" style="margin-top:16px">
+        <h2 style="margin-bottom:6px">跨裝置同步設定</h2>
+        <div class="alert alert-warning" style="margin-bottom:16px">
+          <div>
+            <strong>使用前需先在 Ragic 產品表單新增以下三個自訂欄位：</strong>
+            <ul style="margin:8px 0 0 16px;font-size:13px;line-height:2">
+              <li><code>FDA隱藏</code>（文字欄位，工具寫入 Y / N）</li>
+              <li><code>FDA登錄編號</code>（文字欄位）</li>
+              <li><code>FDA到期日</code>（日期欄位）</li>
+            </ul>
+            <div style="margin-top:8px;font-size:12px;color:var(--gray-600)">欄位名稱可自訂，填入下方對應即可。</div>
+          </div>
+        </div>
+        <div class="form-row" style="max-width:600px">
+          <div class="form-group-inline">
+            <label>隱藏狀態欄位名稱</label>
+            <input type="text" id="settings-status-hidden" placeholder="例：FDA隱藏">
+          </div>
+          <div class="form-group-inline">
+            <label>登錄編號（狀態）欄位名稱</label>
+            <input type="text" id="settings-status-regid" placeholder="例：FDA登錄編號">
+          </div>
+          <div class="form-group-inline">
+            <label>到期日欄位名稱</label>
+            <input type="text" id="settings-status-expiry" placeholder="例：FDA到期日">
+          </div>
+        </div>
+        <p style="font-size:12px;color:var(--gray-600);margin-top:8px">設定後，每次切換隱藏、填入登錄編號或到期日，都會即時同步回 Ragic。載入產品時也會自動讀取這三個欄位。</p>
+        <button class="btn btn-primary" style="margin-top:8px" onclick="saveSettings()">儲存設定</button>
+      </div>
     </div>
 
   </div><!-- /page -->
@@ -515,12 +548,14 @@ function setProductField(code, field, value) {
   s[code][field] = value;
   saveProductStatus(s);
   updateProductRowStyle(code);
+  syncStatusToRagic(code);
 }
 function toggleHideProduct(code) {
   const s = getProductStatus();
   if (!s[code]) s[code] = {};
   s[code].hidden = !s[code].hidden;
   saveProductStatus(s);
+  syncStatusToRagic(code);
   renderProductTable();
 }
 function updateProductRowStyle(code) {
@@ -667,6 +702,7 @@ async function loadFromRagic() {
     }
     if (!loadedProducts.length) { setStatus('ragic-status', '查無資料', 'warning'); }
     else { setStatus('ragic-status', `已載入 ${loadedProducts.length} 筆產品`, 'success'); }
+    syncStatusFromRagic(data);
     autoHideNewProducts();
     renderProductTable();
   } catch(e) {
@@ -680,6 +716,62 @@ function shouldAutoHide(code) {
   if (code[2] === '9') return true;
   if (code.includes('-9')) return true;
   return false;
+}
+
+function getRagicIdByCode(code) {
+  const p = loadedProducts.find(p => p.code === code);
+  return p ? p.ragicId : null;
+}
+
+function syncStatusFromRagic(ragicData) {
+  const s = getSettings();
+  if (!s.statusHiddenField && !s.statusRegIdField && !s.statusExpiryField) return;
+  const statusMap = getProductStatus();
+  let changed = false;
+  for (const [id, row] of Object.entries(ragicData)) {
+    if (isNaN(parseInt(id))) continue;
+    const code = row['產品代號'] || '';
+    if (!code) continue;
+    const cur = statusMap[code] || {};
+    if (s.statusHiddenField && row[s.statusHiddenField] !== undefined) {
+      const hidden = row[s.statusHiddenField] === 'Y';
+      if (cur.hidden !== hidden) { cur.hidden = hidden; changed = true; }
+    }
+    if (s.statusRegIdField && row[s.statusRegIdField] !== undefined) {
+      const val = row[s.statusRegIdField] || '';
+      if (cur.regId !== val) { cur.regId = val; changed = true; }
+    }
+    if (s.statusExpiryField && row[s.statusExpiryField] !== undefined) {
+      const val = row[s.statusExpiryField] || '';
+      if (cur.expiry !== val) { cur.expiry = val; changed = true; }
+    }
+    if (changed) statusMap[code] = cur;
+  }
+  if (changed) saveProductStatus(statusMap);
+}
+
+async function syncStatusToRagic(code) {
+  const key = localStorage.getItem(KEY_KEY);
+  const s = getSettings();
+  if (!key || (!s.statusHiddenField && !s.statusRegIdField && !s.statusExpiryField)) return;
+  const ragicId = getRagicIdByCode(code);
+  if (!ragicId) return;
+  const st = getProductStatus()[code] || {};
+  const body = {};
+  if (s.statusHiddenField) body[s.statusHiddenField] = st.hidden ? 'Y' : 'N';
+  if (s.statusRegIdField) body[s.statusRegIdField] = st.regId || '';
+  if (s.statusExpiryField) body[s.statusExpiryField] = st.expiry || '';
+  if (!Object.keys(body).length) return;
+  const syncEl = document.querySelector(`[data-sync="${code}"]`);
+  if (syncEl) { syncEl.textContent = '⟳'; syncEl.style.color = 'var(--gray-400)'; }
+  try {
+    const url = `https://ap13.ragic.com/feebit50968407/product/16/${ragicId}?api&APIKey=${encodeURIComponent(key)}`;
+    const resp = await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    if (!resp.ok) throw new Error();
+    if (syncEl) { syncEl.textContent = '✓'; syncEl.style.color = 'var(--success)'; setTimeout(() => { if(syncEl) syncEl.textContent=''; }, 3000); }
+  } catch(e) {
+    if (syncEl) { syncEl.textContent = '✗'; syncEl.style.color = 'var(--danger)'; }
+  }
 }
 
 function autoHideNewProducts() {
@@ -757,11 +849,19 @@ function renderProductTable() {
     return sortDir === 'desc' ? -cmp : cmp;
   });
 
+  const searchQ = (document.getElementById('product-search')?.value || '').trim().toLowerCase();
+
   indexed.forEach(({ p, i }) => {
     const code = p.code || ('__manual_'+i);
     const st = statusMap[code] || {};
-    if (st.hidden && !showHidden) { hidden++; return; }
+    const matchesSearch = !searchQ || (p.code||'').toLowerCase().includes(searchQ) || (p.name||'').toLowerCase().includes(searchQ);
+
+    if (!matchesSearch) return;
     if (filterCat && p.category !== filterCat) return;
+
+    const isHiddenByStatus = !!st.hidden;
+    const forceShowBySearch = searchQ && isHiddenByStatus;
+    if (isHiddenByStatus && !showHidden && !forceShowBySearch) { hidden++; return; }
     visible++;
 
     const suggested = suggestTemplate(p.name);
@@ -773,14 +873,17 @@ function renderProductTable() {
     else if (expSt === 'soon') soonCount++;
     else if (expSt === 'warn') warnCount++;
 
+    const isHidden = isHiddenByStatus;
     const tr = document.createElement('tr');
     tr.setAttribute('data-code', code);
-    if (st.regId && st.regId.trim()) tr.style.background = '#f0fdf4';
-    if (isHidden) tr.style.opacity = '0.5';
+    if (forceShowBySearch) tr.style.background = '#fff7ed';
+    else if (st.regId && st.regId.trim()) tr.style.background = '#f0fdf4';
+    if (isHidden && !forceShowBySearch) tr.style.opacity = '0.5';
+    const hiddenWarning = forceShowBySearch ? `<span style="font-size:11px;color:#c2410c;margin-left:6px">已隱藏 · <a href="#" onclick="toggleHideProduct('${code}');return false" style="color:#c2410c">取消隱藏</a></span>` : '';
     tr.innerHTML = `
       <td><input type="checkbox" data-idx="${i}" ${isHidden?'':'checked'}></td>
       <td style="font-size:12px">${p.code||'-'}</td>
-      <td style="font-weight:500">${p.name}</td>
+      <td style="font-weight:500">${p.name}${hiddenWarning}</td>
       <td style="font-size:12px;color:var(--gray-600)">${p.category||'-'}</td>
       <td style="font-size:12px;text-align:right">${p.qty||'-'}</td>
       <td style="font-size:12px;color:var(--gray-600)">${p.supplier||'-'}</td>
@@ -791,8 +894,11 @@ function renderProductTable() {
       <td><input type="date" value="${st.expiry||''}"
         style="font-size:12px;padding:4px 6px;border:1px solid var(--gray-200);border-radius:4px"
         onchange="setProductField('${code}','expiry',this.value)">${expiryBadge}</td>
-      <td><button title="${isHidden?'取消隱藏':'隱藏此商品'}" onclick="toggleHideProduct('${code}')"
-        style="border:none;background:none;cursor:pointer;font-size:16px;padding:2px 6px;color:${isHidden?'var(--success)':'var(--gray-400)'}">${isHidden?'👁':'🚫'}</button></td>`;
+      <td style="white-space:nowrap">
+        <button title="${isHidden?'取消隱藏':'隱藏此商品'}" onclick="toggleHideProduct('${code}')"
+          style="border:none;background:none;cursor:pointer;font-size:16px;padding:2px 4px;color:${isHidden?'var(--success)':'var(--gray-400)'}">${isHidden?'👁':'🚫'}</button>
+        <span data-sync="${code}" style="font-size:11px;min-width:12px;display:inline-block"></span>
+      </td>`;
     tbody.appendChild(tr);
   });
 
@@ -2083,6 +2189,9 @@ function loadSettingsForm() {
   document.getElementById('settings-field-regid').value = s.fieldRegId || '';
   document.getElementById('settings-field-form').value = s.fieldForm || '';
   document.getElementById('settings-field-type').value = s.fieldType || '';
+  document.getElementById('settings-status-hidden').value = s.statusHiddenField || '';
+  document.getElementById('settings-status-regid').value = s.statusRegIdField || '';
+  document.getElementById('settings-status-expiry').value = s.statusExpiryField || '';
 }
 
 function saveSettings() {
@@ -2094,7 +2203,10 @@ function saveSettings() {
   const settings = {
     fieldRegId: document.getElementById('settings-field-regid').value.trim(),
     fieldForm: document.getElementById('settings-field-form').value.trim(),
-    fieldType: document.getElementById('settings-field-type').value.trim()
+    fieldType: document.getElementById('settings-field-type').value.trim(),
+    statusHiddenField: document.getElementById('settings-status-hidden').value.trim(),
+    statusRegIdField: document.getElementById('settings-status-regid').value.trim(),
+    statusExpiryField: document.getElementById('settings-status-expiry').value.trim()
   };
   saveSettingsStore(settings);
   const saved = document.getElementById('settings-saved');
