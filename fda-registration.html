@@ -163,7 +163,7 @@ select[multiple]{padding:4px}
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v1.9 · Feebit © 2026</div>
+  <div class="sidebar-footer">v1.10 · Feebit © 2026</div>
 </div>
 
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
@@ -175,7 +175,7 @@ select[multiple]{padding:4px}
       <button class="btn-hamburger" onclick="openSidebar()">☰</button>
       <span class="topbar-title">FDA 化粧品登錄</span>
       <span class="topbar-badge">法規登錄</span>
-      <span style="font-size:11px;color:var(--gray-400);margin-left:6px">v1.9</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:6px">v1.10</span>
     </div>
   </div>
 
@@ -382,6 +382,18 @@ select[multiple]{padding:4px}
           <label>Ragic API Key</label>
           <input type="password" id="settings-ragic-key" placeholder="輸入 API Key">
         </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h2 style="margin-bottom:6px">登錄預設值</h2>
+        <div class="form-row" style="max-width:600px">
+          <div class="form-group-inline">
+            <label>預設聯絡人姓名</label>
+            <input type="text" id="settings-default-contact" placeholder="FDA 系統已登記的人名">
+            <span style="font-size:11px;color:var(--gray-500);margin-top:3px">⚠ 須與 FDA 後台登記的聯絡人姓名完全一致，否則會報錯「查無此聯絡人」</span>
+          </div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:8px" onclick="saveSettings()">儲存設定</button>
+        <div id="settings-saved-contact" style="display:none;color:var(--success);font-size:13px;margin-top:8px">已儲存</div>
       </div>
       <div class="card" style="margin-top:16px">
         <h2 style="margin-bottom:6px">回寫至 Ragic 的欄位對應</h2>
@@ -754,7 +766,8 @@ async function loadFromRagic() {
         mfrCountry: row['製造廠國別'] || row['製造商國別'] || row['國別'] || '',
         mfrRegNo: row['工廠登記編號'] || row['製造廠登記編號'] || '',
         usageNotes: row['使用注意事項'] || '',
-        labelContent: row['中文標籤內容'] || ''
+        labelContent: row['中文標籤內容'] || '',
+        nameEn: row['英文品名'] || row['英文名稱'] || row['English Name'] || ''
       });
     }
     if (!loadedProducts.length) { setStatus('ragic-status', '查無資料', 'warning'); }
@@ -1193,8 +1206,8 @@ function renderBasicPane(pi, p, saved) {
         <input type="text" id="bi-brand-${pi}" class="bi-field" data-field="brand" value="${s.brand || p.brand || ''}">
       </div>
       <div class="form-group-inline">
-        <label>聯絡人</label>
-        <input type="text" id="bi-contact-${pi}" class="bi-field" data-field="contact" value="${s.contact||'飛比特國際有限公司'}">
+        <label>聯絡人 <span style="font-size:11px;color:var(--gray-500);font-weight:400">（FDA 系統已登記的人名）</span></label>
+        <input type="text" id="bi-contact-${pi}" class="bi-field" data-field="contact" placeholder="FDA 後台登記的聯絡人姓名" value="${s.contact || getSettings().defaultContact || ''}">
       </div>
     </div>
     ${typeUseForm}
@@ -1497,6 +1510,19 @@ function renderIngredientPane(pi, p, saved) {
   const series = isSeries(tmpl);
   const s = saved.ingredients || {};
 
+  // Auto-fill zhName/enName from Ragic if not yet saved
+  if (!s.zhName && p.name) {
+    const forms = getForms();
+    const key = p.code || ('__manual_'+pi);
+    if (!forms[key]) forms[key] = {};
+    if (!forms[key].ingredients) forms[key].ingredients = {};
+    forms[key].ingredients.zhName = p.name;
+    if (!s.enName && p.nameEn) forms[key].ingredients.enName = p.nameEn;
+    saveForms(forms);
+    s.zhName = p.name;
+    if (!s.enName && p.nameEn) s.enName = p.nameEn;
+  }
+
   if (!series) {
     pane.innerHTML = buildSingleIngredientBlock(pi, 'main', s);
   } else {
@@ -1518,14 +1544,17 @@ function isIngFlagged(name) {
 
 function buildSingleIngredientBlock(pi, varKey, s) {
   return `
-    <div class="form-row">
-      <div class="form-group-inline"><label>產品中文品名</label><input type="text" id="ing-zhname-${pi}-${varKey}" value="${(s.zhName||'')}" placeholder="多個用逗號分隔" oninput="autoSaveForm(${pi})"></div>
-      <div class="form-group-inline"><label>產品英文品名</label><input type="text" id="ing-enname-${pi}-${varKey}" value="${(s.enName||'')}" oninput="autoSaveForm(${pi})"></div>
-      <div class="form-group-inline"><label>單位(代碼)</label>
-        <select id="ing-unit-${pi}-${varKey}" onchange="autoSaveForm(${pi})">
-          <option value="">選擇單位</option>
-          ${Object.entries(UNIT_CODES).map(([k,v])=>`<option value="${k}" ${s.unit===k?'selected':''}>${k} - ${v}</option>`).join('')}
-        </select>
+    <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:10px 12px;margin-bottom:12px">
+      <div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:8px">⚠ 以下三欄為必填，每筆成分都會帶入這個資料</div>
+      <div class="form-row" style="margin-bottom:0">
+        <div class="form-group-inline"><label>產品中文品名 <span style="color:var(--danger)">*</span></label><input type="text" id="ing-zhname-${pi}-${varKey}" value="${(s.zhName||'')}" placeholder="必填" oninput="autoSaveForm(${pi})"></div>
+        <div class="form-group-inline"><label>產品英文品名 <span style="color:var(--danger)">*</span></label><input type="text" id="ing-enname-${pi}-${varKey}" value="${(s.enName||'')}" placeholder="必填" oninput="autoSaveForm(${pi})"></div>
+        <div class="form-group-inline"><label>單位(代碼) <span style="color:var(--danger)">*</span></label>
+          <select id="ing-unit-${pi}-${varKey}" onchange="autoSaveForm(${pi})">
+            <option value="">必選</option>
+            ${Object.entries(UNIT_CODES).map(([k,v])=>`<option value="${k}" ${s.unit===k?'selected':''}>${k} - ${v}</option>`).join('')}
+          </select>
+        </div>
       </div>
     </div>
     <div style="margin-bottom:10px">
@@ -2030,11 +2059,19 @@ function runValidation() {
     }
     if (ingCount === 0) {
       errors.push('❌ 全成分 為必填，請至少新增一筆成分');
+    } else {
+      const ing = f.ingredients || {};
+      if (!ing.zhName) errors.push('❌ 全成分：產品中文品名 未填寫');
+      if (!ing.enName) errors.push('❌ 全成分：產品英文品名 未填寫');
+      if (!ing.unit)   errors.push('❌ 全成分：單位(代碼) 未選擇');
     }
 
     // Warnings
     if (!basic.note || !basic.note.trim()) {
-      warnings.push('⚠ 使用注意事項 未填寫');
+      warnings.push('⚠ 使用注意事項 未填寫（FDA 系統必填）');
+    }
+    if (!basic.contact || !basic.contact.trim()) {
+      warnings.push('⚠ 聯絡人 未填寫（需填 FDA 系統已登記的人名）');
     }
     const expSt = getExpiryStatus(st.expiry);
     if (expSt === 'expired') warnings.push('⚠ 到期日已過期');
@@ -2567,6 +2604,8 @@ function loadSettingsForm() {
   document.getElementById('settings-status-hidden').value = s.statusHiddenField || '';
   document.getElementById('settings-status-regid').value = s.statusRegIdField || '';
   document.getElementById('settings-status-expiry').value = s.statusExpiryField || '';
+  const dcEl = document.getElementById('settings-default-contact');
+  if (dcEl) dcEl.value = s.defaultContact || '';
 }
 
 function saveSettings() {
@@ -2581,7 +2620,8 @@ function saveSettings() {
     fieldType: document.getElementById('settings-field-type').value.trim(),
     statusHiddenField: document.getElementById('settings-status-hidden').value.trim(),
     statusRegIdField: document.getElementById('settings-status-regid').value.trim(),
-    statusExpiryField: document.getElementById('settings-status-expiry').value.trim()
+    statusExpiryField: document.getElementById('settings-status-expiry').value.trim(),
+    defaultContact: (document.getElementById('settings-default-contact')?.value || '').trim()
   };
   saveSettingsStore(settings);
   const saved = document.getElementById('settings-saved');
