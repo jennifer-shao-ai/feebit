@@ -152,7 +152,7 @@ select[multiple]{padding:4px}
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v1.7 · Feebit © 2026</div>
+  <div class="sidebar-footer">v1.8 · Feebit © 2026</div>
 </div>
 
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
@@ -164,7 +164,7 @@ select[multiple]{padding:4px}
       <button class="btn-hamburger" onclick="openSidebar()">☰</button>
       <span class="topbar-title">FDA 化粧品登錄</span>
       <span class="topbar-badge">法規登錄</span>
-      <span style="font-size:11px;color:var(--gray-400);margin-left:6px">v1.7</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:6px">v1.8</span>
     </div>
   </div>
 
@@ -697,7 +697,11 @@ async function loadFromRagic() {
         supplier: row['廠商代號'] || '',
         brand: row['品牌'] || '',
         qty: row['數量'] || '',
-        category: row['大類名稱'] || ''
+        category: row['大類名稱'] || '',
+        mfrName: row['製造廠名稱'] || row['製造商'] || row['工廠名稱'] || '',
+        mfrAddress: row['製造廠地址'] || row['製造商地址'] || row['工廠地址'] || '',
+        mfrCountry: row['製造廠國別'] || row['製造商國別'] || row['國別'] || '',
+        mfrRegNo: row['工廠登記編號'] || row['製造廠登記編號'] || ''
       });
     }
     if (!loadedProducts.length) { setStatus('ragic-status', '查無資料', 'warning'); }
@@ -994,6 +998,57 @@ function initAccordionEvents(pi, p, saved) {
   if (isCombo(tmpl)) renderComboPane(pi, p, saved);
 }
 
+// ─── KEYWORD DETECTION MAPPING ───────────────────────
+const PRODUCT_KEYWORD_MAP = [
+  { kw: ['洗面','洗臉','卸妝','卸粧','潔面'], type:'0201', form:'F02', use:'11' },
+  { kw: ['沐浴','身體乳','body'], type:'0301', form:'F03', use:'12' },
+  { kw: ['洗髮','護髮','潤髮'], type:'0501', form:'F02', use:'09', altType: { kw: ['洗髮'], type: '0101' } },
+  { kw: ['精華','essence','serum'], type:'0602', form:'F02', use:'15,14' },
+  { kw: ['乳液','emulsion','lotion'], type:'0602', form:'F03', use:'15,14' },
+  { kw: ['乳霜','霜','cream'], type:'0602', form:'F03', use:'15,14' },
+  { kw: ['化妝水','toner','化粧水'], type:'0601', form:'F02', use:'15' },
+  { kw: ['面膜','mask','masque'], type:'0609', form:'F05', use:'15,14' },
+  { kw: ['防曬','sunscreen','spf','pa+'], type:'0607', form:'F03', use:'01' },
+  { kw: ['唇膏','唇蜜','lip'], type:'0901', form:'F05', use:'13' },
+  { kw: ['眼霜','眼膠','eye cream','eye gel'], type:'1101', form:'F05', use:'15,14' },
+  { kw: ['眼影','eye shadow'], type:'1102', form:'F01', use:'13' },
+  { kw: ['眼線','eyeliner'], type:'1103', form:'F02', use:'13' },
+  { kw: ['睫毛膏','mascara'], type:'1106', form:'F05', use:'13' },
+  { kw: ['粉底','foundation','bb cream','cc cream'], type:'1001', form:'F03', use:'13' },
+  { kw: ['氣墊','cushion'], type:'1001', form:'F03', use:'13' },
+  { kw: ['蜜粉','粉餅','powder'], type:'1002', form:'F01', use:'13' },
+  { kw: ['腮紅','blush','bronzer'], type:'1004', form:'F01', use:'13' },
+  { kw: ['指甲','nail'], type:'1201', form:'F02', use:'13' },
+  { kw: ['香水','perfume','fragrance'], type:'0701', form:'F02', use:'22' },
+  { kw: ['爽身粉','body powder'], type:'0702', form:'F01', use:'22' },
+  { kw: ['止汗','antiperspirant'], type:'0801', form:'F08', use:'04' },
+  { kw: ['眉筆','eyebrow'], type:'1107', form:'F07', use:'13' }
+];
+
+function detectProductCodes(name, brand) {
+  const text = ((name||'') + ' ' + (brand||'')).toLowerCase();
+  for (const entry of PRODUCT_KEYWORD_MAP) {
+    for (const kw of entry.kw) {
+      if (text.includes(kw.toLowerCase())) {
+        // special case: 洗髮 -> 0101, 護髮/潤髮 -> 0501
+        if (entry.altType && text.includes(entry.altType.kw.toLowerCase())) {
+          return { type: entry.altType.type, form: entry.form, use: entry.use };
+        }
+        return { type: entry.type, form: entry.form, use: entry.use };
+      }
+    }
+  }
+  return { type: '0610', form: 'F02', use: '99' };
+}
+
+function generateRegId(brand, code) {
+  const brandClean = (brand||'').replace(/[^A-Za-z0-9]/g,'').toUpperCase();
+  const codeClean = (code||'').replace(/[^A-Za-z0-9]/g,'').toUpperCase();
+  const part1 = (brandClean + '000000').slice(0,6);
+  const part2 = (codeClean + '00000000').slice(0,8);
+  return part1 + part2;
+}
+
 // ─── BASIC INFO PANE ─────────────────────────────────
 function renderBasicPane(pi, p, saved) {
   const pane = document.getElementById(`pane-${pi}-0`);
@@ -1001,12 +1056,41 @@ function renderBasicPane(pi, p, saved) {
   const combo = isCombo(tmpl);
   const s = saved.basic || {};
 
+  // Auto-generate regId if empty
+  if (!s.regId) {
+    s.regId = generateRegId(p.brand, p.code);
+    // persist it
+    const forms = getForms();
+    const key = p.code || ('__manual_'+pi);
+    if (!forms[key]) forms[key] = {};
+    if (!forms[key].basic) forms[key].basic = {};
+    forms[key].basic.regId = s.regId;
+    saveForms(forms);
+  }
+
+  // Auto-detect product type/form/use if empty (non-combo only)
+  if (!combo) {
+    const detected = detectProductCodes(p.name, p.brand);
+    if (!s.productType) s.productType = detected.type;
+    if (!s.formulation) s.formulation = detected.form;
+    if (!s.useCode) s.useCode = detected.use;
+    // persist detected values
+    const forms2 = getForms();
+    const key2 = p.code || ('__manual_'+pi);
+    if (!forms2[key2]) forms2[key2] = {};
+    if (!forms2[key2].basic) forms2[key2].basic = {};
+    if (!forms2[key2].basic.productType) forms2[key2].basic.productType = s.productType;
+    if (!forms2[key2].basic.formulation) forms2[key2].basic.formulation = s.formulation;
+    if (!forms2[key2].basic.useCode) forms2[key2].basic.useCode = s.useCode;
+    saveForms(forms2);
+  }
+
   let typeUseForm = '';
   if (!combo) {
     typeUseForm = `
       <div class="form-row">
         <div class="form-group-inline">
-          <label>產品種類(代碼)</label>
+          <label>產品種類(代碼) <button type="button" class="btn-auto-detect-${pi}" onclick="applyAutoDetect(${pi})" style="font-size:11px;padding:2px 7px;border:1px solid var(--gray-300);border-radius:4px;cursor:pointer;background:var(--gray-50);color:var(--gray-700);margin-left:6px">自動判斷</button></label>
           ${buildSelect(PRODUCT_TYPE_CODES, '選擇種類', s.productType||'', `id="bi-type-${pi}" class="bi-field" data-field="productType"`)}
         </div>
         <div class="form-group-inline">
@@ -1018,7 +1102,7 @@ function renderBasicPane(pi, p, saved) {
         <div class="form-group-inline">
           <label>產品用途(代碼)（可多選）</label>
           <select id="bi-use-${pi}" class="bi-field multi-select" data-field="useCode" multiple>
-            ${Object.entries(USE_CODES).map(([k,v]) => `<option value="${k}" ${(s.useCode||'').split(',').includes(k)?'selected':''}>${k} - ${v}</option>`).join('')}
+            ${Object.entries(USE_CODES).map(([k,v]) => `<option value="${k}" ${(s.useCode||'').split(',').filter(Boolean).includes(k)?'selected':''}>${k} - ${v}</option>`).join('')}
           </select>
         </div>
       </div>`;
@@ -1028,7 +1112,10 @@ function renderBasicPane(pi, p, saved) {
     <div class="form-row">
       <div class="form-group-inline">
         <label>登錄編號（14碼英數字）</label>
-        <input type="text" id="bi-regid-${pi}" class="bi-field" data-field="regId" maxlength="14" placeholder="14碼英數字，不含統一編號" value="${s.regId||''}">
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="text" id="bi-regid-${pi}" class="bi-field" data-field="regId" maxlength="14" placeholder="14碼英數字，不含統一編號" value="${s.regId||''}" style="flex:1">
+          <button type="button" onclick="applyAutoRegId(${pi})" style="font-size:11px;padding:4px 8px;border:1px solid var(--gray-300);border-radius:4px;cursor:pointer;background:var(--gray-50);color:var(--gray-700);white-space:nowrap">自動產生</button>
+        </div>
         <div class="error-msg" id="err-regid-${pi}"></div>
       </div>
       <div class="form-group-inline">
@@ -1076,16 +1163,144 @@ function renderBasicPane(pi, p, saved) {
   pane.querySelectorAll(`input[name="origin-${pi}"]`).forEach(r => r.addEventListener('change', () => autoSaveForm(pi)));
 }
 
+function applyAutoRegId(pi) {
+  const p = selectedProducts[pi];
+  const regId = generateRegId(p.brand, p.code);
+  const el = document.getElementById(`bi-regid-${pi}`);
+  if (el) { el.value = regId; autoSaveForm(pi); }
+}
+
+function applyAutoDetect(pi) {
+  const p = selectedProducts[pi];
+  const detected = detectProductCodes(p.name, p.brand);
+  const typeEl = document.getElementById(`bi-type-${pi}`);
+  const formEl = document.getElementById(`bi-form-${pi}`);
+  const useEl = document.getElementById(`bi-use-${pi}`);
+  if (typeEl) typeEl.value = detected.type;
+  if (formEl) formEl.value = detected.form;
+  if (useEl) {
+    const vals = detected.use.split(',').filter(Boolean);
+    Array.from(useEl.options).forEach(o => { o.selected = vals.includes(o.value); });
+  }
+  autoSaveForm(pi);
+}
+
 // ─── FACTORY PANE ─────────────────────────────────────
 function renderFactoryPane(pi, p, saved) {
   const pane = document.getElementById(`pane-${pi}-1`);
   const factories = saved.factories || [];
-  pane.innerHTML = `<div id="factory-rows-${pi}"></div>
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <button class="btn btn-outline" style="font-size:13px" onclick="openFactoryModal(${pi})">從工廠庫新增</button>
-      <button class="btn btn-outline" style="font-size:13px" onclick="addInlineFactoryRow(${pi})">直接輸入</button>
+
+  // Auto-fill from Ragic data if factories list is empty
+  if (!factories.length && p.mfrName) {
+    const forms = getForms();
+    const key = p.code || ('__manual_'+pi);
+    if (!forms[key]) forms[key] = {};
+    if (!forms[key].factories) forms[key].factories = [];
+    forms[key].factories.push({
+      regNo: p.mfrRegNo || '',
+      name: p.mfrName,
+      address: p.mfrAddress || '',
+      country: p.mfrCountry || '',
+      mfgType: 'A'
+    });
+    saveForms(forms);
+    saved = forms[key];
+  }
+
+  const savedFactories = (saved && saved.factories) ? saved.factories : factories;
+  const libFactories = getFactories();
+  const libOptions = libFactories.map((f,i) => `<option value="${i}">${f.name} (${f.country})</option>`).join('');
+
+  pane.innerHTML = `
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+      <select id="factory-lib-sel-${pi}" style="font-size:13px;padding:6px 10px;border:1px solid var(--gray-200);border-radius:6px;flex:1;min-width:200px">
+        <option value="">-- 從工廠庫選取 --</option>
+        ${libOptions}
+      </select>
+      <button class="btn btn-outline" style="font-size:13px" onclick="addFactoryFromLib(${pi})">加入</button>
+    </div>
+    <div id="factory-rows-${pi}"></div>
+    <div style="margin-top:8px">
+      <button class="btn btn-outline" style="font-size:13px" onclick="toggleInlineFactoryForm(${pi})">＋ 直接新增工廠</button>
+    </div>
+    <div id="inline-factory-add-${pi}" style="display:none;margin-top:10px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:6px;padding:12px">
+      <div class="form-row">
+        <div class="form-group-inline">
+          <label>製造/包裝</label>
+          <select id="pf-mfgtype-${pi}">
+            <option value="A">A - 製造</option>
+            <option value="B">B - 包裝</option>
+          </select>
+        </div>
+        <div class="form-group-inline">
+          <label>工廠登記編號</label>
+          <input type="text" id="pf-regno-${pi}" placeholder="選填">
+        </div>
+        <div class="form-group-inline">
+          <label>工廠名稱 *</label>
+          <input type="text" id="pf-name-${pi}" placeholder="必填">
+        </div>
+        <div class="form-group-inline">
+          <label>工廠地址 *</label>
+          <input type="text" id="pf-addr-${pi}" placeholder="必填">
+        </div>
+        <div class="form-group-inline">
+          <label>國別 *</label>
+          <select id="pf-country-${pi}"></select>
+        </div>
+      </div>
+      <button class="btn btn-primary" style="font-size:13px" onclick="addInlinePaneFactory(${pi})">新增</button>
     </div>`;
-  renderFactoryRows(pi, factories);
+
+  renderFactoryRows(pi, savedFactories);
+
+  // Populate country select for inline add form
+  populateCountrySelect(`pf-country-${pi}`);
+}
+
+function toggleInlineFactoryForm(pi) {
+  const el = document.getElementById(`inline-factory-add-${pi}`);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function addFactoryFromLib(pi) {
+  const sel = document.getElementById(`factory-lib-sel-${pi}`);
+  if (!sel || sel.value === '') { alert('請先選擇工廠'); return; }
+  const factory = getFactories()[parseInt(sel.value)];
+  if (!factory) return;
+  const forms = getForms();
+  const key = selectedProducts[pi].code || ('__manual_'+pi);
+  if (!forms[key]) forms[key] = {};
+  if (!forms[key].factories) forms[key].factories = [];
+  const alreadyExists = forms[key].factories.some(f => f.name === factory.name && f.address === factory.address);
+  if (!alreadyExists) {
+    forms[key].factories.push({ regNo: factory.regNo||'', name: factory.name, address: factory.address, country: factory.country, mfgType: 'A' });
+    saveForms(forms);
+    renderFactoryRows(pi, forms[key].factories);
+  }
+  sel.value = '';
+}
+
+function addInlinePaneFactory(pi) {
+  const mfgType = document.getElementById(`pf-mfgtype-${pi}`)?.value || 'A';
+  const regNo = document.getElementById(`pf-regno-${pi}`)?.value.trim() || '';
+  const name = document.getElementById(`pf-name-${pi}`)?.value.trim();
+  const addr = document.getElementById(`pf-addr-${pi}`)?.value.trim();
+  const country = document.getElementById(`pf-country-${pi}`)?.value;
+  if (!name || !addr || !country) { alert('請填寫工廠名稱、地址、國別'); return; }
+  const forms = getForms();
+  const key = selectedProducts[pi].code || ('__manual_'+pi);
+  if (!forms[key]) forms[key] = {};
+  if (!forms[key].factories) forms[key].factories = [];
+  forms[key].factories.push({ regNo, name, address: addr, country, mfgType });
+  saveForms(forms);
+  renderFactoryRows(pi, forms[key].factories);
+  // Reset form fields
+  document.getElementById(`pf-regno-${pi}`).value = '';
+  document.getElementById(`pf-name-${pi}`).value = '';
+  document.getElementById(`pf-addr-${pi}`).value = '';
+  document.getElementById(`pf-country-${pi}`).value = '';
+  document.getElementById(`inline-factory-add-${pi}`).style.display = 'none';
 }
 
 function renderFactoryRows(pi, factories) {
@@ -1224,6 +1439,15 @@ function renderIngredientPane(pi, p, saved) {
   }
 }
 
+// Flagged ingredients keywords (lowercase)
+const FLAGGED_ING_KEYWORDS = ['phenoxyethanol','paraben','methylparaben','ethylparaben','butylparaben','propylparaben','benzoic acid','sorbic acid','benzyl alcohol','sodium benzoate','potassium sorbate','dehydroacetic acid','iodopropynyl','bronopol','dmdm','imidazolidinyl','diazolidinyl','methylisothiazolinone','chlorphenesin','benzalkonium','triclosan','zinc pyrithione','titanium dioxide','zinc oxide','4-methylbenzylidene camphor','octocrylene','avobenzone','oxybenzone','octinoxate','homosalate','octisalate','bisoctrizole','tinosorb','nano','fd&c','d&c','ci 7','ci 1','ci 4','ci 6','resorcinol','hydroquinone','kojic acid','arbutin'];
+
+function isIngFlagged(name) {
+  if (!name) return false;
+  const n = name.toLowerCase();
+  return FLAGGED_ING_KEYWORDS.some(k => n.includes(k));
+}
+
 function buildSingleIngredientBlock(pi, varKey, s) {
   return `
     <div class="form-row">
@@ -1234,6 +1458,18 @@ function buildSingleIngredientBlock(pi, varKey, s) {
           <option value="">選擇單位</option>
           ${Object.entries(UNIT_CODES).map(([k,v])=>`<option value="${k}" ${s.unit===k?'selected':''}>${k} - ${v}</option>`).join('')}
         </select>
+      </div>
+    </div>
+    <div style="margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600;color:var(--gray-700);padding:6px 8px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:6px;user-select:none" onclick="toggleBulkInput('${pi}','${varKey}')">
+        <span id="bulk-arrow-${pi}-${varKey}">▶</span> 快速輸入（批次匯入成分）
+      </div>
+      <div id="bulk-input-${pi}-${varKey}" style="display:none;margin-top:8px;padding:10px;background:#f8fafc;border:1px solid var(--gray-200);border-radius:6px">
+        <textarea id="bulk-ta-${pi}-${varKey}" placeholder="用逗號分隔成分名稱，例：Water, Niacinamide 5%, Glycerin, Phenoxyethanol" style="width:100%;min-height:70px;padding:7px 10px;border:1px solid var(--gray-200);border-radius:4px;font-size:12px;outline:none;resize:vertical;box-sizing:border-box"></textarea>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+          <button class="btn btn-primary" style="font-size:12px;padding:5px 14px" onclick="parseBulkIngredients('${pi}','${varKey}')">解析並匯入</button>
+          <span id="bulk-result-${pi}-${varKey}" style="font-size:12px;color:var(--gray-600)"></span>
+        </div>
       </div>
     </div>
     <div class="ing-lib-row" style="position:relative">
@@ -1251,6 +1487,61 @@ function buildSingleIngredientBlock(pi, varKey, s) {
       <tbody id="ing-tbody-${pi}-${varKey}"></tbody>
     </table></div>
     <button class="btn btn-outline" style="font-size:12px;margin-top:4px" onclick="addIngredientRow('${pi}','${varKey}')">＋ 新增成分</button>`;
+}
+
+function toggleBulkInput(pi, varKey) {
+  const el = document.getElementById(`bulk-input-${pi}-${varKey}`);
+  const arrow = document.getElementById(`bulk-arrow-${pi}-${varKey}`);
+  if (!el) return;
+  const open = el.style.display === 'none';
+  el.style.display = open ? 'block' : 'none';
+  if (arrow) arrow.textContent = open ? '▼' : '▶';
+}
+
+function parseBulkIngredients(pi, varKey) {
+  const ta = document.getElementById(`bulk-ta-${pi}-${varKey}`);
+  if (!ta || !ta.value.trim()) return;
+  const parts = ta.value.split(',').map(s => s.trim()).filter(Boolean);
+  const newRows = [];
+  let flagCount = 0;
+  parts.forEach(item => {
+    // Check for percentage pattern: "Name X%" or "Name(X%)"
+    const pctMatch = item.match(/^(.+?)\s*\(?\s*(\d+(?:\.\d+)?)\s*%\s*\)?$/);
+    let name, qtyType, qtyVal;
+    if (pctMatch) {
+      name = pctMatch[1].trim();
+      qtyType = 'B';
+      qtyVal = pctMatch[2];
+    } else {
+      name = item;
+      qtyType = 'A';
+      qtyVal = '';
+    }
+    const flag = isIngFlagged(name);
+    if (flag) flagCount++;
+    newRows.push({ name, limCode: '', qtyType, qtyVal, flag });
+  });
+
+  // Save rows
+  const forms = getForms();
+  const key = selectedProducts[pi].code || ('__manual_'+pi);
+  if (!forms[key]) forms[key] = {};
+  if (!forms[key].ingredients) forms[key].ingredients = {};
+  const tmpl = selectedProducts[pi].templateType;
+  if (isSeries(tmpl)) {
+    const vi = parseInt(varKey);
+    if (!forms[key].ingredients.variants) forms[key].ingredients.variants = [];
+    if (!forms[key].ingredients.variants[vi]) forms[key].ingredients.variants[vi] = {};
+    forms[key].ingredients.variants[vi].ingredients = newRows;
+    saveForms(forms);
+    renderIngredientRows(pi, vi, newRows);
+  } else {
+    forms[key].ingredients.rows = newRows;
+    saveForms(forms);
+    renderIngredientRows(pi, varKey, newRows);
+  }
+  const resultEl = document.getElementById(`bulk-result-${pi}-${varKey}`);
+  if (resultEl) resultEl.textContent = `已匯入 ${newRows.length} 個成分${flagCount ? `，${flagCount} 個需確認` : ''}`;
 }
 
 function renderVariants(pi, variants) {
@@ -1311,8 +1602,10 @@ function renderIngredientRows(pi, varKey, rows) {
   tbody.innerHTML = '';
   (rows||[]).forEach((r, ri) => {
     const tr = document.createElement('tr');
+    if (r.flag) tr.style.background = '#fff7ed';
+    const flagBadge = r.flag ? `<span style="font-size:10px;background:#fed7aa;color:#c2410c;border-radius:4px;padding:1px 5px;margin-left:4px;white-space:nowrap">⚠ 請確認限量</span>` : '';
     tr.innerHTML = `
-      <td><input type="text" value="${r.name||''}" placeholder="INCI 名稱" onchange="updateIngRow(${pi},'${varKey}',${ri},'name',this.value)"></td>
+      <td><div style="display:flex;align-items:center;gap:4px"><input type="text" value="${r.name||''}" placeholder="INCI 名稱" onchange="updateIngRow(${pi},'${varKey}',${ri},'name',this.value)" style="flex:1">${flagBadge}</div></td>
       <td>${buildSelect(LIMITED_ING_CODES, '無', r.limCode||'', `onchange="updateIngRow(${pi},'${varKey}',${ri},'limCode',this.value)"`)}</td>
       <td><select onchange="updateIngRow(${pi},'${varKey}',${ri},'qtyType',this.value);toggleQtyInput(this)">
         <option value="A" ${r.qtyType==='A'?'selected':''}>A - 適量</option>
@@ -2222,9 +2515,45 @@ function closeSidebar() { document.getElementById('sidebar').classList.remove('o
 // ════════════════════════════════════════════════════════
 // INIT
 // ════════════════════════════════════════════════════════
+const PRESET_FACTORIES = [
+  {id:'pf01', regNo:'', name:'OU International', address:'346 Salgoji-gil, Seongdong-gu, Seoul (04764)', country:'KR'},
+  {id:'pf02', regNo:'', name:'COREANA Co,. Ltd.', address:'6, Samgok 2-gil, Seonggeo-eup, Seobuk-gu, Cheonan-si, Chungcheongnam-do, Republic of Korea', country:'KR'},
+  {id:'pf03', regNo:'', name:'YEGREENA CO., Ltd', address:'39, Aenggpgae-ro 621beon-gil, Namdong-gu, Incheon, Korea', country:'KR'},
+  {id:'pf04', regNo:'', name:'WELCOS CO., LTD', address:'13TH FL. MIWON B/D, 70 GUKJEGEUMYUNG-NO (YEOEUIDO DONG),YEONGDEUNGPO-GU, SEOUL', country:'KR'},
+  {id:'pf05', regNo:'', name:'CELLECO Co,.Ltd', address:'247-19 Simogoecheon-ro, Hyeondo-myeon, Seowon-gu, Cheongju, Chungcheongbuk-do, South Korea', country:'KR'},
+  {id:'pf06', regNo:'', name:'One and Co.,Ltd', address:'331, Pangyo-ro, Bundang-gu, Seongnam-si, Gyeonggi-do, Korea', country:'KR'},
+  {id:'pf07', regNo:'', name:'Amorepacific corporation', address:'100, Hangang-daero, Yongsan-gu, Seoul, Republic of Korea', country:'KR'},
+  {id:'pf08', regNo:'', name:'Amorepacific corporation (Daejeon)', address:'80 Daehwa-ro, Daedeok-gu, Daejeon, Korea', country:'KR'},
+  {id:'pf09', regNo:'', name:'C&C INTERNATIONAL CO.,LTD.', address:'39, Samsung 1-ro 5-gil, Hwaseong-si, Gyeonggi-do, Republic of Korea', country:'KR'},
+  {id:'pf10', regNo:'', name:'KOLMAR KOREA', address:'22-17, Sandan-gil Jeonul-meyon, Sejong Metropolitan Autonomous City, South Korea', country:'KR'},
+  {id:'pf11', regNo:'', name:'COSMAX Co,.Ltd', address:'46 Jeyakgongdan 2-gil, Hyangnam-eup, Hwaseong-si, Gyeonggi-do, South Korea', country:'KR'},
+  {id:'pf12', regNo:'', name:'Amore G', address:'100, Hangang-daero, Yongsan-gu, Seoul, Republic of Korea', country:'KR'},
+  {id:'pf13', regNo:'', name:'Perrennebell', address:'74-1, Hancheon-ro 24-gil, Dongdaemun-gu, Seoul, Republic of Korea', country:'KR'},
+  {id:'pf14', regNo:'', name:'Plastic container & Paper case', address:'Dasan Blue Whale 2, 25-23, Dasanjungang-ro 19beon-gil, Namyangju-si, Gyeonggi-do', country:'KR'},
+  {id:'pf15', regNo:'', name:'ASIA MASTER TRADE CO. LTD', address:'RM 1201,SKV1 CENTER,SEONYU-RO 9-GIL 10,YEONGDEUNGPO-GU, SEOUL, KOREA', country:'KR'},
+  {id:'pf16', regNo:'', name:'Trend-i (W.DRESSROOM)', address:'#702 Seoulsoop Dream Tower 66 Seoungsui-ro, Seongdong-gu, Seoul, Korea', country:'KR'},
+  {id:'pf17', regNo:'', name:'Perrennebell (SOMEBYMI)', address:'74-1, Hancheon-ro 24-gil, Dongdaemun-gu, Seoul, Republic of Korea', country:'KR'},
+  {id:'pf18', regNo:'', name:'NEOPHARM (Real Barrier)', address:'311, Hakdong-ro, Gangnam-gu, Seoul, Republic of Korea', country:'KR'},
+  {id:'pf19', regNo:'', name:'Dr.Jart', address:'769-8, Yeoksam 2-dong, Gangnam-gu, Seoul, Korea', country:'KR'},
+  {id:'pf20', regNo:'', name:'COSRX', address:'#612, Roalland EZ Tower, 69, Seongnamdaero, Bundang-gu, Seongnam-si, Gyeonggi-do, Korea', country:'KR'},
+  {id:'pf21', regNo:'', name:'Style Nanda (3CE)', address:'3,4F, Seomoon Building, 32 Jandari-ro, Mapo-gu, Seoul, Republic of Korea', country:'KR'},
+  {id:'pf22', regNo:'', name:'CH Harmony Co.,Ltd', address:'Pyeongchon O\'BIZ TOWER 218-222ho, 226ho, 126, Beolmal-ro, Dongan-gu, Anyang-si, Gyeonggi-do, Korea 14057', country:'KR'},
+  {id:'pf23', regNo:'', name:'飛比特國際股份有限公司', address:'新北市林口區工二工業區工四路38號', country:'TW'},
+  {id:'pf24', regNo:'', name:'AMOREPACIFIC (INNISFREE)', address:'100, Hangang-daero, Yongsan-gu, Seoul, Republic of Korea', country:'KR'},
+  {id:'pf25', regNo:'', name:'SKIN RESEARCH LTD (Dr.Bontanical)', address:'Enterprise House, 38 Tyndall Court, Commerce Road, Lynchwood, Peterborough, Cambs, PE2 6LR', country:'GB'},
+  {id:'pf26', regNo:'', name:'Saboaria Artesanal Portuguesa, Lda (Esscencials)', address:'Rua Cardillium no 5, 2350-083 Torres Novas', country:'PT'},
+  {id:'pf27', regNo:'', name:'ENBIOSCIENCE CO., LTD (AXIS-Y)', address:'33, Dodam 4-ro, Seo-gu, Incheon (Oryu-dong)', country:'KR'},
+  {id:'pf28', regNo:'', name:'WELCOS CO.,LTD. (DR.SEED)', address:'21-12, Toegyegongdan 1-gil, Chuncheon-si, Gangwon-do, Korea', country:'KR'},
+];
+
 (function init() {
   const key = localStorage.getItem(KEY_KEY) || '';
   document.getElementById('ragic-key-input').value = key;
+  // 預載工廠資料（只在工廠庫為空時匯入，不覆蓋已有資料）
+  const existing = getFactories();
+  if (existing.length === 0) {
+    saveFactories(PRESET_FACTORIES);
+  }
   showStep(1);
 })();
 </script>
