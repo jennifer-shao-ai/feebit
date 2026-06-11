@@ -98,6 +98,17 @@ select[multiple]{padding:4px}
 .ing-lib-dropdown{position:absolute;background:white;border:1px solid var(--gray-200);border-radius:4px;max-height:160px;overflow-y:auto;z-index:100;min-width:220px;box-shadow:0 4px 12px rgba(0,0,0,.1)}
 .ing-lib-dropdown .ing-lib-opt{padding:5px 10px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--gray-100)}
 .ing-lib-dropdown .ing-lib-opt:hover{background:var(--primary);color:white}
+.cp-wrap{display:flex;flex-direction:column;gap:4px}
+.cp-pins{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.cp-pin{padding:3px 8px;border:1px solid var(--gray-200);border-radius:4px;background:white;font-size:12px;cursor:pointer;color:var(--gray-700);white-space:nowrap;transition:all .15s}
+.cp-pin:hover{background:var(--gray-100)}
+.cp-pin.on{background:var(--primary);color:white;border-color:var(--primary)}
+.cp-other-wrap{position:relative;flex:1;min-width:100px}
+.cp-inp{width:100%;padding:4px 8px;border:1px solid var(--gray-200);border-radius:4px;font-size:12px;outline:none;box-sizing:border-box}
+.cp-inp:focus{border-color:var(--primary)}
+.cp-dd{position:absolute;top:100%;left:0;right:0;background:white;border:1px solid var(--gray-200);border-radius:4px;max-height:160px;overflow-y:auto;z-index:300;box-shadow:0 4px 12px rgba(0,0,0,.1)}
+.cp-dd-opt{padding:5px 10px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--gray-100)}
+.cp-dd-opt:hover,.cp-dd-opt:active{background:var(--primary);color:white}
 .btn-save-ing{background:none;border:1px solid var(--gray-200);border-radius:4px;cursor:pointer;padding:2px 6px;font-size:12px;color:var(--gray-600);transition:all .15s;margin-left:2px}
 .btn-save-ing:hover{background:#dcfce7;border-color:var(--success);color:var(--success)}
 @media(max-width:768px){
@@ -152,7 +163,7 @@ select[multiple]{padding:4px}
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v1.8 · Feebit © 2026</div>
+  <div class="sidebar-footer">v1.9 · Feebit © 2026</div>
 </div>
 
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
@@ -164,7 +175,7 @@ select[multiple]{padding:4px}
       <button class="btn-hamburger" onclick="openSidebar()">☰</button>
       <span class="topbar-title">FDA 化粧品登錄</span>
       <span class="topbar-badge">法規登錄</span>
-      <span style="font-size:11px;color:var(--gray-400);margin-left:6px">v1.8</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:6px">v1.9</span>
     </div>
   </div>
 
@@ -347,7 +358,7 @@ select[multiple]{padding:4px}
             <div class="form-group-inline"><label>工廠登記編號</label><input type="text" id="nf-regno" placeholder="選填"></div>
             <div class="form-group-inline"><label>工廠名稱 *</label><input type="text" id="nf-name" placeholder="必填"></div>
             <div class="form-group-inline"><label>工廠地址 *</label><input type="text" id="nf-addr" placeholder="必填"></div>
-            <div class="form-group-inline"><label>國別 *</label><select id="nf-country"></select></div>
+            <div class="form-group-inline"><label>國別 *</label><select id="nf-country"><option value="">選擇國別</option></select></div>
             <button class="btn btn-primary" onclick="saveNewFactory()" style="align-self:flex-end">新增</button>
           </div>
         </div>
@@ -446,6 +457,7 @@ select[multiple]{padding:4px}
       <div class="radio-group">
         <label><input type="radio" name="batch-mfg-type" value="A" checked> A - 製造</label>
         <label><input type="radio" name="batch-mfg-type" value="B"> B - 包裝</label>
+        <label><input type="radio" name="batch-mfg-type" value="AB"> A+B 同廠</label>
       </div>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
@@ -471,7 +483,7 @@ select[multiple]{padding:4px}
         <div class="form-group-inline"><label>工廠登記編號</label><input type="text" id="if-regno" placeholder="選填"></div>
         <div class="form-group-inline"><label>工廠名稱 *</label><input type="text" id="if-name"></div>
         <div class="form-group-inline"><label>工廠地址 *</label><input type="text" id="if-addr"></div>
-        <div class="form-group-inline"><label>國別 *</label><select id="if-country"></select></div>
+        <div class="form-group-inline"><label>國別 *</label><select id="if-country"><option value="">選擇國別</option></select></div>
       </div>
       <button class="btn btn-primary" onclick="addInlineFactory()">新增並選取</button>
     </div>
@@ -581,12 +593,51 @@ function buildSelect(codes, placeholder, selectedVal, attrs) {
   return html + '</select>';
 }
 
-function buildCountrySelect(id, selectedVal) {
-  let html = `<select id="${id}"><option value="">選擇國別</option>`;
-  for (const [k,v] of Object.entries(COUNTRY_CODES)) {
-    html += `<option value="${k}" ${selectedVal===k?'selected':''}>${k} - ${v}</option>`;
+function buildCountryPicker(id, selectedVal) {
+  const isTW = selectedVal === 'TW', isKR = selectedVal === 'KR';
+  const otherVal = (selectedVal && !isTW && !isKR) ? `${selectedVal} - ${COUNTRY_CODES[selectedVal]||selectedVal}` : '';
+  return `<div class="cp-wrap">
+    <div class="cp-pins">
+      <button type="button" class="cp-pin${isTW?' on':''}" data-code="TW" onclick="cpPick('${id}','TW',this)">TW 台灣</button>
+      <button type="button" class="cp-pin${isKR?' on':''}" data-code="KR" onclick="cpPick('${id}','KR',this)">KR 韓國</button>
+      <div class="cp-other-wrap">
+        <input type="text" id="cpi-${id}" class="cp-inp" placeholder="搜尋其他國別…" value="${otherVal}" onfocus="cpOpen('${id}')" oninput="cpFilter('${id}',this.value)" autocomplete="off" onblur="setTimeout(()=>cpClose('${id}'),160)">
+        <div class="cp-dd" id="cpdd-${id}"></div>
+      </div>
+    </div>
+    <input type="hidden" id="${id}" value="${selectedVal||''}">
+  </div>`;
+}
+function buildCountrySelect(id, selectedVal) { return buildCountryPicker(id, selectedVal); }
+
+function cpPick(id, code, btn) {
+  const hidden = document.getElementById(id);
+  if (hidden) { hidden.value = code; hidden.dispatchEvent(new Event('change', {bubbles:true})); }
+  const inp = document.getElementById('cpi-'+id);
+  if (inp) { inp.value = ''; inp.blur(); }
+  if (btn) {
+    const pins = btn.closest('.cp-pins').querySelectorAll('.cp-pin');
+    pins.forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
   }
-  return html + '</select>';
+  cpClose(id);
+}
+function cpOpen(id) { cpFilter(id, document.getElementById('cpi-'+id)?.value||''); }
+function cpClose(id) { const d=document.getElementById('cpdd-'+id); if(d) d.style.display=''; }
+function cpFilter(id, q) {
+  const dd = document.getElementById('cpdd-'+id);
+  if (!dd) return;
+  const ql = q.toLowerCase();
+  let html = '';
+  for (const [k,v] of Object.entries(COUNTRY_CODES)) {
+    if (k==='TW'||k==='KR') continue;
+    if (!ql || k.toLowerCase().includes(ql) || v.includes(ql)) {
+      const safe = v.replace(/'/g,'&#39;');
+      html += `<div class="cp-dd-opt" onmousedown="event.preventDefault();cpPick('${id}','${k}',null);document.getElementById('cpi-${id}').value='${k} - ${safe}';">${k} - ${v}</div>`;
+    }
+  }
+  dd.innerHTML = html || '<div style="padding:8px 10px;color:var(--gray-400);font-size:12px">無符合結果</div>';
+  dd.style.display = 'block';
 }
 
 function templateBadge(t) {
@@ -701,7 +752,9 @@ async function loadFromRagic() {
         mfrName: row['製造廠名稱'] || row['製造商'] || row['工廠名稱'] || '',
         mfrAddress: row['製造廠地址'] || row['製造商地址'] || row['工廠地址'] || '',
         mfrCountry: row['製造廠國別'] || row['製造商國別'] || row['國別'] || '',
-        mfrRegNo: row['工廠登記編號'] || row['製造廠登記編號'] || ''
+        mfrRegNo: row['工廠登記編號'] || row['製造廠登記編號'] || '',
+        usageNotes: row['使用注意事項'] || '',
+        labelContent: row['中文標籤內容'] || ''
       });
     }
     if (!loadedProducts.length) { setStatus('ragic-status', '查無資料', 'warning'); }
@@ -1084,6 +1137,14 @@ function renderBasicPane(pi, p, saved) {
     if (!forms2[key2].basic.useCode) forms2[key2].basic.useCode = s.useCode;
     saveForms(forms2);
   }
+  // Auto-persist usageNotes from Ragic if note is empty
+  if (!s.note && p.usageNotes) {
+    const forms3 = getForms();
+    const key3 = p.code || ('__manual_'+pi);
+    if (!forms3[key3]) forms3[key3] = {};
+    if (!forms3[key3].basic) forms3[key3].basic = {};
+    if (!forms3[key3].basic.note) { forms3[key3].basic.note = p.usageNotes; saveForms(forms3); }
+  }
 
   let typeUseForm = '';
   if (!combo) {
@@ -1139,8 +1200,8 @@ function renderBasicPane(pi, p, saved) {
     ${typeUseForm}
     <div class="form-row">
       <div class="form-group-inline">
-        <label>使用注意事項</label>
-        <textarea id="bi-note-${pi}" class="bi-field" data-field="note" rows="2">${s.note||''}</textarea>
+        <label>使用注意事項${p.usageNotes && !s.note ? ' <span style="font-size:11px;color:var(--success);font-weight:400">自動帶入自 Ragic</span>' : ''}</label>
+        <textarea id="bi-note-${pi}" class="bi-field" data-field="note" rows="2">${s.note || p.usageNotes || ''}</textarea>
       </div>
     </div>`;
 
@@ -1211,7 +1272,12 @@ function renderFactoryPane(pi, p, saved) {
   const libFactories = getFactories();
   const libOptions = libFactories.map((f,i) => `<option value="${i}">${f.name} (${f.country})</option>`).join('');
 
-  pane.innerHTML = `
+  const comboNote = isCombo(p.templateType)
+    ? `<div style="font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:8px 10px;margin-bottom:10px">
+        ℹ️ 組合式產品：此處設定的製造廠適用於整組登錄號下所有組合項目。每個不同的禮盒組合各自有獨立的登錄編號與工廠資料，不需共用登錄編號。
+       </div>` : '';
+
+  pane.innerHTML = comboNote + `
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
       <select id="factory-lib-sel-${pi}" style="font-size:13px;padding:6px 10px;border:1px solid var(--gray-200);border-radius:6px;flex:1;min-width:200px">
         <option value="">-- 從工廠庫選取 --</option>
@@ -1230,6 +1296,7 @@ function renderFactoryPane(pi, p, saved) {
           <select id="pf-mfgtype-${pi}">
             <option value="A">A - 製造</option>
             <option value="B">B - 包裝</option>
+            <option value="AB">A+B 同廠</option>
           </select>
         </div>
         <div class="form-group-inline">
@@ -1321,6 +1388,7 @@ function renderFactoryRows(pi, factories) {
         <select onchange="updateFactoryField(${pi},${fi},'mfgType',this.value)">
           <option value="A" ${f.mfgType==='A'?'selected':''}>A - 製造</option>
           <option value="B" ${f.mfgType==='B'?'selected':''}>B - 包裝</option>
+          <option value="AB" ${f.mfgType==='AB'?'selected':''}>A+B 同廠</option>
         </select>
       </div>
       <div style="padding-top:20px"><button class="btn-icon" onclick="removeFactoryRow(${pi},${fi})">✕</button></div>`;
@@ -1989,11 +2057,12 @@ function runValidation() {
     content.innerHTML = parts.join('');
   }
 
-  // Enable/disable export buttons based on errors
+  // Show warning on export buttons if errors exist, but don't block
   document.querySelectorAll('#export-groups button').forEach(btn => {
-    btn.disabled = hasErrors;
-    btn.style.opacity = hasErrors ? '0.5' : '';
-    btn.title = hasErrors ? '請先修正錯誤欄位' : '';
+    btn.disabled = false;
+    btn.style.opacity = '';
+    btn.title = hasErrors ? '有欄位未完成，匯出時會有空白欄位' : '';
+    btn.style.borderColor = hasErrors ? 'var(--warning,#f59e0b)' : '';
   });
 }
 
@@ -2179,10 +2248,13 @@ function factoryRows(items, forms, extraCols) {
     const f = forms[key] || {};
     const factories = f.factories || [];
     factories.forEach(fac => {
-      const row = [f.basic?.regId||''];
-      if (extraCols) extraCols.forEach(fn => row.push(fn(fac)));
-      row.push(fac.mfgType||'A', fac.regNo||'', fac.name||'', fac.address||'', fac.country||'');
-      rows.push(row);
+      const types = fac.mfgType === 'AB' ? ['A', 'B'] : [fac.mfgType || 'A'];
+      types.forEach(t => {
+        const row = [f.basic?.regId||''];
+        if (extraCols) extraCols.forEach(fn => row.push(fn(fac)));
+        row.push(t, fac.regNo||'', fac.name||'', fac.address||'', fac.country||'');
+        rows.push(row);
+      });
     });
   });
   return rows;
@@ -2459,15 +2531,26 @@ function deleteFactory(i) {
   renderFactoryCopyCards();
 }
 
-function populateCountrySelect(id) {
-  const sel = document.getElementById(id);
-  if (!sel) return;
-  sel.innerHTML = '<option value="">選擇國別</option>';
-  for (const [k,v] of Object.entries(COUNTRY_CODES)) {
-    const opt = document.createElement('option');
-    opt.value = k; opt.textContent = `${k} - ${v}`;
-    sel.appendChild(opt);
+function populateCountrySelect(id, selectedVal) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (el.tagName === 'INPUT' && el.type === 'hidden') {
+    // Already a picker — just reset value if requested
+    if (selectedVal !== undefined) {
+      el.value = selectedVal || '';
+      const wrap = el.closest('.cp-wrap');
+      if (wrap) {
+        wrap.querySelectorAll('.cp-pin').forEach(b => b.classList.toggle('on', b.dataset.code === selectedVal));
+        const inp = wrap.querySelector('.cp-inp');
+        if (inp) inp.value = (selectedVal && selectedVal!=='TW' && selectedVal!=='KR') ? `${selectedVal} - ${COUNTRY_CODES[selectedVal]||''}` : '';
+      }
+    }
+    return;
   }
+  // First time: replace <select> with custom picker
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = buildCountryPicker(id, selectedVal || '');
+  el.replaceWith(wrapper.firstChild);
 }
 
 // ════════════════════════════════════════════════════════
