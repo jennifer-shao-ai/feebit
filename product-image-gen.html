@@ -201,7 +201,7 @@
     <a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span> 旅行規劃</a>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v1.0</div>
+  <div class="sidebar-footer">v1.1</div>
 </div>
 <div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.remove('open');this.classList.remove('active')"></div>
 
@@ -212,7 +212,7 @@
     <span class="topbar-title">商品圖一鍵生成</span>
     <div style="display:flex;gap:8px;align-items:center">
       <button class="btn-sm" onclick="openSettings()">⚙ API 設定</button>
-      <span class="topbar-badge">v1.0</span>
+      <span class="topbar-badge">v1.1</span>
     </div>
   </div>
 
@@ -225,9 +225,9 @@
         <a onclick="openSettings()">點此設定</a>
       </div>
 
-      <!-- ── Step 1: 輸入商品資料 ── -->
+      <!-- ── Step 1: 上傳商品圖 ── -->
       <div class="pig-card" id="card-input">
-        <h2><span class="step-num">1</span> 輸入商品資料</h2>
+        <h2><span class="step-num">1</span> 上傳商品圖片</h2>
 
         <div class="pig-tabs">
           <button class="pig-tab active" id="tab-btn-url" onclick="switchTab('url')">淘寶連結</button>
@@ -241,6 +241,14 @@
             <button class="btn-primary" id="btn-fetch" onclick="fetchTaobaoImages()">抓取圖片</button>
           </div>
           <p id="fetch-status" style="font-size:12px;color:var(--gray-400);margin-top:6px"></p>
+          <!-- Fallback hint shown when scraping fails -->
+          <div id="fetch-fallback" class="hidden" style="background:#fef3c7;border:1px solid #d97706;border-radius:8px;padding:10px 14px;margin-top:10px;font-size:13px;line-height:1.6">
+            💡 <strong>淘寶圖片無法自動抓取</strong>（伺服器在美國被擋）<br>
+            請改用手動上傳：在淘寶商品頁 <strong>右鍵圖片 → 另存圖片</strong>，再切換到「手動上傳」
+            <div style="margin-top:6px">
+              <button class="btn-sm" onclick="switchTab('upload')">切換到手動上傳</button>
+            </div>
+          </div>
         </div>
 
         <!-- Upload tab -->
@@ -257,25 +265,41 @@
           <input type="file" id="file-input" accept="image/*" multiple style="display:none" onchange="handleFileInput(this.files)">
         </div>
 
-        <!-- Images preview (shared) -->
+        <!-- Images preview -->
         <div id="images-section" class="hidden">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px">
-            <div style="font-size:13px;font-weight:600;color:var(--gray-700)">選擇商品主圖（建議選 1-3 張）</div>
+            <div style="font-size:13px;font-weight:600;color:var(--gray-700)">選擇要使用的圖片（建議選 1-3 張）</div>
             <button class="btn-sm" onclick="clearImages()">清除全部</button>
           </div>
           <div id="images-grid" class="images-grid"></div>
-        </div>
-
-        <!-- Product name -->
-        <div class="field-row" style="margin-top:14px">
-          <label>商品名稱</label>
-          <input type="text" id="product-name" placeholder="例：金絲編織去污洗碗布（可直接從淘寶帶入）">
+          <div style="margin-top:12px">
+            <button class="btn-primary" id="btn-analyze" onclick="analyzeProduct()">下一步：AI 建議品名</button>
+          </div>
         </div>
       </div>
 
-      <!-- ── Step 2: 生成設定 ── -->
-      <div class="pig-card" id="card-options">
-        <h2><span class="step-num">2</span> 生成設定</h2>
+      <!-- ── Step 2: 品名確認 ── -->
+      <div class="pig-card hidden" id="card-names">
+        <h2><span class="step-num">2</span> 確認商品名稱</h2>
+        <div id="names-loading" style="color:var(--gray-400);font-size:13px;display:flex;align-items:center;gap:8px">
+          <div class="spinner"></div> AI 分析商品圖中...
+        </div>
+        <div id="names-result" class="hidden">
+          <div style="font-size:13px;color:var(--gray-600);margin-bottom:10px">點選其中一款作為品名，或自行輸入：</div>
+          <div id="name-options"></div>
+          <div class="field-row" style="margin-top:12px">
+            <label>確認 / 自訂品名</label>
+            <input type="text" id="product-name" placeholder="選擇上方品名或自行輸入">
+          </div>
+          <div style="margin-top:12px">
+            <button class="btn-primary" onclick="proceedToGenerate()">確認，繼續生成</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Step 3: 生成設定 ── -->
+      <div class="pig-card hidden" id="card-options">
+        <h2><span class="step-num">3</span> 生成設定</h2>
 
         <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-bottom:6px">要生成哪些內容？</div>
         <div class="gen-options">
@@ -294,7 +318,6 @@
 
         <div class="gen-row">
           <button class="btn-primary" id="btn-generate" onclick="startGenerate()">一鍵生成</button>
-          <span id="gen-hint" style="font-size:12px;color:var(--gray-400)">請先選擇商品圖並輸入商品名稱</span>
         </div>
       </div>
 
@@ -489,6 +512,9 @@ function setFetchStatus(msg, type) {
   const el = document.getElementById('fetch-status')
   el.textContent = msg
   el.style.color = type === 'error' ? '#dc2626' : type === 'ok' ? '#16a34a' : 'var(--gray-400)'
+  // Show fallback hint when scraping fails
+  const fallback = document.getElementById('fetch-fallback')
+  if (fallback) fallback.classList.toggle('hidden', type !== 'error')
 }
 
 // ── File upload ──
@@ -515,6 +541,61 @@ function handleFiles(files) {
     }
     reader.readAsDataURL(file)
   })
+}
+
+// ── Step 2: Analyze product → suggest names ──
+async function analyzeProduct() {
+  const apiKey = getApiKey()
+  if (!apiKey) { openSettings(); return }
+  if (!selectedIdx.size) return alert('請先選擇至少一張商品圖')
+
+  document.getElementById('card-names').classList.remove('hidden')
+  document.getElementById('card-options').classList.add('hidden')
+  document.getElementById('names-loading').classList.remove('hidden')
+  document.getElementById('names-result').classList.add('hidden')
+  document.getElementById('card-names').scrollIntoView({ behavior: 'smooth', block: 'start' })
+
+  try {
+    const dataUrls = await getSelectedDataUrls()
+    const content = [
+      ...dataUrls.slice(0, 2).map(url => ({ type: 'image_url', image_url: { url } })),
+      { type: 'text', text: '根據這個商品的圖片，請提供 3 個適合台灣蝦皮賣場的商品品名建議。每個品名 15-25 字，需包含主要關鍵字，簡潔有吸引力。只輸出 3 行，每行一個品名，不要加編號或說明。' }
+    ]
+
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'gpt-4o', messages: [{ role: 'user', content }], max_tokens: 200 })
+    })
+    const data = await res.json()
+    if (data.error) throw new Error(data.error.message)
+
+    const names = (data.choices?.[0]?.message?.content || '').split('\n').map(s => s.trim()).filter(Boolean).slice(0, 3)
+    const optionsEl = document.getElementById('name-options')
+    optionsEl.innerHTML = names.map(n => `
+      <div class="wencai-option" onclick="selectName('${n.replace(/'/g, "\\'")}', this)" style="cursor:pointer">
+        <span>${n}</span>
+        <span style="font-size:11px;color:var(--primary);flex-shrink:0">點選使用</span>
+      </div>`).join('')
+
+    document.getElementById('names-loading').classList.add('hidden')
+    document.getElementById('names-result').classList.remove('hidden')
+  } catch (e) {
+    document.getElementById('names-loading').textContent = '分析失敗：' + e.message
+  }
+}
+
+function selectName(name, el) {
+  document.querySelectorAll('#name-options .wencai-option').forEach(o => o.style.borderColor = '')
+  el.style.borderColor = 'var(--primary)'
+  document.getElementById('product-name').value = name
+}
+
+function proceedToGenerate() {
+  const name = document.getElementById('product-name').value.trim()
+  if (!name) return alert('請輸入或選擇一個商品名稱')
+  document.getElementById('card-options').classList.remove('hidden')
+  document.getElementById('card-options').scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 // ── Image grid ──
