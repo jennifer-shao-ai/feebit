@@ -201,7 +201,7 @@
     <a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span> 旅行規劃</a>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v1.1</div>
+  <div class="sidebar-footer">v1.2</div>
 </div>
 <div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.remove('open');this.classList.remove('active')"></div>
 
@@ -212,7 +212,7 @@
     <span class="topbar-title">商品圖一鍵生成</span>
     <div style="display:flex;gap:8px;align-items:center">
       <button class="btn-sm" onclick="openSettings()">⚙ API 設定</button>
-      <span class="topbar-badge">v1.1</span>
+      <span class="topbar-badge">v1.2</span>
     </div>
   </div>
 
@@ -227,27 +227,41 @@
 
       <!-- ── Step 1: 上傳商品圖 ── -->
       <div class="pig-card" id="card-input">
-        <h2><span class="step-num">1</span> 上傳商品圖片</h2>
+        <h2><span class="step-num">1</span> 匯入商品圖片</h2>
 
-        <div class="pig-tabs">
-          <button class="pig-tab active" id="tab-btn-url" onclick="switchTab('url')">淘寶連結</button>
-          <button class="pig-tab" id="tab-btn-upload" onclick="switchTab('upload')">手動上傳</button>
+        <!-- Bookmarklet banner -->
+        <div style="background:var(--primary-light);border:1px solid var(--primary);border-radius:8px;padding:12px 16px;margin-bottom:14px">
+          <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:6px">⚡ 一鍵抓圖書籤（最快）</div>
+          <div style="font-size:12px;color:var(--gray-600);margin-bottom:8px">把下方按鈕拖曳到瀏覽器書籤列，之後在任何淘寶商品頁點一下，自動帶入所有圖片。</div>
+          <a id="bookmarklet-link" href="" style="display:inline-block;background:var(--primary);color:white;padding:7px 16px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;cursor:grab">⚡ 飛比特抓圖</a>
+          <span style="font-size:11px;color:var(--gray-400);margin-left:8px">← 拖曳到書籤列</span>
         </div>
 
-        <!-- URL tab -->
-        <div id="tab-url">
-          <div class="url-row">
-            <input type="text" id="taobao-url" placeholder="貼上淘寶商品網址 https://item.taobao.com/item.htm?id=...">
-            <button class="btn-primary" id="btn-fetch" onclick="fetchTaobaoImages()">抓取圖片</button>
+        <div class="pig-tabs">
+          <button class="pig-tab active" id="tab-btn-upload" onclick="switchTab('upload')">上傳圖片</button>
+          <button class="pig-tab" id="tab-btn-imgurl" onclick="switchTab('imgurl')">貼圖片網址</button>
+        </div>
+
+        <!-- Upload tab (now primary) -->
+        <div id="tab-upload">
+          <div class="dropzone" id="dropzone"
+            onclick="document.getElementById('file-input').click()"
+            ondragover="event.preventDefault();this.classList.add('drag-over')"
+            ondragleave="this.classList.remove('drag-over')"
+            ondrop="handleDrop(event)">
+            <div class="dz-icon">📁</div>
+            <div>點擊或拖曳上傳商品圖片</div>
+            <div style="font-size:12px;color:var(--gray-400);margin-top:4px">支援 JPG、PNG，可多張</div>
           </div>
-          <p id="fetch-status" style="font-size:12px;color:var(--gray-400);margin-top:6px"></p>
-          <!-- Fallback hint shown when scraping fails -->
-          <div id="fetch-fallback" class="hidden" style="background:#fef3c7;border:1px solid #d97706;border-radius:8px;padding:10px 14px;margin-top:10px;font-size:13px;line-height:1.6">
-            💡 <strong>淘寶圖片無法自動抓取</strong>（伺服器在美國被擋）<br>
-            請改用手動上傳：在淘寶商品頁 <strong>右鍵圖片 → 另存圖片</strong>，再切換到「手動上傳」
-            <div style="margin-top:6px">
-              <button class="btn-sm" onclick="switchTab('upload')">切換到手動上傳</button>
-            </div>
+          <input type="file" id="file-input" accept="image/*" multiple style="display:none" onchange="handleFileInput(this.files)">
+        </div>
+
+        <!-- Image URL tab (secondary) -->
+        <div id="tab-imgurl" class="hidden">
+          <textarea id="img-urls" rows="3" placeholder="貼上 alicdn.com 圖片網址，每行一個" style="width:100%;padding:9px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:13px;outline:none;resize:vertical;box-sizing:border-box;font-family:inherit"></textarea>
+          <div style="margin-top:8px">
+            <button class="btn-primary" onclick="loadImageUrls()">載入圖片</button>
+            <span id="url-load-status" style="font-size:12px;color:var(--gray-400);margin-left:8px"></span>
           </div>
         </div>
 
@@ -461,10 +475,53 @@ function checkKeyBanner() {
 
 // ── Tab switching ──
 function switchTab(tab) {
-  document.getElementById('tab-url').classList.toggle('hidden', tab !== 'url')
   document.getElementById('tab-upload').classList.toggle('hidden', tab !== 'upload')
-  document.getElementById('tab-btn-url').classList.toggle('active', tab === 'url')
+  document.getElementById('tab-imgurl').classList.toggle('hidden', tab !== 'imgurl')
   document.getElementById('tab-btn-upload').classList.toggle('active', tab === 'upload')
+  document.getElementById('tab-btn-imgurl').classList.toggle('active', tab === 'imgurl')
+}
+
+// ── Load images from pasted URLs ──
+async function loadImageUrls() {
+  const raw = document.getElementById('img-urls').value.trim()
+  if (!raw) return
+  const urls = raw.split('\n').map(u => u.trim()).filter(u => u.startsWith('http'))
+  if (!urls.length) return alert('請輸入有效的 http/https 網址')
+
+  document.getElementById('url-load-status').textContent = '載入中...'
+  urls.forEach((src, i) => {
+    if (!images.find(img => img.src === src)) {
+      images.push({ src, dataUrl: null, name: `圖片${images.length + 1}` })
+      selectedIdx.add(images.length - 1)
+    }
+  })
+  renderImageGrid()
+  document.getElementById('url-load-status').textContent = `已載入 ${urls.length} 張`
+}
+
+// ── Auto-load images from URL params (bookmarklet flow) ──
+function loadFromUrlParams() {
+  const params = new URLSearchParams(window.location.search)
+  const imgsParam = params.get('imgs')
+  const titleParam = params.get('title')
+  if (!imgsParam) return
+
+  const urls = imgsParam.split(',').map(decodeURIComponent).filter(Boolean)
+  if (titleParam) document.getElementById('product-name').value = decodeURIComponent(titleParam)
+
+  images = urls.map((src, i) => ({ src, dataUrl: null, name: `商品圖${i + 1}` }))
+  selectedIdx = new Set(images.map((_, i) => i))
+  renderImageGrid()
+
+  // Clean URL without reload
+  window.history.replaceState({}, '', window.location.pathname)
+}
+
+// ── Set bookmarklet href ──
+function initBookmarklet() {
+  const toolUrl = window.location.origin + window.location.pathname
+  const bm = `javascript:(function(){var imgs=[],seen={};document.querySelectorAll('img,[data-src],[data-lazy-src],[data-img-src]').forEach(function(e){var s=e.src||e.getAttribute('data-src')||e.getAttribute('data-lazy-src')||e.getAttribute('data-img-src')||'';if(s&&s.includes('alicdn.com')&&!seen[s]&&(e.naturalWidth||0)>100){seen[s]=1;imgs.push(s.split('?')[0]);}});if(!imgs.length){alert('找不到圖片，請確認在淘寶商品頁');return;}var t=document.title.replace(/-\\s*淘寶.*/,'').trim();window.open('${toolUrl}?title='+encodeURIComponent(t)+'&imgs='+imgs.slice(0,9).map(encodeURIComponent).join(','),'_blank');})();`
+  document.getElementById('bookmarklet-link').href = bm
 }
 
 // ── Style selector ──
@@ -1043,6 +1100,8 @@ function dataUrlToBlob(dataUrl) {
 
 // ── Init ──
 checkKeyBanner()
+initBookmarklet()
+loadFromUrlParams()
 </script>
 </body>
 </html>
