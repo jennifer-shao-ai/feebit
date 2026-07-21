@@ -205,7 +205,7 @@
     <a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span> 旅行規劃</a>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v1.4</div>
+  <div class="sidebar-footer">v1.5</div>
 </div>
 <div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.remove('open');this.classList.remove('active')"></div>
 
@@ -216,7 +216,7 @@
     <span class="topbar-title">商品圖一鍵生成</span>
     <div style="display:flex;gap:8px;align-items:center">
       <button class="btn-sm" onclick="openSettings()">⚙ API 設定</button>
-      <span class="topbar-badge">v1.4</span>
+      <span class="topbar-badge">v1.5</span>
     </div>
   </div>
 
@@ -503,55 +503,85 @@ async function loadImageUrls() {
   document.getElementById('url-load-status').textContent = `已載入 ${urls.length} 張`
 }
 
-// ── Auto-load images from URL params (bookmarklet flow) ──
-function loadFromUrlParams() {
-  const params = new URLSearchParams(window.location.search)
-  const imgsParam = params.get('imgs')
-  const titleParam = params.get('title')
-  if (!imgsParam) return
-
-  const urls = imgsParam.split(',').map(decodeURIComponent).filter(Boolean)
-  if (titleParam) document.getElementById('product-name').value = decodeURIComponent(titleParam)
-
+// ── Load images from bookmarklet (postMessage or URL params) ──
+function loadBookmarkletImages(urls, title) {
+  if (!urls || !urls.length) return
+  if (title) document.getElementById('product-name').value = title
   images = urls.map((src, i) => ({ src, dataUrl: null, name: `商品圖${i + 1}` }))
   selectedIdx = new Set(images.map((_, i) => i))
   renderImageGrid()
-
-  // Clean URL without reload
-  window.history.replaceState({}, '', window.location.pathname)
+  // Hide waiting banner if visible
+  const banner = document.getElementById('bookmarklet-waiting')
+  if (banner) banner.remove()
+  // Scroll to images
+  document.getElementById('card-input').scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
+
+function loadFromUrlParams() {
+  const params = new URLSearchParams(window.location.search)
+  window.history.replaceState({}, '', window.location.pathname)
+
+  // Waiting mode: bookmarklet opened this page, images coming via postMessage
+  if (params.get('from') === 'bookmarklet') {
+    const banner = document.createElement('div')
+    banner.id = 'bookmarklet-waiting'
+    banner.style.cssText = 'background:#fef3c7;border:1px solid #d97706;border-radius:8px;padding:12px 16px;font-size:13px;display:flex;align-items:center;gap:10px;margin-bottom:12px'
+    banner.innerHTML = '<span style="font-size:18px">⏳</span> 正在從淘寶抓取圖片，請稍候...'
+    document.getElementById('images-section').before(banner)
+    document.getElementById('images-section').classList.remove('hidden')
+    return
+  }
+
+  // Direct URL params (legacy fallback)
+  const imgsParam = params.get('imgs')
+  const titleParam = params.get('title')
+  if (!imgsParam) return
+  const urls = imgsParam.split(',').map(decodeURIComponent).filter(Boolean)
+  loadBookmarkletImages(urls, titleParam ? decodeURIComponent(titleParam) : '')
+}
+
+// Listen for images sent from bookmarklet via postMessage
+window.addEventListener('message', function(e) {
+  try {
+    const d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data
+    if (d && d.type === 'pig-images' && d.imgs && d.imgs.length) {
+      loadBookmarkletImages(d.imgs, d.title || '')
+    }
+  } catch(_) {}
+})
 
 // ── Set bookmarklet href ──
 function initBookmarklet() {
   const toolUrl = window.location.origin + window.location.pathname
-  // Auto-scrolls page to trigger lazy-load, then captures main + detail images using
-  // Taobao's own class selectors (thumbnailItem, descV8-singleImage, descV8-richtext)
-  // plus data-ks-lazyload attribute. Opens tool with up to 40 images.
+  // Step 1: open tool window immediately (must be in user-click context to bypass popup blocker)
+  // Step 2: silently auto-scroll page to load all lazy images
+  // Step 3: capture main + detail images, send via postMessage to already-open tool window
   const bm = `javascript:(function(){
+var TOOL='${toolUrl}?from=bookmarklet';
+var w=window.open(TOOL,'_blank');
 function toFull(s){if(!s)return '';s=s.trim();if(s.startsWith('http'))return s;if(s.startsWith('//'))return 'https:'+s;return '';}
 function isOk(u){return u&&u.includes('alicdn.com')&&!u.match(/\\.gif$/i)&&!u.match(/_\\d+x\\d+\\.[a-z]/i);}
 function cleanUrl(u){return u.split('?')[0];}
 var ATTRS=['src','data-src','data-lazy-src','data-img-src','data-original','data-echo','data-ks-lazyload'];
-function pickFromEl(el,seen,arr){ATTRS.forEach(function(a){var s=toFull(el.getAttribute(a)||'');if(s){var c=cleanUrl(s);if(isOk(c)&&!seen[c]){seen[c]=1;arr.push(c);}}});}
+function pick(el,seen,arr){ATTRS.forEach(function(a){var s=toFull(el.getAttribute(a)||'');if(s){var c=cleanUrl(s);if(isOk(c)&&!seen[c]){seen[c]=1;arr.push(c);}}});}
 function capture(){
   var seen={},main=[],desc=[];
-  document.querySelectorAll('[class*="thumbnailItem"] img').forEach(function(el){pickFromEl(el,seen,main);});
-  document.querySelectorAll('.descV8-singleImage img,[class*="descV8-richtext"] img').forEach(function(el){pickFromEl(el,seen,desc);});
-  if(main.length<2&&desc.length<2){
-    document.querySelectorAll('img,*[data-src],*[data-lazy-src],*[data-original],*[data-ks-lazyload]').forEach(function(e){pickFromEl(e,seen,main);});
-  }
+  document.querySelectorAll('[class*="thumbnailItem"] img').forEach(function(el){pick(el,seen,main);});
+  document.querySelectorAll('.descV8-singleImage img,[class*="descV8-richtext"] img').forEach(function(el){pick(el,seen,desc);});
+  if(main.length<2&&desc.length<2){document.querySelectorAll('img,*[data-src],*[data-lazy-src],*[data-original],*[data-ks-lazyload]').forEach(function(e){pick(e,seen,main);});}
   var all=main.slice(0,15).concat(desc.slice(0,25));
-  if(!all.length){alert('找不到圖片\\n請確認在淘寶/天貓商品頁，且頁面已完全載入');return;}
   var t=document.title.replace(/-\\s*淘寶.*/,'').replace(/-\\s*天貓.*/,'').trim();
-  window.open('${toolUrl}?title='+encodeURIComponent(t)+'&imgs='+all.map(encodeURIComponent).join(','),'_blank');
+  var msg=JSON.stringify({type:'pig-images',title:t,imgs:all});
+  var tries=0;
+  function send(){if(!w||w.closed)return;w.postMessage(msg,'*');if(++tries<6)setTimeout(send,1500);}
+  setTimeout(send,2500);
 }
 var doc=document.documentElement,body=document.body;
 var maxScroll=Math.max(doc.scrollHeight,body.scrollHeight)-window.innerHeight;
-if(maxScroll<=0){capture();return;}
+if(maxScroll<=0){setTimeout(capture,500);return;}
 var step=1600,delay=150,cur=0;
-function scrollStep(){cur+=step;if(cur>=maxScroll){window.scrollTo(0,maxScroll);setTimeout(function(){window.scrollTo(0,0);setTimeout(capture,1200);},800);return;}window.scrollTo(0,cur);setTimeout(scrollStep,delay);}
-alert('開始自動捲頁抓圖，完成後會自動開啟工具（約5-10秒）');
-setTimeout(scrollStep,200);
+function scrollStep(){cur+=step;if(cur>=maxScroll){window.scrollTo(0,maxScroll);setTimeout(function(){window.scrollTo(0,0);setTimeout(capture,800);},800);return;}window.scrollTo(0,cur);setTimeout(scrollStep,delay);}
+scrollStep();
 })();`
   document.getElementById('bookmarklet-link').href = bm
 }
