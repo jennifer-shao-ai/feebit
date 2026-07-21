@@ -112,7 +112,11 @@
 .wencai-section h3 { font-size: 13px; font-weight: 700; color: var(--gray-700); margin-bottom: 8px; }
 .wencai-option { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 10px 14px; font-size: 14px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .wencai-option span { flex: 1; line-height: 1.5; }
-.wencai-body { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 14px; font-size: 13px; line-height: 1.8; white-space: pre-wrap; }
+.wencai-body { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 14px; font-size: 13px; line-height: 1.8; }
+.wencai-body p { margin: 0 0 6px; }
+.wencai-body p:last-child { margin-bottom: 0; }
+.wencai-features { margin: 0; padding: 0 0 0 18px; list-style: disc; }
+.wencai-features li { font-size: 13px; line-height: 1.8; color: var(--gray-700); }
 .seo-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .seo-tag { background: var(--primary-light); color: var(--primary); border-radius: 12px; padding: 3px 10px; font-size: 12px; }
 
@@ -201,7 +205,7 @@
     <a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span> 旅行規劃</a>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v1.2</div>
+  <div class="sidebar-footer">v1.3</div>
 </div>
 <div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.remove('open');this.classList.remove('active')"></div>
 
@@ -212,7 +216,7 @@
     <span class="topbar-title">商品圖一鍵生成</span>
     <div style="display:flex;gap:8px;align-items:center">
       <button class="btn-sm" onclick="openSettings()">⚙ API 設定</button>
-      <span class="topbar-badge">v1.2</span>
+      <span class="topbar-badge">v1.3</span>
     </div>
   </div>
 
@@ -319,7 +323,7 @@
         <div class="gen-options">
           <div class="gen-option"><label><input type="checkbox" id="gen-xiangjing" checked> 形象圖（3 款換背景）</label></div>
           <div class="gen-option"><label><input type="checkbox" id="gen-detail" checked> 詳情圖（約 9 張）</label></div>
-          <div class="gen-option"><label><input type="checkbox" id="gen-wencai" checked> 文案（品名 + 介紹 + SEO）</label></div>
+          <div class="gen-option"><label><input type="checkbox" id="gen-wencai" checked> 文案（特色 + 介紹 + SEO）</label></div>
         </div>
 
         <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-top:14px;margin-bottom:6px">形象圖背景風格</div>
@@ -356,7 +360,7 @@
           </div>
           <div class="prog-item" id="prog-wencai">
             <span class="prog-icon">✍️</span>
-            <span class="prog-label">文案（品名 + 介紹 + SEO）</span>
+            <span class="prog-label">文案（特色 + 介紹 + SEO）</span>
             <span class="prog-status">等待中</span>
           </div>
         </div>
@@ -401,15 +405,15 @@
         <div class="result-panel" id="panel-wencai">
           <div id="wencai-output">
             <div class="wencai-section">
-              <h3>建議品名</h3>
-              <div id="wencai-names"></div>
+              <h3>商品特色</h3>
+              <ul id="wencai-features" class="wencai-features"></ul>
             </div>
             <div class="wencai-section">
-              <h3>商品介紹</h3>
+              <h3>商品介紹 <button class="btn-sm" style="margin-left:8px" id="btn-copy-desc" onclick="copyWencaiDesc()">複製</button></h3>
               <div id="wencai-desc" class="wencai-body"></div>
             </div>
             <div class="wencai-section">
-              <h3>SEO 關鍵字</h3>
+              <h3>SEO 關鍵字 <button class="btn-sm" style="margin-left:8px" id="btn-copy-seo" onclick="copyAllSeo()">一鍵複製全部</button></h3>
               <div id="wencai-seo" class="seo-tags"></div>
             </div>
           </div>
@@ -520,7 +524,8 @@ function loadFromUrlParams() {
 // ── Set bookmarklet href ──
 function initBookmarklet() {
   const toolUrl = window.location.origin + window.location.pathname
-  const bm = `javascript:(function(){var imgs=[],seen={};document.querySelectorAll('img,[data-src],[data-lazy-src],[data-img-src]').forEach(function(e){var s=e.src||e.getAttribute('data-src')||e.getAttribute('data-lazy-src')||e.getAttribute('data-img-src')||'';if(s&&s.includes('alicdn.com')&&!seen[s]&&(e.naturalWidth||0)>100){seen[s]=1;imgs.push(s.split('?')[0]);}});if(!imgs.length){alert('找不到圖片，請確認在淘寶商品頁');return;}var t=document.title.replace(/-\\s*淘寶.*/,'').trim();window.open('${toolUrl}?title='+encodeURIComponent(t)+'&imgs='+imgs.slice(0,9).map(encodeURIComponent).join(','),'_blank');})();`
+  // Grabs ALL alicdn images: rendered + lazy-loaded data-src attrs, no size filter
+  const bm = `javascript:(function(){var imgs=[],seen={},attrs=['src','data-src','data-lazy-src','data-img-src','data-original','data-echo'];document.querySelectorAll('img,*[data-src],*[data-lazy-src],*[data-original]').forEach(function(e){attrs.forEach(function(a){var s=e.getAttribute(a)||'';if(s&&s.includes('alicdn.com')&&!seen[s]){var clean=(s.startsWith('//')?'https:'+s:s).split('?')[0];if(!clean.match(/\\.gif$/)&&!clean.match(/_\\d+x\\d+\\./)){seen[s]=1;imgs.push(clean);}}});});if(!imgs.length){alert('找不到圖片，請在淘寶商品頁使用，並向下捲動讓圖片載入');return;}var t=document.title.replace(/-\\s*淘寶.*/,'').trim();window.open('${toolUrl}?title='+encodeURIComponent(t)+'&imgs='+imgs.slice(0,20).map(encodeURIComponent).join(','),'_blank');})();`
   document.getElementById('bookmarklet-link').href = bm
 }
 
@@ -622,7 +627,14 @@ async function analyzeProduct() {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'gpt-4o', messages: [{ role: 'user', content }], max_tokens: 200 })
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: '你是一位擁有20年經驗的電商行銷專家，專門為商品撰寫吸睛又具轉換力的標題與標語。你的目標是根據使用者提供的商品資訊（如圖片、商品名稱等），撰寫出能吸引目光、精簡有力、促進點擊與購買欲望的標題文案。文案將根據商品適合的族群進行定位，並融入SEO關鍵字、時下熱門關鍵詞，以提升搜尋能見度與電商平台上的轉換率。' },
+          { role: 'user', content }
+        ],
+        max_tokens: 300
+      })
     })
     const data = await res.json()
     if (data.error) throw new Error(data.error.message)
@@ -785,24 +797,24 @@ function setProgStatus(id, state, text) {
 // ── Background image generation (gpt-image-1) ──
 const BG_PROMPTS = {
   life: [
-    'Replace background only: modern kitchen counter, wooden cutting board, morning sunlight, lifestyle photography. Keep product identical.',
-    'Replace background only: clean white bathroom shelf, fresh towels, soft light. Keep product identical.',
-    'Replace background only: Scandinavian living room, white table, green plants, natural light. Keep product identical.'
+    'Replace the background with a modern kitchen counter scene with wooden surface and soft morning sunlight. Keep ONLY the main product being sold — remove all other objects, accessories, utensils, or props. No text, no labels, no watermarks anywhere in the image.',
+    'Replace the background with a clean white bathroom shelf with soft diffused light. Keep ONLY the main product being sold — remove all other objects or accessories. No text, no labels, no watermarks anywhere in the image.',
+    'Replace the background with a Scandinavian living room setting, white table, green potted plants, natural light. Keep ONLY the main product being sold — remove all surrounding accessories or props. No text, no labels, no watermarks anywhere in the image.'
   ],
   minimal: [
-    'Replace background only: pure white studio background, soft shadows, professional product photography. Keep product identical.',
-    'Replace background only: clean light gray background, subtle shadow, minimal style. Keep product identical.',
-    'Replace background only: white background, high-key lighting, studio look. Keep product identical.'
+    'Replace the background with a pure white studio backdrop, professional soft-box lighting, subtle drop shadow. Keep ONLY the main product being sold — remove all accessories or extra objects. No text, no labels, no watermarks anywhere in the image.',
+    'Replace the background with a clean light gray gradient, subtle shadow below product. Keep ONLY the main product being sold — no accessories, no props. No text, no labels, no watermarks anywhere in the image.',
+    'Replace the background with a bright white high-key studio look. Keep ONLY the main product being sold — remove every other object. No text, no labels, no watermarks anywhere in the image.'
   ],
   nature: [
-    'Replace background only: green plants, natural wood surface, organic feel. Keep product identical.',
-    'Replace background only: wooden surface, dried flowers, warm earthy tones. Keep product identical.',
-    'Replace background only: bright room, large window, natural light, fern plants. Keep product identical.'
+    'Replace the background with lush green plants and a natural wooden surface. Keep ONLY the main product being sold — remove all accessories and props. No text, no labels, no watermarks anywhere in the image.',
+    'Replace the background with a rustic wooden surface with dried flowers, warm earthy tones. Keep ONLY the main product being sold — remove all surrounding objects. No text, no labels, no watermarks anywhere in the image.',
+    'Replace the background with a bright airy room, large windows, soft natural light, indoor fern plants. Keep ONLY the main product being sold — remove all extra accessories or items. No text, no labels, no watermarks anywhere in the image.'
   ],
   luxury: [
-    'Replace background only: dark marble surface, premium brand aesthetic, dramatic lighting. Keep product identical.',
-    'Replace background only: black background, gold accent lighting, high-end commercial photography. Keep product identical.',
-    'Replace background only: elegant muted tones, luxury lifestyle, sophisticated ambiance. Keep product identical.'
+    'Replace the background with a dark veined marble surface, dramatic side lighting. Keep ONLY the main product being sold — remove all accessories. No text, no labels, no watermarks anywhere in the image.',
+    'Replace the background with a pure black background, subtle gold-toned rim lighting, high-end commercial look. Keep ONLY the main product being sold. No text, no labels, no watermarks anywhere in the image.',
+    'Replace the background with elegant muted grey tones, soft luxury ambiance. Keep ONLY the main product being sold — no props, no accessories. No text, no labels, no watermarks anywhere in the image.'
   ]
 }
 
@@ -838,7 +850,7 @@ async function generateBgImages(dataUrl, style, productName, apiKey) {
   return results
 }
 
-// ── Detail images (Responses API with image generation) ──
+// ── Detail images (Responses API with image_generation tool) ──
 async function generateDetailImages(dataUrls, productName, apiKey) {
   const prompt = `你是專業電商視覺設計師，請根據商品「${productName}」的圖片，生成約9張蝦皮電商詳情圖：
 
@@ -856,6 +868,7 @@ async function generateDetailImages(dataUrls, productName, apiKey) {
 • 所有文字使用繁體中文
 • 整體風格清新、有質感`
 
+  // Build content for Responses API
   const content = [
     ...dataUrls.map(url => ({ type: 'input_image', image_url: url })),
     { type: 'input_text', text: prompt }
@@ -863,26 +876,38 @@ async function generateDetailImages(dataUrls, productName, apiKey) {
 
   const res = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json'
-    },
+    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'gpt-4o',
-      tools: [{ type: 'image_generation' }],
+      tools: [{ type: 'image_generation', quality: 'low' }],
       input: [{ role: 'user', content }]
     }),
     signal: abortController.signal
   })
 
   const data = await res.json()
-  if (data.error) throw new Error(data.error.message || JSON.stringify(data.error))
+  if (data.error) {
+    // Surface the real error so user can understand the failure
+    throw new Error(`API 錯誤 (${data.error.code || data.error.type}): ${data.error.message}`)
+  }
 
   const imgs = []
   for (const item of (data.output || [])) {
-    if (item.type === 'image_generation_call' && item.result) {
-      imgs.push(`data:image/png;base64,${item.result}`)
+    if (item.type === 'image_generation_call') {
+      const b64 = item.result ?? item.b64_json ?? item.data
+      if (b64) imgs.push(`data:image/png;base64,${b64}`)
     }
+    // Also check nested content for some API versions
+    if (item.type === 'message' && item.content) {
+      for (const c of item.content) {
+        if (c.type === 'image_url') imgs.push(c.image_url?.url || c.image_url)
+        if (c.type === 'image' && c.source?.data) imgs.push(`data:image/png;base64,${c.source.data}`)
+      }
+    }
+  }
+
+  if (!imgs.length) {
+    throw new Error(`詳情圖生成失敗：API 未回傳圖片。原始回應: ${JSON.stringify(data.output?.slice(0,2))}`)
   }
   return imgs
 }
@@ -893,23 +918,24 @@ async function generateWencai(dataUrls, productName, apiKey) {
     ...dataUrls.slice(0, 2).map(url => ({ type: 'image_url', image_url: { url } })),
     {
       type: 'text',
-      text: `根據這個商品「${productName}」的圖片，請提供：
+      text: `你是專業電商行銷文案師。根據商品「${productName}」的圖片，請提供以下內容，嚴格按照格式輸出：
 
-【品名建議】3個選項，每個15-25字，含主要關鍵字，適合蝦皮賣場
+【商品特色】
+• 特色1（15字以內）
+• 特色2（15字以內）
+• 特色3（15字以內）
+• 特色4（15字以內）
+• 特色5（15字以內）
 
-【商品介紹】100-150字，台灣口語化，條列主要賣點，可直接貼到蝦皮
+【商品介紹】
+句子1：（詳細說明，台灣口語）
+句子2：（說明使用情境或材質）
+句子3：（強調價值或適用對象）
 
-【SEO關鍵字】10-15個，以逗號分隔，按搜尋相關度排序
+【SEO關鍵字】
+關鍵字1,關鍵字2,關鍵字3,關鍵字4,關鍵字5,關鍵字6,關鍵字7,關鍵字8,關鍵字9,關鍵字10,關鍵字11,關鍵字12
 
-格式：
-品名1：...
-品名2：...
-品名3：...
-
-介紹：
-...
-
-關鍵字：...`
+注意：關鍵字請按上方格式直接列出，不加空格，以逗號分隔，共10-12個。`
     }
   ]
 
@@ -989,41 +1015,64 @@ function showResults() {
   document.getElementById('card-results').scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
+let _seoKeywords = []
+
 function parseAndRenderWencai(text) {
   document.getElementById('wencai-output').classList.remove('hidden')
 
-  // Parse names
-  const namesEl = document.getElementById('wencai-names')
-  namesEl.innerHTML = ''
-  const nameMatches = [...text.matchAll(/品名\d+[：:]\s*(.+)/g)]
-  if (nameMatches.length) {
-    nameMatches.forEach((m, i) => {
-      namesEl.innerHTML += `<div class="wencai-option">
-        <span>${m[1].trim()}</span>
-        <button class="btn-sm" onclick="copyText('${m[1].trim().replace(/'/g, "\\'")}')">複製</button>
-      </div>`
+  // Parse 商品特色 (bullet points)
+  const featuresEl = document.getElementById('wencai-features')
+  featuresEl.innerHTML = ''
+  const featBlock = text.match(/【商品特色】([\s\S]+?)(?=【商品介紹】|【SEO|$)/i)
+  if (featBlock) {
+    const bullets = featBlock[1].match(/[•·\-\*]\s*(.+)/g) || featBlock[1].split('\n').filter(l => l.trim())
+    bullets.forEach(b => {
+      const item = b.replace(/^[•·\-\*]\s*/, '').trim()
+      if (item) featuresEl.innerHTML += `<li>${escHtml(item)}</li>`
     })
   }
 
-  // Parse description
+  // Parse 商品介紹 (3 sentences)
   const descEl = document.getElementById('wencai-desc')
-  const descMatch = text.match(/介紹[：:][\s\S]+?(?=\n\n關鍵字|$)/i)
-  if (descMatch) {
-    const descText = descMatch[0].replace(/^介紹[：:]\s*/i, '').trim()
-    descEl.textContent = descText
-    descEl.parentElement.querySelector('h3').nextSibling
-    document.querySelector('#panel-wencai .wencai-section:nth-child(2)').innerHTML = `
-      <h3>商品介紹 <button class="btn-sm" style="margin-left:8px" onclick="copyText('${descText.replace(/'/g, "\\'")}')">複製</button></h3>
-      <div class="wencai-body">${escHtml(descText)}</div>`
+  const introBlock = text.match(/【商品介紹】([\s\S]+?)(?=【SEO|$)/i)
+  if (introBlock) {
+    const lines = introBlock[1].split('\n')
+      .map(l => l.replace(/^句子\d+[：:]\s*/i, '').trim())
+      .filter(Boolean)
+    descEl.innerHTML = lines.map(l => `<p>${escHtml(l)}</p>`).join('')
   }
 
-  // Parse SEO
+  // Parse SEO keywords
   const seoEl = document.getElementById('wencai-seo')
-  const seoMatch = text.match(/關鍵字[：:]\s*(.+)/i)
-  if (seoMatch) {
-    const keywords = seoMatch[1].split(/[,，、]/).map(k => k.trim()).filter(Boolean)
-    seoEl.innerHTML = keywords.map(k => `<span class="seo-tag" onclick="copyText('${k}')" style="cursor:pointer" title="點擊複製">${k}</span>`).join('')
+  const seoBlock = text.match(/【SEO關鍵字】([\s\S]+?)$/i)
+  if (seoBlock) {
+    const raw = seoBlock[1].replace(/關鍵字\d+/g, '').replace(/：|:/g, '').trim()
+    _seoKeywords = raw.split(/[,，、\n]/).map(k => k.trim()).filter(Boolean)
+    seoEl.innerHTML = _seoKeywords.map(k =>
+      `<span class="seo-tag" onclick="copyText(${JSON.stringify(k)})" style="cursor:pointer" title="點擊複製單個">${escHtml(k)}</span>`
+    ).join('')
   }
+}
+
+function copyWencaiDesc() {
+  const lines = [...document.querySelectorAll('#wencai-desc p')].map(p => p.textContent).join('\n')
+  copyText(lines)
+  const btn = document.getElementById('btn-copy-desc')
+  const orig = btn.textContent; btn.textContent = '已複製'; setTimeout(() => btn.textContent = orig, 900)
+}
+
+function copyAllSeo() {
+  if (!_seoKeywords.length) return
+  const formatted = _seoKeywords.join(',')
+  navigator.clipboard.writeText(formatted).then(() => {
+    const btn = document.getElementById('btn-copy-seo')
+    const orig = btn.textContent; btn.textContent = '已複製！'; setTimeout(() => btn.textContent = orig, 900)
+  }).catch(() => {
+    const ta = document.createElement('textarea'); ta.value = _seoKeywords.join(',')
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove()
+    const btn = document.getElementById('btn-copy-seo')
+    const orig = btn.textContent; btn.textContent = '已複製！'; setTimeout(() => btn.textContent = orig, 900)
+  })
 }
 
 function escHtml(t) { return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
