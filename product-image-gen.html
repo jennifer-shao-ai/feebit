@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>商品圖生成 — 飛比特</title>
+<link rel="icon" href="favicon.svg">
+<link rel="stylesheet" href="style.css">
+<style>
+/* ── Layout ── */
+.pig-layout { display: flex; flex-direction: column; gap: 20px; max-width: 960px; }
+
+/* ── Cards ── */
+.pig-card { background: white; border-radius: var(--radius); padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.pig-card h2 { font-size: 14px; font-weight: 700; color: var(--gray-800); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.pig-card h2 .step-num { background: var(--primary); color: white; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+
+/* ── API key banner ── */
+.key-banner { background: #fef3c7; border: 1px solid #d97706; border-radius: var(--radius); padding: 10px 14px; font-size: 13px; display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.key-banner a { color: var(--primary); cursor: pointer; font-weight: 600; }
+.key-banner.ok { background: #d1fae5; border-color: #16a34a; }
+
+/* ── Input tabs ── */
+.pig-tabs { display: flex; gap: 4px; margin-bottom: 14px; }
+.pig-tab { padding: 6px 14px; border-radius: 6px; border: 1px solid var(--gray-200); background: var(--gray-50); font-size: 13px; cursor: pointer; color: var(--gray-600); }
+.pig-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+/* ── URL input row ── */
+.url-row { display: flex; gap: 8px; }
+.url-row input { flex: 1; padding: 9px 12px; border: 1px solid var(--gray-200); border-radius: var(--radius); font-size: 14px; outline: none; }
+.url-row input:focus { border-color: var(--primary); }
+.url-row input::placeholder { color: var(--gray-400); font-size: 13px; }
+
+/* ── Dropzone ── */
+.dropzone { border: 2px dashed var(--gray-300); border-radius: var(--radius); padding: 32px; text-align: center; color: var(--gray-500); font-size: 14px; cursor: pointer; transition: all 0.2s; }
+.dropzone:hover, .dropzone.drag-over { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+.dropzone .dz-icon { font-size: 32px; margin-bottom: 8px; }
+
+/* ── Product name field ── */
+.field-row { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
+.field-row label { font-size: 12px; font-weight: 600; color: var(--gray-600); }
+.field-row input { padding: 9px 12px; border: 1px solid var(--gray-200); border-radius: var(--radius); font-size: 14px; outline: none; }
+.field-row input:focus { border-color: var(--primary); }
+
+/* ── Images grid ── */
+.images-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; margin-top: 12px; }
+.img-thumb { position: relative; aspect-ratio: 1; border-radius: 6px; overflow: hidden; cursor: pointer; border: 2px solid transparent; transition: border-color 0.15s; }
+.img-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.img-thumb.selected { border-color: var(--primary); }
+.img-thumb .check { position: absolute; top: 4px; right: 4px; width: 18px; height: 18px; background: var(--primary); border-radius: 50%; color: white; font-size: 11px; display: none; align-items: center; justify-content: center; }
+.img-thumb.selected .check { display: flex; }
+
+/* ── Style selector ── */
+.style-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.style-btn { padding: 6px 12px; border-radius: 16px; border: 1px solid var(--gray-200); background: white; font-size: 12px; cursor: pointer; color: var(--gray-600); }
+.style-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+/* ── Checkboxes ── */
+.gen-options { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 12px; }
+.gen-option label { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; color: var(--gray-700); }
+.gen-option input[type=checkbox] { width: 15px; height: 15px; accent-color: var(--primary); }
+
+/* ── Buttons ── */
+.btn-primary { background: var(--primary); color: white; border: none; padding: 10px 24px; border-radius: var(--radius); font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-primary:disabled { background: var(--gray-400); cursor: not-allowed; }
+.btn-sm { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--gray-200); background: white; font-size: 12px; cursor: pointer; color: var(--gray-600); }
+.btn-sm:hover { border-color: var(--primary); color: var(--primary); }
+.btn-danger-sm { padding: 6px 12px; border-radius: 6px; border: 1px solid #dc2626; background: white; font-size: 12px; cursor: pointer; color: #dc2626; }
+
+.gen-row { margin-top: 16px; display: flex; align-items: center; gap: 10px; }
+
+/* ── Progress ── */
+.progress-card { background: white; border-radius: var(--radius); padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.progress-title { font-size: 15px; font-weight: 700; margin-bottom: 16px; }
+.prog-list { display: flex; flex-direction: column; gap: 10px; }
+.prog-item { display: flex; align-items: center; gap: 10px; font-size: 13px; padding: 10px 12px; border-radius: var(--radius); background: var(--gray-50); }
+.prog-item .prog-icon { font-size: 18px; width: 24px; text-align: center; }
+.prog-item .prog-label { flex: 1; }
+.prog-item .prog-status { font-size: 12px; color: var(--gray-400); }
+.prog-item.done .prog-status { color: #16a34a; }
+.prog-item.running .prog-status { color: var(--primary); }
+.prog-item.error .prog-status { color: #dc2626; }
+
+/* ── Results ── */
+.results-tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--gray-200); padding-bottom: 0; }
+.rtab { padding: 8px 16px; border: none; background: none; font-size: 14px; cursor: pointer; color: var(--gray-500); border-bottom: 2px solid transparent; margin-bottom: -1px; font-weight: 500; }
+.rtab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+.rtab-badge { display: inline-block; background: var(--gray-200); color: var(--gray-600); border-radius: 10px; padding: 0 6px; font-size: 11px; margin-left: 4px; }
+.rtab.active .rtab-badge { background: var(--primary-light); color: var(--primary); }
+
+.result-panel { display: none; }
+.result-panel.active { display: block; }
+
+/* ── Images results ── */
+.result-images-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.result-img-item { border-radius: var(--radius); overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); background: var(--gray-50); }
+.result-img-item img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
+.result-img-footer { padding: 8px; display: flex; align-items: center; justify-content: space-between; }
+.result-img-label { font-size: 11px; color: var(--gray-500); }
+
+/* ── Detail images — scroll row ── */
+.detail-scroll { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; }
+.detail-img-item { flex-shrink: 0; width: 200px; border-radius: var(--radius); overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.detail-img-item img { width: 100%; height: 280px; object-fit: cover; display: block; }
+.detail-img-footer { padding: 6px 8px; display: flex; justify-content: space-between; align-items: center; }
+.detail-img-label { font-size: 11px; color: var(--gray-500); }
+
+/* ── Wencai text output ── */
+.wencai-section { margin-bottom: 20px; }
+.wencai-section h3 { font-size: 13px; font-weight: 700; color: var(--gray-700); margin-bottom: 8px; }
+.wencai-option { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 10px 14px; font-size: 14px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.wencai-option span { flex: 1; line-height: 1.5; }
+.wencai-body { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 14px; font-size: 13px; line-height: 1.8; white-space: pre-wrap; }
+.seo-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.seo-tag { background: var(--primary-light); color: var(--primary); border-radius: 12px; padding: 3px 10px; font-size: 12px; }
+
+/* ── Results action bar ── */
+.results-actions { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+.results-actions .label { font-size: 12px; color: var(--gray-500); margin-left: auto; }
+
+/* ── Spinner ── */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner { width: 16px; height: 16px; border: 2px solid var(--gray-200); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; flex-shrink: 0; }
+
+/* ── Modal ── */
+.modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: center; justify-content: center; }
+.modal-backdrop.open { display: flex; }
+.modal-box { background: white; border-radius: 12px; padding: 24px; width: 420px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+.modal-box h2 { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+.modal-field { margin-bottom: 14px; }
+.modal-field label { font-size: 12px; font-weight: 600; color: var(--gray-600); display: block; margin-bottom: 5px; }
+.modal-field input { width: 100%; padding: 9px 12px; border: 1px solid var(--gray-200); border-radius: var(--radius); font-size: 14px; outline: none; box-sizing: border-box; }
+.modal-field input:focus { border-color: var(--primary); }
+.modal-hint { font-size: 11px; color: var(--gray-400); margin-top: 4px; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- ── SIDEBAR ── -->
+<div id="sidebar">
+  <div class="sidebar-logo">
+    <div class="brand">飛比特 Feebit</div>
+    <div class="sub">營運工具箱</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">總覽</div>
+    <a class="nav-item" href="index.html"><span class="icon">🏠</span> 首頁</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">財務</div>
+    <a class="nav-item" href="bank-converter.html"><span class="icon">🏦</span> 帳務轉換</a>
+    <a class="nav-item" href="accounting-ops.html"><span class="icon">📅</span> 例行帳務作業</a>
+    <a class="nav-item" href="finance-dashboard.html"><span class="icon">📊</span> 帳務分析</a>
+    <a class="nav-item" href="coupang-invoice.html"><span class="icon">🧾</span> 酷澎發票轉檔</a>
+    <a class="nav-item" href="coupang-reconcile.html"><span class="icon">🔍</span> 酷澎商城對帳</a>
+    <a class="nav-item" href="shopee-subsidy.html"><span class="icon">🚚</span> 蝦皮運費補助申請</a>
+    <a class="nav-item" href="shopee-converter.html"><span class="icon">🛒</span> 蝦皮撥款轉換</a>
+    <a class="nav-item" href="profit-calculator.html"><span class="icon">💰</span> 毛利試算機</a>
+    <a class="nav-item" href="brand-sales.html"><span class="icon">📈</span> 品牌銷售分析</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">市場分析</div>
+    <a class="nav-item" href="market-tracker.html"><span class="icon">🔭</span> 品類競品分析</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">行銷</div>
+    <a class="nav-item active" href="product-image-gen.html"><span class="icon">🎨</span> 商品圖生成</a>
+    <div class="nav-item soon"><span class="icon">📢</span> 廣告文案<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">客服</div>
+    <div class="nav-item soon"><span class="icon">💬</span> 客服回覆<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">業務</div>
+    <a class="nav-item" href="purchase-order.html"><span class="icon">📄</span> 採購單轉換</a>
+    <div class="nav-item soon"><span class="icon">🤝</span> 廠商談判<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">人事</div>
+    <a class="nav-item" href="attendance.html"><span class="icon">🗓️</span> 考勤查驗</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">庫存</div>
+    <a class="nav-item" href="stock-analysis.html"><span class="icon">📦</span> 庫存訂貨分析</a>
+    <a class="nav-item" href="slow-mover-alert.html"><span class="icon">🔴</span> 滯銷品警示</a>
+    <a class="nav-item" href="feebit-inventory-filter.html"><span class="icon">🏪</span> 商品篩選工具</a>
+    <a class="nav-item" href="reorder-suggestions.html"><span class="icon">🔄</span> 庫存訂貨建議</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">研發</div>
+    <a class="nav-item" href="research-notes.html"><span class="icon">📚</span> 研發筆記</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">其他</div>
+    <a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span> 旅行規劃</a>
+    <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
+  </div>
+  <div class="sidebar-footer">v1.0</div>
+</div>
+<div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.remove('open');this.classList.remove('active')"></div>
+
+<!-- ── MAIN ── -->
+<div id="main">
+  <div class="topbar">
+    <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open');document.getElementById('sidebar-overlay').classList.toggle('active')">&#9776;</button>
+    <span class="topbar-title">商品圖一鍵生成</span>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn-sm" onclick="openSettings()">⚙ API 設定</button>
+      <span class="topbar-badge">v1.0</span>
+    </div>
+  </div>
+
+  <div class="page">
+    <div class="pig-layout">
+
+      <!-- ── API Key Banner ── -->
+      <div id="key-banner" class="key-banner">
+        ⚠️ 尚未設定 OpenAI API Key，功能無法使用。
+        <a onclick="openSettings()">點此設定</a>
+      </div>
+
+      <!-- ── Step 1: 輸入商品資料 ── -->
+      <div class="pig-card" id="card-input">
+        <h2><span class="step-num">1</span> 輸入商品資料</h2>
+
+        <div class="pig-tabs">
+          <button class="pig-tab active" id="tab-btn-url" onclick="switchTab('url')">淘寶連結</button>
+          <button class="pig-tab" id="tab-btn-upload" onclick="switchTab('upload')">手動上傳</button>
+        </div>
+
+        <!-- URL tab -->
+        <div id="tab-url">
+          <div class="url-row">
+            <input type="text" id="taobao-url" placeholder="貼上淘寶商品網址 https://item.taobao.com/item.htm?id=...">
+            <button class="btn-primary" id="btn-fetch" onclick="fetchTaobaoImages()">抓取圖片</button>
+          </div>
+          <p id="fetch-status" style="font-size:12px;color:var(--gray-400);margin-top:6px"></p>
+        </div>
+
+        <!-- Upload tab -->
+        <div id="tab-upload" class="hidden">
+          <div class="dropzone" id="dropzone"
+            onclick="document.getElementById('file-input').click()"
+            ondragover="event.preventDefault();this.classList.add('drag-over')"
+            ondragleave="this.classList.remove('drag-over')"
+            ondrop="handleDrop(event)">
+            <div class="dz-icon">📁</div>
+            <div>點擊或拖曳上傳商品圖片</div>
+            <div style="font-size:12px;color:var(--gray-400);margin-top:4px">支援 JPG、PNG，可多張</div>
+          </div>
+          <input type="file" id="file-input" accept="image/*" multiple style="display:none" onchange="handleFileInput(this.files)">
+        </div>
+
+        <!-- Images preview (shared) -->
+        <div id="images-section" class="hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px">
+            <div style="font-size:13px;font-weight:600;color:var(--gray-700)">選擇商品主圖（建議選 1-3 張）</div>
+            <button class="btn-sm" onclick="clearImages()">清除全部</button>
+          </div>
+          <div id="images-grid" class="images-grid"></div>
+        </div>
+
+        <!-- Product name -->
+        <div class="field-row" style="margin-top:14px">
+          <label>商品名稱</label>
+          <input type="text" id="product-name" placeholder="例：金絲編織去污洗碗布（可直接從淘寶帶入）">
+        </div>
+      </div>
+
+      <!-- ── Step 2: 生成設定 ── -->
+      <div class="pig-card" id="card-options">
+        <h2><span class="step-num">2</span> 生成設定</h2>
+
+        <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-bottom:6px">要生成哪些內容？</div>
+        <div class="gen-options">
+          <div class="gen-option"><label><input type="checkbox" id="gen-xiangjing" checked> 形象圖（3 款換背景）</label></div>
+          <div class="gen-option"><label><input type="checkbox" id="gen-detail" checked> 詳情圖（約 9 張）</label></div>
+          <div class="gen-option"><label><input type="checkbox" id="gen-wencai" checked> 文案（品名 + 介紹 + SEO）</label></div>
+        </div>
+
+        <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-top:14px;margin-bottom:6px">形象圖背景風格</div>
+        <div class="style-row">
+          <button class="style-btn active" data-style="life" onclick="selectStyle(this)">🏡 生活情境</button>
+          <button class="style-btn" data-style="minimal" onclick="selectStyle(this)">⬜ 簡約白底</button>
+          <button class="style-btn" data-style="nature" onclick="selectStyle(this)">🌿 自然清新</button>
+          <button class="style-btn" data-style="luxury" onclick="selectStyle(this)">✨ 質感商業</button>
+        </div>
+
+        <div class="gen-row">
+          <button class="btn-primary" id="btn-generate" onclick="startGenerate()">一鍵生成</button>
+          <span id="gen-hint" style="font-size:12px;color:var(--gray-400)">請先選擇商品圖並輸入商品名稱</span>
+        </div>
+      </div>
+
+      <!-- ── Step 3: 進度 ── -->
+      <div class="pig-card hidden" id="card-progress">
+        <div class="progress-title">生成中，請稍候...</div>
+        <div class="prog-list">
+          <div class="prog-item" id="prog-fetch">
+            <span class="prog-icon">🖼</span>
+            <span class="prog-label">抓取商品圖片</span>
+            <span class="prog-status">等待中</span>
+          </div>
+          <div class="prog-item" id="prog-xiangjing">
+            <span class="prog-icon">🎨</span>
+            <span class="prog-label">形象圖（換背景）</span>
+            <span class="prog-status">等待中</span>
+          </div>
+          <div class="prog-item" id="prog-detail">
+            <span class="prog-icon">📋</span>
+            <span class="prog-label">詳情圖（行銷圖）</span>
+            <span class="prog-status">等待中</span>
+          </div>
+          <div class="prog-item" id="prog-wencai">
+            <span class="prog-icon">✍️</span>
+            <span class="prog-label">文案（品名 + 介紹 + SEO）</span>
+            <span class="prog-status">等待中</span>
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <button class="btn-sm" onclick="cancelGenerate()">取消</button>
+        </div>
+      </div>
+
+      <!-- ── Step 4: 結果 ── -->
+      <div class="pig-card hidden" id="card-results">
+        <div class="results-actions">
+          <button class="btn-primary" onclick="downloadAll()">全部下載</button>
+          <button class="btn-sm" onclick="resetTool()">重新開始</button>
+          <span class="label" id="result-summary"></span>
+        </div>
+
+        <div class="results-tabs">
+          <button class="rtab active" data-panel="panel-xiangjing" onclick="switchResult(this)">
+            形象圖 <span class="rtab-badge" id="badge-xiangjing">0</span>
+          </button>
+          <button class="rtab" data-panel="panel-detail" onclick="switchResult(this)">
+            詳情圖 <span class="rtab-badge" id="badge-detail">0</span>
+          </button>
+          <button class="rtab" data-panel="panel-wencai" onclick="switchResult(this)">
+            文案
+          </button>
+        </div>
+
+        <!-- 形象圖 panel -->
+        <div class="result-panel active" id="panel-xiangjing">
+          <div class="result-images-grid" id="xiangjing-grid"></div>
+          <div id="xiangjing-empty" class="hidden" style="text-align:center;color:var(--gray-400);padding:32px;font-size:13px">未生成形象圖</div>
+        </div>
+
+        <!-- 詳情圖 panel -->
+        <div class="result-panel" id="panel-detail">
+          <div class="detail-scroll" id="detail-grid"></div>
+          <div id="detail-empty" class="hidden" style="text-align:center;color:var(--gray-400);padding:32px;font-size:13px">未生成詳情圖</div>
+        </div>
+
+        <!-- 文案 panel -->
+        <div class="result-panel" id="panel-wencai">
+          <div id="wencai-output">
+            <div class="wencai-section">
+              <h3>建議品名</h3>
+              <div id="wencai-names"></div>
+            </div>
+            <div class="wencai-section">
+              <h3>商品介紹</h3>
+              <div id="wencai-desc" class="wencai-body"></div>
+            </div>
+            <div class="wencai-section">
+              <h3>SEO 關鍵字</h3>
+              <div id="wencai-seo" class="seo-tags"></div>
+            </div>
+          </div>
+          <div id="wencai-empty" class="hidden" style="text-align:center;color:var(--gray-400);padding:32px;font-size:13px">未生成文案</div>
+        </div>
+      </div>
+
+    </div><!-- end pig-layout -->
+  </div>
+</div>
+
+<!-- ── Settings Modal ── -->
+<div class="modal-backdrop" id="settings-modal">
+  <div class="modal-box">
+    <h2>⚙ API 設定</h2>
+    <div class="modal-field">
+      <label>OpenAI API Key</label>
+      <input type="password" id="input-openai-key" placeholder="sk-...">
+      <div class="modal-hint">Key 只存在本機瀏覽器，不會上傳至任何伺服器</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-sm" onclick="closeSettings()">取消</button>
+      <button class="btn-primary" onclick="saveSettings()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://tokhhoyzztaynppcatci.supabase.co'
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRva2hob3l6enRheW5wcGNhdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMDAyODMsImV4cCI6MjA5MDg3NjI4M30.PQB4lJGF3OMatv5wIedCu3zIWq0urrFbniBRYTbNtUU'
+const EDGE_BASE = `${SUPABASE_URL}/functions/v1`
+
+// State
+let images = []          // { src: url|dataUrl, dataUrl: string|null, name: string }
+let selectedIdx = new Set()
+let generatedImages = { xiangjing: [], detail: [] }
+let generatedWencai = ''
+let abortController = null
+
+// ── Settings ──
+function getApiKey() { return localStorage.getItem('pig_openai_key') || '' }
+function openSettings() {
+  document.getElementById('input-openai-key').value = getApiKey()
+  document.getElementById('settings-modal').classList.add('open')
+}
+function closeSettings() { document.getElementById('settings-modal').classList.remove('open') }
+function saveSettings() {
+  const key = document.getElementById('input-openai-key').value.trim()
+  if (key) localStorage.setItem('pig_openai_key', key)
+  closeSettings()
+  checkKeyBanner()
+}
+function checkKeyBanner() {
+  const banner = document.getElementById('key-banner')
+  if (getApiKey()) {
+    banner.textContent = '✓ OpenAI API Key 已設定'
+    banner.className = 'key-banner ok'
+  } else {
+    banner.innerHTML = '⚠️ 尚未設定 OpenAI API Key，功能無法使用。<a onclick="openSettings()">點此設定</a>'
+    banner.className = 'key-banner'
+  }
+}
+
+// ── Tab switching ──
+function switchTab(tab) {
+  document.getElementById('tab-url').classList.toggle('hidden', tab !== 'url')
+  document.getElementById('tab-upload').classList.toggle('hidden', tab !== 'upload')
+  document.getElementById('tab-btn-url').classList.toggle('active', tab === 'url')
+  document.getElementById('tab-btn-upload').classList.toggle('active', tab === 'upload')
+}
+
+// ── Style selector ──
+function selectStyle(btn) {
+  document.querySelectorAll('.style-btn').forEach(b => b.classList.remove('active'))
+  btn.classList.add('active')
+}
+function getSelectedStyle() {
+  return document.querySelector('.style-btn.active')?.dataset.style || 'life'
+}
+
+// ── Taobao image fetch ──
+async function fetchTaobaoImages() {
+  const url = document.getElementById('taobao-url').value.trim()
+  if (!url) return setFetchStatus('請輸入淘寶網址', 'error')
+  if (!url.includes('taobao.com') && !url.includes('tb.cn')) return setFetchStatus('請輸入正確的淘寶商品網址', 'error')
+
+  setFetchStatus('抓取中...', 'loading')
+  document.getElementById('btn-fetch').disabled = true
+
+  try {
+    const res = await fetch(`${EDGE_BASE}/taobao-scraper`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+      body: JSON.stringify({ url })
+    })
+    const data = await res.json()
+    if (data.error) throw new Error(data.error)
+    if (!data.images?.length) throw new Error('找不到商品圖片，請改用手動上傳')
+
+    if (data.title) document.getElementById('product-name').value = data.title
+
+    images = data.images.map((src, i) => ({ src, dataUrl: null, name: `商品圖${i+1}` }))
+    selectedIdx = new Set([0])  // auto-select first
+    renderImageGrid()
+    setFetchStatus(`成功抓取 ${data.images.length} 張圖片`, 'ok')
+  } catch (e) {
+    setFetchStatus(e.message, 'error')
+  } finally {
+    document.getElementById('btn-fetch').disabled = false
+  }
+}
+
+function setFetchStatus(msg, type) {
+  const el = document.getElementById('fetch-status')
+  el.textContent = msg
+  el.style.color = type === 'error' ? '#dc2626' : type === 'ok' ? '#16a34a' : 'var(--gray-400)'
+}
+
+// ── File upload ──
+function handleDrop(e) {
+  e.preventDefault()
+  document.getElementById('dropzone').classList.remove('drag-over')
+  handleFiles(e.dataTransfer.files)
+}
+function handleFileInput(files) { handleFiles(files) }
+
+function handleFiles(files) {
+  const arr = Array.from(files).filter(f => f.type.startsWith('image/'))
+  if (!arr.length) return
+
+  let loaded = 0
+  arr.forEach((file, i) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      images.push({ src: e.target.result, dataUrl: e.target.result, name: file.name })
+      if (i === 0 && images.length === 1) selectedIdx = new Set([0])
+      else selectedIdx.add(images.length - 1)
+      loaded++
+      if (loaded === arr.length) renderImageGrid()
+    }
+    reader.readAsDataURL(file)
+  })
+}
+
+// ── Image grid ──
+function renderImageGrid() {
+  const grid = document.getElementById('images-grid')
+  grid.innerHTML = ''
+  images.forEach((img, i) => {
+    const div = document.createElement('div')
+    div.className = 'img-thumb' + (selectedIdx.has(i) ? ' selected' : '')
+    div.onclick = () => toggleSelect(i)
+    div.innerHTML = `<img src="${img.src}" loading="lazy"><div class="check">✓</div>`
+    grid.appendChild(div)
+  })
+  document.getElementById('images-section').classList.toggle('hidden', images.length === 0)
+}
+
+function toggleSelect(i) {
+  if (selectedIdx.has(i)) selectedIdx.delete(i)
+  else selectedIdx.add(i)
+  renderImageGrid()
+}
+
+function clearImages() {
+  images = []
+  selectedIdx = new Set()
+  renderImageGrid()
+  document.getElementById('taobao-url').value = ''
+  setFetchStatus('', '')
+}
+
+// ── Image proxy (CORS bypass via edge function) ──
+async function proxyImage(url) {
+  const res = await fetch(`${EDGE_BASE}/taobao-scraper`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+    body: JSON.stringify({ action: 'proxy', url })
+  })
+  const data = await res.json()
+  if (data.error) throw new Error(data.error)
+  return `data:${data.contentType};base64,${data.base64}`
+}
+
+// ── Get selected images as data URLs ──
+async function getSelectedDataUrls() {
+  const selected = [...selectedIdx].map(i => images[i]).filter(Boolean)
+  if (!selected.length) throw new Error('請選擇至少一張商品圖')
+  return Promise.all(selected.map(img => img.dataUrl || proxyImage(img.src)))
+}
+
+// ── Generate ──
+async function startGenerate() {
+  const apiKey = getApiKey()
+  if (!apiKey) { openSettings(); return }
+  if (!images.length || !selectedIdx.size) return alert('請先選擇商品圖')
+
+  const productName = document.getElementById('product-name').value.trim() || '商品'
+  const doXiangjing = document.getElementById('gen-xiangjing').checked
+  const doDetail = document.getElementById('gen-detail').checked
+  const doWencai = document.getElementById('gen-wencai').checked
+  if (!doXiangjing && !doDetail && !doWencai) return alert('請至少選擇一項要生成的內容')
+
+  // Show progress card
+  document.getElementById('card-results').classList.add('hidden')
+  document.getElementById('card-progress').classList.remove('hidden')
+  generatedImages = { xiangjing: [], detail: [] }
+  generatedWencai = ''
+  abortController = new AbortController()
+
+  // Reset progress
+  setProgStatus('prog-fetch', 'running', '載入圖片中...')
+  setProgStatus('prog-xiangjing', 'wait', doXiangjing ? '等待中' : '略過')
+  setProgStatus('prog-detail', 'wait', doDetail ? '等待中' : '略過')
+  setProgStatus('prog-wencai', 'wait', doWencai ? '等待中' : '略過')
+
+  try {
+    // Step 1: get image data URLs
+    const dataUrls = await getSelectedDataUrls()
+    setProgStatus('prog-fetch', 'done', `完成（${dataUrls.length} 張）`)
+
+    const style = getSelectedStyle()
+
+    // Run in parallel
+    const tasks = []
+    if (doXiangjing) {
+      setProgStatus('prog-xiangjing', 'running', '生成中...')
+      tasks.push(
+        generateBgImages(dataUrls[0], style, productName, apiKey)
+          .then(imgs => { generatedImages.xiangjing = imgs; setProgStatus('prog-xiangjing', 'done', `完成（${imgs.length} 張）`) })
+          .catch(e => setProgStatus('prog-xiangjing', 'error', '失敗：' + e.message))
+      )
+    }
+    if (doDetail) {
+      setProgStatus('prog-detail', 'running', '生成中（約 2-3 分鐘）...')
+      tasks.push(
+        generateDetailImages(dataUrls, productName, apiKey)
+          .then(imgs => { generatedImages.detail = imgs; setProgStatus('prog-detail', 'done', `完成（${imgs.length} 張）`) })
+          .catch(e => setProgStatus('prog-detail', 'error', '失敗：' + e.message))
+      )
+    }
+    if (doWencai) {
+      setProgStatus('prog-wencai', 'running', '生成中...')
+      tasks.push(
+        generateWencai(dataUrls, productName, apiKey)
+          .then(text => { generatedWencai = text; setProgStatus('prog-wencai', 'done', '完成') })
+          .catch(e => setProgStatus('prog-wencai', 'error', '失敗：' + e.message))
+      )
+    }
+
+    await Promise.allSettled(tasks)
+    showResults()
+  } catch (e) {
+    if (e.name === 'AbortError') return
+    alert('生成失敗：' + e.message)
+    document.getElementById('card-progress').classList.add('hidden')
+  }
+}
+
+function cancelGenerate() {
+  if (abortController) abortController.abort()
+  document.getElementById('card-progress').classList.add('hidden')
+}
+
+function setProgStatus(id, state, text) {
+  const el = document.getElementById(id)
+  if (!el) return
+  el.className = 'prog-item' + (state === 'done' ? ' done' : state === 'running' ? ' running' : state === 'error' ? ' error' : '')
+  el.querySelector('.prog-status').textContent = text
+}
+
+// ── Background image generation (gpt-image-1) ──
+const BG_PROMPTS = {
+  life: [
+    'Replace background only: modern kitchen counter, wooden cutting board, morning sunlight, lifestyle photography. Keep product identical.',
+    'Replace background only: clean white bathroom shelf, fresh towels, soft light. Keep product identical.',
+    'Replace background only: Scandinavian living room, white table, green plants, natural light. Keep product identical.'
+  ],
+  minimal: [
+    'Replace background only: pure white studio background, soft shadows, professional product photography. Keep product identical.',
+    'Replace background only: clean light gray background, subtle shadow, minimal style. Keep product identical.',
+    'Replace background only: white background, high-key lighting, studio look. Keep product identical.'
+  ],
+  nature: [
+    'Replace background only: green plants, natural wood surface, organic feel. Keep product identical.',
+    'Replace background only: wooden surface, dried flowers, warm earthy tones. Keep product identical.',
+    'Replace background only: bright room, large window, natural light, fern plants. Keep product identical.'
+  ],
+  luxury: [
+    'Replace background only: dark marble surface, premium brand aesthetic, dramatic lighting. Keep product identical.',
+    'Replace background only: black background, gold accent lighting, high-end commercial photography. Keep product identical.',
+    'Replace background only: elegant muted tones, luxury lifestyle, sophisticated ambiance. Keep product identical.'
+  ]
+}
+
+async function generateBgImages(dataUrl, style, productName, apiKey) {
+  const prompts = BG_PROMPTS[style] || BG_PROMPTS.life
+  const results = []
+
+  for (const prompt of prompts) {
+    try {
+      const blob = dataUrlToBlob(dataUrl)
+      const form = new FormData()
+      form.append('image', blob, 'product.png')
+      form.append('prompt', `Product: ${productName}. ${prompt}`)
+      form.append('model', 'gpt-image-1')
+      form.append('n', '1')
+      form.append('size', '1024x1024')
+
+      const res = await fetch('https://api.openai.com/v1/images/edits', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${apiKey}` },
+        body: form,
+        signal: abortController.signal
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error.message)
+      const b64 = data.data?.[0]?.b64_json
+      if (b64) results.push(`data:image/png;base64,${b64}`)
+    } catch (e) {
+      if (e.name === 'AbortError') throw e
+      console.warn('bg image failed:', e.message)
+    }
+  }
+  return results
+}
+
+// ── Detail images (Responses API with image generation) ──
+async function generateDetailImages(dataUrls, productName, apiKey) {
+  const prompt = `你是專業電商視覺設計師，請根據商品「${productName}」的圖片，生成約9張蝦皮電商詳情圖：
+
+第1張：封面主圖——大標題寫商品名稱、3個亮點標籤、商品照
+第2張：尺寸規格圖——單獨呈現尺寸數字與示意圖
+第3-5張：三大賣點——每張一個特色（文字+商品角度各異）
+第6-7張：使用情境——生活化場景
+第8張：細節特寫
+第9張：購買須知或品質保證
+
+注意事項：
+• 商品的形狀、圖案、材質絕對不可變形或修改
+• 每張圖商品角度要不同
+• 不必每張都出現商品
+• 所有文字使用繁體中文
+• 整體風格清新、有質感`
+
+  const content = [
+    ...dataUrls.map(url => ({ type: 'input_image', image_url: url })),
+    { type: 'input_text', text: prompt }
+  ]
+
+  const res = await fetch('https://api.openai.com/v1/responses', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o',
+      tools: [{ type: 'image_generation' }],
+      input: [{ role: 'user', content }]
+    }),
+    signal: abortController.signal
+  })
+
+  const data = await res.json()
+  if (data.error) throw new Error(data.error.message || JSON.stringify(data.error))
+
+  const imgs = []
+  for (const item of (data.output || [])) {
+    if (item.type === 'image_generation_call' && item.result) {
+      imgs.push(`data:image/png;base64,${item.result}`)
+    }
+  }
+  return imgs
+}
+
+// ── Wencai (text) ──
+async function generateWencai(dataUrls, productName, apiKey) {
+  const content = [
+    ...dataUrls.slice(0, 2).map(url => ({ type: 'image_url', image_url: { url } })),
+    {
+      type: 'text',
+      text: `根據這個商品「${productName}」的圖片，請提供：
+
+【品名建議】3個選項，每個15-25字，含主要關鍵字，適合蝦皮賣場
+
+【商品介紹】100-150字，台灣口語化，條列主要賣點，可直接貼到蝦皮
+
+【SEO關鍵字】10-15個，以逗號分隔，按搜尋相關度排序
+
+格式：
+品名1：...
+品名2：...
+品名3：...
+
+介紹：
+...
+
+關鍵字：...`
+    }
+  ]
+
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content }],
+      max_tokens: 1000
+    }),
+    signal: abortController.signal
+  })
+
+  const data = await res.json()
+  if (data.error) throw new Error(data.error.message)
+  return data.choices?.[0]?.message?.content || ''
+}
+
+// ── Show results ──
+function showResults() {
+  document.getElementById('card-progress').classList.add('hidden')
+  document.getElementById('card-results').classList.remove('hidden')
+
+  // 形象圖
+  const xGrid = document.getElementById('xiangjing-grid')
+  xGrid.innerHTML = ''
+  document.getElementById('badge-xiangjing').textContent = generatedImages.xiangjing.length
+  if (generatedImages.xiangjing.length) {
+    document.getElementById('xiangjing-empty').classList.add('hidden')
+    generatedImages.xiangjing.forEach((src, i) => {
+      xGrid.innerHTML += `<div class="result-img-item">
+        <img src="${src}" alt="形象圖${i+1}">
+        <div class="result-img-footer">
+          <span class="result-img-label">形象圖 ${i+1}</span>
+          <button class="btn-sm" onclick="downloadImg('${src}','形象圖${i+1}.png')">下載</button>
+        </div>
+      </div>`
+    })
+  } else {
+    document.getElementById('xiangjing-empty').classList.remove('hidden')
+  }
+
+  // 詳情圖
+  const dGrid = document.getElementById('detail-grid')
+  dGrid.innerHTML = ''
+  document.getElementById('badge-detail').textContent = generatedImages.detail.length
+  if (generatedImages.detail.length) {
+    document.getElementById('detail-empty').classList.add('hidden')
+    generatedImages.detail.forEach((src, i) => {
+      dGrid.innerHTML += `<div class="detail-img-item">
+        <img src="${src}" alt="詳情圖${i+1}">
+        <div class="detail-img-footer">
+          <span class="detail-img-label">圖 ${i+1}</span>
+          <button class="btn-sm" onclick="downloadImg('${src}','詳情圖${i+1}.png')">下載</button>
+        </div>
+      </div>`
+    })
+  } else {
+    document.getElementById('detail-empty').classList.remove('hidden')
+  }
+
+  // 文案
+  if (generatedWencai) {
+    document.getElementById('wencai-empty').classList.add('hidden')
+    parseAndRenderWencai(generatedWencai)
+  } else {
+    document.getElementById('wencai-empty').classList.remove('hidden')
+    document.getElementById('wencai-output').classList.add('hidden')
+  }
+
+  const total = generatedImages.xiangjing.length + generatedImages.detail.length
+  document.getElementById('result-summary').textContent = `共 ${total} 張圖片已生成`
+  document.getElementById('card-results').scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+function parseAndRenderWencai(text) {
+  document.getElementById('wencai-output').classList.remove('hidden')
+
+  // Parse names
+  const namesEl = document.getElementById('wencai-names')
+  namesEl.innerHTML = ''
+  const nameMatches = [...text.matchAll(/品名\d+[：:]\s*(.+)/g)]
+  if (nameMatches.length) {
+    nameMatches.forEach((m, i) => {
+      namesEl.innerHTML += `<div class="wencai-option">
+        <span>${m[1].trim()}</span>
+        <button class="btn-sm" onclick="copyText('${m[1].trim().replace(/'/g, "\\'")}')">複製</button>
+      </div>`
+    })
+  }
+
+  // Parse description
+  const descEl = document.getElementById('wencai-desc')
+  const descMatch = text.match(/介紹[：:][\s\S]+?(?=\n\n關鍵字|$)/i)
+  if (descMatch) {
+    const descText = descMatch[0].replace(/^介紹[：:]\s*/i, '').trim()
+    descEl.textContent = descText
+    descEl.parentElement.querySelector('h3').nextSibling
+    document.querySelector('#panel-wencai .wencai-section:nth-child(2)').innerHTML = `
+      <h3>商品介紹 <button class="btn-sm" style="margin-left:8px" onclick="copyText('${descText.replace(/'/g, "\\'")}')">複製</button></h3>
+      <div class="wencai-body">${escHtml(descText)}</div>`
+  }
+
+  // Parse SEO
+  const seoEl = document.getElementById('wencai-seo')
+  const seoMatch = text.match(/關鍵字[：:]\s*(.+)/i)
+  if (seoMatch) {
+    const keywords = seoMatch[1].split(/[,，、]/).map(k => k.trim()).filter(Boolean)
+    seoEl.innerHTML = keywords.map(k => `<span class="seo-tag" onclick="copyText('${k}')" style="cursor:pointer" title="點擊複製">${k}</span>`).join('')
+  }
+}
+
+function escHtml(t) { return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+
+// ── Result tab switching ──
+function switchResult(btn) {
+  document.querySelectorAll('.rtab').forEach(t => t.classList.remove('active'))
+  document.querySelectorAll('.result-panel').forEach(p => p.classList.remove('active'))
+  btn.classList.add('active')
+  document.getElementById(btn.dataset.panel).classList.add('active')
+}
+
+// ── Download ──
+function downloadImg(src, name) {
+  const a = document.createElement('a')
+  a.href = src
+  a.download = name
+  a.click()
+}
+
+function downloadAll() {
+  const all = [
+    ...generatedImages.xiangjing.map((s, i) => ({ src: s, name: `形象圖${i+1}.png` })),
+    ...generatedImages.detail.map((s, i) => ({ src: s, name: `詳情圖${i+1}.png` }))
+  ]
+  if (!all.length) return alert('沒有可下載的圖片')
+  all.forEach((item, i) => {
+    setTimeout(() => downloadImg(item.src, item.name), i * 300)
+  })
+}
+
+// ── Copy ──
+function copyText(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    // briefly flash
+    const el = document.activeElement
+    const orig = el.textContent
+    el.textContent = '已複製'
+    setTimeout(() => { el.textContent = orig }, 800)
+  }).catch(() => {
+    const ta = document.createElement('textarea')
+    ta.value = text
+    document.body.appendChild(ta)
+    ta.select()
+    document.execCommand('copy')
+    ta.remove()
+  })
+}
+
+// ── Reset ──
+function resetTool() {
+  images = []
+  selectedIdx = new Set()
+  generatedImages = { xiangjing: [], detail: [] }
+  generatedWencai = ''
+  document.getElementById('images-grid').innerHTML = ''
+  document.getElementById('images-section').classList.add('hidden')
+  document.getElementById('product-name').value = ''
+  document.getElementById('taobao-url').value = ''
+  setFetchStatus('', '')
+  document.getElementById('card-results').classList.add('hidden')
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+// ── Util: dataURL → Blob ──
+function dataUrlToBlob(dataUrl) {
+  const [header, b64] = dataUrl.split(',')
+  const mime = header.match(/:(.*?);/)[1]
+  const bin = atob(b64)
+  const arr = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i)
+  return new Blob([arr], { type: mime })
+}
+
+// ── Init ──
+checkKeyBanner()
+</script>
+</body>
+</html>
