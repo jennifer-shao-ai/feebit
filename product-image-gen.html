@@ -205,7 +205,7 @@
     <a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span> 旅行規劃</a>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v1.5</div>
+  <div class="sidebar-footer">v1.6</div>
 </div>
 <div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.remove('open');this.classList.remove('active')"></div>
 
@@ -216,7 +216,7 @@
     <span class="topbar-title">商品圖一鍵生成</span>
     <div style="display:flex;gap:8px;align-items:center">
       <button class="btn-sm" onclick="openSettings()">⚙ API 設定</button>
-      <span class="topbar-badge">v1.5</span>
+      <span class="topbar-badge">v1.6</span>
     </div>
   </div>
 
@@ -326,12 +326,20 @@
           <div class="gen-option"><label><input type="checkbox" id="gen-wencai" checked> 文案（特色 + 介紹 + SEO）</label></div>
         </div>
 
-        <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-top:14px;margin-bottom:6px">形象圖背景風格</div>
-        <div class="style-row">
-          <button class="style-btn active" data-style="life" onclick="selectStyle(this)">🏡 生活情境</button>
-          <button class="style-btn" data-style="minimal" onclick="selectStyle(this)">⬜ 簡約白底</button>
-          <button class="style-btn" data-style="nature" onclick="selectStyle(this)">🌿 自然清新</button>
-          <button class="style-btn" data-style="luxury" onclick="selectStyle(this)">✨ 質感商業</button>
+        <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-top:16px;margin-bottom:6px">形象圖設定</div>
+        <div class="field-row" style="margin-bottom:8px">
+          <label>背景風格 <span style="font-weight:400;color:var(--gray-400)">（例：韓系簡約風、北歐清新、奢華大理石）</span></label>
+          <input type="text" id="bg-style-input" placeholder="韓系簡約風" value="韓系簡約風">
+        </div>
+        <div class="field-row" style="margin-bottom:8px">
+          <label>加入元素 <span style="font-weight:400;color:var(--gray-400)">（選填，例：蝴蝶結、花朵、木質感）</span></label>
+          <input type="text" id="bg-elements-input" placeholder="留空則不加入特定元素">
+        </div>
+
+        <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-top:16px;margin-bottom:6px">詳情圖設定</div>
+        <div class="field-row" style="margin-bottom:8px">
+          <label>商品尺寸 <span style="font-weight:400;color:var(--gray-400)">（例：長30cm × 寬20cm × 高10cm）</span></label>
+          <input type="text" id="product-size-input" placeholder="尺寸資訊（選填）">
         </div>
 
         <div class="gen-row">
@@ -586,14 +594,6 @@ scrollStep();
   document.getElementById('bookmarklet-link').href = bm
 }
 
-// ── Style selector ──
-function selectStyle(btn) {
-  document.querySelectorAll('.style-btn').forEach(b => b.classList.remove('active'))
-  btn.classList.add('active')
-}
-function getSelectedStyle() {
-  return document.querySelector('.style-btn.active')?.dataset.style || 'life'
-}
 
 // ── Taobao image fetch ──
 async function fetchTaobaoImages() {
@@ -801,22 +801,24 @@ async function startGenerate() {
     const dataUrls = await getSelectedDataUrls()
     setProgStatus('prog-fetch', 'done', `完成（${dataUrls.length} 張）`)
 
-    const style = getSelectedStyle()
+    const bgStyle = document.getElementById('bg-style-input')?.value.trim() || '韓系簡約風'
+    const bgElements = document.getElementById('bg-elements-input')?.value.trim() || ''
+    const productSize = document.getElementById('product-size-input')?.value.trim() || ''
 
-    // Run in parallel
+    // Run sequentially (形象圖 and 詳情圖 each make multiple API calls)
     const tasks = []
     if (doXiangjing) {
-      setProgStatus('prog-xiangjing', 'running', '生成中...')
+      setProgStatus('prog-xiangjing', 'running', '生成中（3 張）...')
       tasks.push(
-        generateBgImages(dataUrls[0], style, productName, apiKey)
+        generateBgImages(dataUrls, productName, bgStyle, bgElements, apiKey)
           .then(imgs => { generatedImages.xiangjing = imgs; setProgStatus('prog-xiangjing', 'done', `完成（${imgs.length} 張）`) })
           .catch(e => setProgStatus('prog-xiangjing', 'error', '失敗：' + e.message))
       )
     }
     if (doDetail) {
-      setProgStatus('prog-detail', 'running', '生成中（約 2-3 分鐘）...')
+      setProgStatus('prog-detail', 'running', '生成第 1/9 張...')
       tasks.push(
-        generateDetailImages(dataUrls, productName, apiKey)
+        generateDetailImages(dataUrls, productName, productSize, apiKey)
           .then(imgs => { generatedImages.detail = imgs; setProgStatus('prog-detail', 'done', `完成（${imgs.length} 張）`) })
           .catch(e => setProgStatus('prog-detail', 'error', '失敗：' + e.message))
       )
@@ -852,121 +854,87 @@ function setProgStatus(id, state, text) {
 }
 
 // ── Background image generation (gpt-image-1) ──
-const BG_PROMPTS = {
-  life: [
-    'Replace the background with a modern kitchen counter scene with wooden surface and soft morning sunlight. Keep ONLY the main product being sold — remove all other objects, accessories, utensils, or props. No text, no labels, no watermarks anywhere in the image.',
-    'Replace the background with a clean white bathroom shelf with soft diffused light. Keep ONLY the main product being sold — remove all other objects or accessories. No text, no labels, no watermarks anywhere in the image.',
-    'Replace the background with a Scandinavian living room setting, white table, green potted plants, natural light. Keep ONLY the main product being sold — remove all surrounding accessories or props. No text, no labels, no watermarks anywhere in the image.'
-  ],
-  minimal: [
-    'Replace the background with a pure white studio backdrop, professional soft-box lighting, subtle drop shadow. Keep ONLY the main product being sold — remove all accessories or extra objects. No text, no labels, no watermarks anywhere in the image.',
-    'Replace the background with a clean light gray gradient, subtle shadow below product. Keep ONLY the main product being sold — no accessories, no props. No text, no labels, no watermarks anywhere in the image.',
-    'Replace the background with a bright white high-key studio look. Keep ONLY the main product being sold — remove every other object. No text, no labels, no watermarks anywhere in the image.'
-  ],
-  nature: [
-    'Replace the background with lush green plants and a natural wooden surface. Keep ONLY the main product being sold — remove all accessories and props. No text, no labels, no watermarks anywhere in the image.',
-    'Replace the background with a rustic wooden surface with dried flowers, warm earthy tones. Keep ONLY the main product being sold — remove all surrounding objects. No text, no labels, no watermarks anywhere in the image.',
-    'Replace the background with a bright airy room, large windows, soft natural light, indoor fern plants. Keep ONLY the main product being sold — remove all extra accessories or items. No text, no labels, no watermarks anywhere in the image.'
-  ],
-  luxury: [
-    'Replace the background with a dark veined marble surface, dramatic side lighting. Keep ONLY the main product being sold — remove all accessories. No text, no labels, no watermarks anywhere in the image.',
-    'Replace the background with a pure black background, subtle gold-toned rim lighting, high-end commercial look. Keep ONLY the main product being sold. No text, no labels, no watermarks anywhere in the image.',
-    'Replace the background with elegant muted grey tones, soft luxury ambiance. Keep ONLY the main product being sold — no props, no accessories. No text, no labels, no watermarks anywhere in the image.'
-  ]
-}
 
-async function generateBgImages(dataUrl, style, productName, apiKey) {
-  const prompts = BG_PROMPTS[style] || BG_PROMPTS.life
-  const results = []
-
-  for (const prompt of prompts) {
-    try {
-      const blob = dataUrlToBlob(dataUrl)
-      const form = new FormData()
-      form.append('image', blob, 'product.png')
-      form.append('prompt', `Product: ${productName}. ${prompt}`)
-      form.append('model', 'gpt-image-1')
-      form.append('n', '1')
-      form.append('size', '1024x1024')
-
-      const res = await fetch('https://api.openai.com/v1/images/edits', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${apiKey}` },
-        body: form,
-        signal: abortController.signal
-      })
-      const data = await res.json()
-      if (data.error) throw new Error(data.error.message)
-      const b64 = data.data?.[0]?.b64_json
-      if (b64) results.push(`data:image/png;base64,${b64}`)
-    } catch (e) {
-      if (e.name === 'AbortError') throw e
-      console.warn('bg image failed:', e.message)
-    }
-  }
-  return results
-}
-
-// ── Detail images (Responses API with image_generation tool) ──
-async function generateDetailImages(dataUrls, productName, apiKey) {
-  const prompt = `你是專業電商視覺設計師，請根據商品「${productName}」的圖片，生成約9張蝦皮電商詳情圖：
-
-第1張：封面主圖——大標題寫商品名稱、3個亮點標籤、商品照
-第2張：尺寸規格圖——單獨呈現尺寸數字與示意圖
-第3-5張：三大賣點——每張一個特色（文字+商品角度各異）
-第6-7張：使用情境——生活化場景
-第8張：細節特寫
-第9張：購買須知或品質保證
-
-注意事項：
-• 商品的形狀、圖案、材質絕對不可變形或修改
-• 每張圖商品角度要不同
-• 不必每張都出現商品
-• 所有文字使用繁體中文
-• 整體風格清新、有質感`
-
-  // Build content for Responses API
+// ── Responses API helper — one image per call ──
+async function callImageGenAPI(dataUrls, promptText, apiKey) {
   const content = [
     ...dataUrls.map(url => ({ type: 'input_image', image_url: url })),
-    { type: 'input_text', text: prompt }
+    { type: 'input_text', text: promptText }
   ]
-
   const res = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'gpt-4o',
-      tools: [{ type: 'image_generation', quality: 'low' }],
+      tools: [{ type: 'image_generation', quality: 'medium' }],
       input: [{ role: 'user', content }]
     }),
     signal: abortController.signal
   })
-
   const data = await res.json()
-  if (data.error) {
-    // Surface the real error so user can understand the failure
-    throw new Error(`API 錯誤 (${data.error.code || data.error.type}): ${data.error.message}`)
-  }
-
-  const imgs = []
+  if (data.error) throw new Error(`API 錯誤 (${data.error.code || data.error.type}): ${data.error.message}`)
   for (const item of (data.output || [])) {
     if (item.type === 'image_generation_call') {
       const b64 = item.result ?? item.b64_json ?? item.data
-      if (b64) imgs.push(`data:image/png;base64,${b64}`)
-    }
-    // Also check nested content for some API versions
-    if (item.type === 'message' && item.content) {
-      for (const c of item.content) {
-        if (c.type === 'image_url') imgs.push(c.image_url?.url || c.image_url)
-        if (c.type === 'image' && c.source?.data) imgs.push(`data:image/png;base64,${c.source.data}`)
-      }
+      if (b64) return `data:image/png;base64,${b64}`
     }
   }
+  throw new Error('API 未回傳圖片')
+}
 
-  if (!imgs.length) {
-    throw new Error(`詳情圖生成失敗：API 未回傳圖片。原始回應: ${JSON.stringify(data.output?.slice(0,2))}`)
+// ── 形象圖：3 張獨立生成，使用 Jennifer 的 prompt 格式 ──
+async function generateBgImages(dataUrls, productName, bgStyle, bgElements, apiKey) {
+  const elemPart = bgElements ? `，並加入 ${bgElements} 元素` : ''
+  const angleVariants = [
+    '商品直立擺放，角度自然',
+    '商品可橫向或斜角擺放，展現不同面向',
+    '商品從另一個角度呈現，構圖自由'
+  ]
+  const results = []
+  for (const angleHint of angleVariants) {
+    try {
+      const prompt = `我有一個商品叫做「${productName}」，我需要銷售用的商品形象圖。
+不要讓商品擺放太整齊，${angleHint}，但商品整體形象樣貌不可以變動、不可變形。
+背景以「${bgStyle}」風格為主${elemPart}。
+生成正方形構圖（1:1），圖中不要放任何文字、標籤或浮水印。
+只保留要販售的商品本體，移除所有不相干的配件或道具。`
+      const img = await callImageGenAPI(dataUrls, prompt, apiKey)
+      results.push(img)
+    } catch (e) {
+      if (e.name === 'AbortError') throw e
+      console.warn('形象圖生成失敗:', e.message)
+    }
   }
-  return imgs
+  return results
+}
+
+// ── 詳情圖：9 張逐一生成，每張獨立 prompt ──
+async function generateDetailImages(dataUrls, productName, productSize, apiKey) {
+  const sizeNote = productSize ? `（商品尺寸：${productSize}）` : ''
+  const imagePrompts = [
+    `商品「${productName}」的電商封面主圖，正方形構圖。圖中寫上商品名稱與 2-3 句簡短介紹文字，商品照置中展示，整體風格乾淨有質感。繁體中文文字。`,
+    `商品「${productName}」的尺寸規格圖，單獨一張清楚呈現商品尺寸數字與示意圖${sizeNote}。正方形構圖，背景簡潔，文字繁體中文。`,
+    `商品「${productName}」的第一個賣點特色圖，正方形構圖。以視覺方式突顯商品第一個主要特色，商品照 + 重點文字說明。繁體中文。`,
+    `商品「${productName}」的第二個賣點特色圖，正方形構圖。展示商品第二個主要特色，換一個商品角度，文字 + 視覺搭配。繁體中文。`,
+    `商品「${productName}」的第三個賣點特色圖，正方形構圖。展示商品第三個主要特色，再換一個角度或局部特寫。繁體中文。`,
+    `商品「${productName}」的使用情境圖一，正方形構圖。生活化場景，商品在實際使用環境中的樣子，風格溫馨自然。不需文字。`,
+    `商品「${productName}」的使用情境圖二，正方形構圖。另一個不同的生活使用情境，構圖與圖六有所不同。不需文字。`,
+    `商品「${productName}」的細節特寫圖，正方形構圖。放大呈現商品的材質、做工或重要細節，讓消費者看到品質。不需文字。`,
+    `商品「${productName}」的購買須知或品質保證圖，正方形構圖。設計感強的圖文排版，列出 3-4 點品質保證或注意事項。繁體中文。`
+  ]
+
+  const results = []
+  for (let i = 0; i < imagePrompts.length; i++) {
+    setProgStatus('prog-detail', 'running', `生成第 ${i + 1}/9 張...`)
+    try {
+      const img = await callImageGenAPI(dataUrls, imagePrompts[i], apiKey)
+      results.push(img)
+    } catch (e) {
+      if (e.name === 'AbortError') throw e
+      console.warn(`詳情圖 ${i + 1} 失敗:`, e.message)
+    }
+  }
+  return results
 }
 
 // ── Wencai (text) ──
