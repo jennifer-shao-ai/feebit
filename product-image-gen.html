@@ -7,6 +7,7 @@
 <title>商品圖生成 — 飛比特</title>
 <link rel="icon" href="favicon.svg">
 <link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
 /* ── Layout ── */
 .pig-layout { display: flex; flex-direction: column; gap: 20px; max-width: 960px; }
@@ -108,17 +109,17 @@
 .detail-img-label { font-size: 11px; color: var(--gray-500); }
 
 /* ── Wencai text output ── */
-.wencai-section { margin-bottom: 20px; }
-.wencai-section h3 { font-size: 13px; font-weight: 700; color: var(--gray-700); margin-bottom: 8px; }
-.wencai-option { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 10px 14px; font-size: 14px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-.wencai-option span { flex: 1; line-height: 1.5; }
-.wencai-body { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 14px; font-size: 13px; line-height: 1.8; }
-.wencai-body p { margin: 0 0 6px; }
-.wencai-body p:last-child { margin-bottom: 0; }
+.wencai-tabs { display: flex; gap: 4px; margin-bottom: 12px; flex-wrap: wrap; }
+.wencai-tab { padding: 6px 14px; border-radius: 6px; border: 1px solid var(--gray-200); background: var(--gray-50); font-size: 13px; cursor: pointer; color: var(--gray-600); }
+.wencai-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+.wencai-panel { display: none; }
+.wencai-panel.active { display: block; }
+.wencai-raw { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 14px; font-size: 13px; line-height: 1.8; white-space: pre-wrap; max-height: 500px; overflow-y: auto; }
+.wencai-copy-row { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+.seo-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.seo-tag { background: var(--primary-light); color: var(--primary); border-radius: 12px; padding: 3px 10px; font-size: 12px; cursor: pointer; }
 .wencai-features { margin: 0; padding: 0 0 0 18px; list-style: disc; }
 .wencai-features li { font-size: 13px; line-height: 1.8; color: var(--gray-700); }
-.seo-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-.seo-tag { background: var(--primary-light); color: var(--primary); border-radius: 12px; padding: 3px 10px; font-size: 12px; }
 
 /* ── Results action bar ── */
 .results-actions { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
@@ -205,7 +206,7 @@
     <a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span> 旅行規劃</a>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v1.6</div>
+  <div class="sidebar-footer">v1.7</div>
 </div>
 <div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.remove('open');this.classList.remove('active')"></div>
 
@@ -216,7 +217,7 @@
     <span class="topbar-title">商品圖一鍵生成</span>
     <div style="display:flex;gap:8px;align-items:center">
       <button class="btn-sm" onclick="openSettings()">⚙ API 設定</button>
-      <span class="topbar-badge">v1.6</span>
+      <span class="topbar-badge">v1.7</span>
     </div>
   </div>
 
@@ -285,9 +286,12 @@
 
         <!-- Images preview -->
         <div id="images-section" class="hidden">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;flex-wrap:wrap;gap:8px">
             <div style="font-size:13px;font-weight:600;color:var(--gray-700)">選擇要使用的圖片（建議選 1-3 張）</div>
-            <button class="btn-sm" onclick="clearImages()">清除全部</button>
+            <div style="display:flex;gap:6px">
+              <button class="btn-sm" onclick="downloadOriginalZip()">📦 下載原始圖</button>
+              <button class="btn-sm" onclick="clearImages()">清除全部</button>
+            </div>
           </div>
           <div id="images-grid" class="images-grid"></div>
           <div style="margin-top:12px">
@@ -321,9 +325,9 @@
 
         <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-bottom:6px">要生成哪些內容？</div>
         <div class="gen-options">
-          <div class="gen-option"><label><input type="checkbox" id="gen-xiangjing" checked> 形象圖（3 款換背景）</label></div>
-          <div class="gen-option"><label><input type="checkbox" id="gen-detail" checked> 詳情圖（約 9 張）</label></div>
-          <div class="gen-option"><label><input type="checkbox" id="gen-wencai" checked> 文案（特色 + 介紹 + SEO）</label></div>
+          <div class="gen-option"><label><input type="checkbox" id="gen-xiangjing" checked> 形象圖（6 張）</label></div>
+          <div class="gen-option"><label><input type="checkbox" id="gen-detail" checked> 詳情圖（9 張）</label></div>
+          <div class="gen-option"><label><input type="checkbox" id="gen-wencai" checked> 文案（4 版賣場文案）</label></div>
         </div>
 
         <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-top:16px;margin-bottom:6px">形象圖設定</div>
@@ -368,7 +372,7 @@
           </div>
           <div class="prog-item" id="prog-wencai">
             <span class="prog-icon">✍️</span>
-            <span class="prog-label">文案（特色 + 介紹 + SEO）</span>
+            <span class="prog-label">文案（4 版賣場文案）</span>
             <span class="prog-status">等待中</span>
           </div>
         </div>
@@ -380,7 +384,8 @@
       <!-- ── Step 4: 結果 ── -->
       <div class="pig-card hidden" id="card-results">
         <div class="results-actions">
-          <button class="btn-primary" onclick="downloadAll()">全部下載</button>
+          <button class="btn-primary" onclick="downloadAllZip()">📦 下載全部壓縮檔</button>
+          <button class="btn-sm" onclick="downloadAll()">逐張下載</button>
           <button class="btn-sm" onclick="resetTool()">重新開始</button>
           <span class="label" id="result-summary"></span>
         </div>
@@ -411,21 +416,31 @@
 
         <!-- 文案 panel -->
         <div class="result-panel" id="panel-wencai">
-          <div id="wencai-output">
-            <div class="wencai-section">
-              <h3>商品特色</h3>
-              <ul id="wencai-features" class="wencai-features"></ul>
+          <div id="wencai-output" class="hidden">
+            <div class="wencai-tabs">
+              <button class="wencai-tab active" data-v="1" onclick="switchWencai(this)">文案 1</button>
+              <button class="wencai-tab" data-v="2" onclick="switchWencai(this)">文案 2</button>
+              <button class="wencai-tab" data-v="3" onclick="switchWencai(this)">文案 3</button>
+              <button class="wencai-tab" data-v="4" onclick="switchWencai(this)">文案 4</button>
             </div>
-            <div class="wencai-section">
-              <h3>商品介紹 <button class="btn-sm" style="margin-left:8px" id="btn-copy-desc" onclick="copyWencaiDesc()">複製</button></h3>
-              <div id="wencai-desc" class="wencai-body"></div>
+            <div class="wencai-panel active" id="wencai-v1">
+              <div class="wencai-copy-row"><button class="btn-sm" onclick="copyWencaiVersion(1)">複製全文</button></div>
+              <pre class="wencai-raw" id="wencai-raw-1"></pre>
             </div>
-            <div class="wencai-section">
-              <h3>SEO 關鍵字 <button class="btn-sm" style="margin-left:8px" id="btn-copy-seo" onclick="copyAllSeo()">一鍵複製全部</button></h3>
-              <div id="wencai-seo" class="seo-tags"></div>
+            <div class="wencai-panel" id="wencai-v2">
+              <div class="wencai-copy-row"><button class="btn-sm" onclick="copyWencaiVersion(2)">複製全文</button></div>
+              <pre class="wencai-raw" id="wencai-raw-2"></pre>
+            </div>
+            <div class="wencai-panel" id="wencai-v3">
+              <div class="wencai-copy-row"><button class="btn-sm" onclick="copyWencaiVersion(3)">複製全文</button></div>
+              <pre class="wencai-raw" id="wencai-raw-3"></pre>
+            </div>
+            <div class="wencai-panel" id="wencai-v4">
+              <div class="wencai-copy-row"><button class="btn-sm" onclick="copyWencaiVersion(4)">複製全文</button></div>
+              <pre class="wencai-raw" id="wencai-raw-4"></pre>
             </div>
           </div>
-          <div id="wencai-empty" class="hidden" style="text-align:center;color:var(--gray-400);padding:32px;font-size:13px">未生成文案</div>
+          <div id="wencai-empty" style="text-align:center;color:var(--gray-400);padding:32px;font-size:13px">未生成文案</div>
         </div>
       </div>
 
@@ -882,21 +897,26 @@ async function callImageGenAPI(dataUrls, promptText, apiKey) {
   throw new Error('API 未回傳圖片')
 }
 
-// ── 形象圖：3 張獨立生成，使用 Jennifer 的 prompt 格式 ──
+// ── 形象圖：6 張獨立生成 ──
 async function generateBgImages(dataUrls, productName, bgStyle, bgElements, apiKey) {
-  const elemPart = bgElements ? `，並加入 ${bgElements} 元素` : ''
-  const angleVariants = [
-    '商品直立擺放，角度自然',
-    '商品可橫向或斜角擺放，展現不同面向',
-    '商品從另一個角度呈現，構圖自由'
+  const elemPart = bgElements ? `，加入 ${bgElements} 裝飾元素` : ''
+  const PRODUCT_LOCK = `⚠️ 嚴格限制：商品外觀、形狀、顏色、花紋、圖案、細節（包含花瓣數量、圖案元素數量）絕對不可有任何改變，必須與參考圖片完全一致，不得添加、刪除或修改任何細節。`
+  const variants = [
+    '商品直立擺放，構圖自然有質感',
+    '商品橫向或斜角擺放，展現商品不同面向',
+    '商品 45 度角擺放，強調立體感',
+    '俯視角度（由上往下），展現商品全貌',
+    '生活情境場景一，商品融入使用環境，自然不刻意',
+    '生活情境場景二，另一個不同的使用情境，構圖與前一張明顯不同'
   ]
   const results = []
-  for (const angleHint of angleVariants) {
+  for (const v of variants) {
     try {
       const prompt = `我有一個商品叫做「${productName}」，我需要銷售用的商品形象圖。
-不要讓商品擺放太整齊，${angleHint}，但商品整體形象樣貌不可以變動、不可變形。
+${PRODUCT_LOCK}
+構圖方式：${v}。不要讓商品擺放太整齊。
 背景以「${bgStyle}」風格為主${elemPart}。
-生成正方形構圖（1:1），圖中不要放任何文字、標籤或浮水印。
+生成正方形構圖（1:1），圖中絕對不放任何文字、標籤或浮水印。
 只保留要販售的商品本體，移除所有不相干的配件或道具。`
       const img = await callImageGenAPI(dataUrls, prompt, apiKey)
       results.push(img)
@@ -908,19 +928,64 @@ async function generateBgImages(dataUrls, productName, bgStyle, bgElements, apiK
   return results
 }
 
-// ── 詳情圖：9 張逐一生成，每張獨立 prompt ──
+// ── 詳情圖：9 張逐一生成，按 image_plan 格式 ──
 async function generateDetailImages(dataUrls, productName, productSize, apiKey) {
-  const sizeNote = productSize ? `（商品尺寸：${productSize}）` : ''
+  const PRODUCT_LOCK = `⚠️ 嚴格限制：商品外觀、形狀、顏色、花紋、圖案、所有細節（含花瓣數量、圖案元素數量）絕對不可有任何改變，必須與參考圖片完全一致。`
+  const sizeStr = productSize || '（尺寸請參考商品圖）'
   const imagePrompts = [
-    `商品「${productName}」的電商封面主圖，正方形構圖。圖中寫上商品名稱與 2-3 句簡短介紹文字，商品照置中展示，整體風格乾淨有質感。繁體中文文字。`,
-    `商品「${productName}」的尺寸規格圖，單獨一張清楚呈現商品尺寸數字與示意圖${sizeNote}。正方形構圖，背景簡潔，文字繁體中文。`,
-    `商品「${productName}」的第一個賣點特色圖，正方形構圖。以視覺方式突顯商品第一個主要特色，商品照 + 重點文字說明。繁體中文。`,
-    `商品「${productName}」的第二個賣點特色圖，正方形構圖。展示商品第二個主要特色，換一個商品角度，文字 + 視覺搭配。繁體中文。`,
-    `商品「${productName}」的第三個賣點特色圖，正方形構圖。展示商品第三個主要特色，再換一個角度或局部特寫。繁體中文。`,
-    `商品「${productName}」的使用情境圖一，正方形構圖。生活化場景，商品在實際使用環境中的樣子，風格溫馨自然。不需文字。`,
-    `商品「${productName}」的使用情境圖二，正方形構圖。另一個不同的生活使用情境，構圖與圖六有所不同。不需文字。`,
-    `商品「${productName}」的細節特寫圖，正方形構圖。放大呈現商品的材質、做工或重要細節，讓消費者看到品質。不需文字。`,
-    `商品「${productName}」的購買須知或品質保證圖，正方形構圖。設計感強的圖文排版，列出 3-4 點品質保證或注意事項。繁體中文。`
+    // 1. 封面圖
+    `${PRODUCT_LOCK}
+電商詳情頁第1張：封面圖。正方形構圖，乾淨有質感的風格。
+內容：商品名稱「${productName}」+ 2-3 個核心賣點標語 + 商品情境照。
+不出現任何尺寸資訊，文案簡潔有力。繁體中文文字。`,
+
+    // 2. 尺寸圖
+    `${PRODUCT_LOCK}
+電商詳情頁第2張：尺寸規格圖。正方形構圖，背景簡潔白色或淡色。
+僅顯示商品「${productName}」的長/寬/厚度數值：${sizeStr}。
+圖底加入說明文字「※尺寸為人工測量，可能存在些許誤差」。繁體中文。`,
+
+    // 3. 材質圖
+    `${PRODUCT_LOCK}
+電商詳情頁第3張：材質特寫圖。正方形構圖。
+商品「${productName}」的材質局部放大特寫，強調觸感與質感，展現品質細節。
+可加入簡短的材質說明文字。繁體中文。`,
+
+    // 4. 細節圖
+    `${PRODUCT_LOCK}
+電商詳情頁第4張：工藝細節圖。正方形構圖。
+放大展示商品「${productName}」的局部工藝細節，強調做工精緻、品質優良。
+可加入強調細節的標示文字。繁體中文。`,
+
+    // 5. 功能圖
+    `${PRODUCT_LOCK}
+電商詳情頁第5張：功能展示圖。正方形構圖。
+展示商品「${productName}」的主要功能或使用方式，強調實用性與便利性。
+搭配功能說明文字。繁體中文。`,
+
+    // 6. 使用情境圖
+    `${PRODUCT_LOCK}
+電商詳情頁第6張：使用情境圖。正方形構圖。
+生活化場景，商品「${productName}」在實際使用環境中自然擺放。
+商品尺寸比例必須符合實際大小，不可誇大或縮小。風格溫馨自然。`,
+
+    // 7. 多角度展示圖
+    `${PRODUCT_LOCK}
+電商詳情頁第7張：多角度展示圖。正方形構圖。
+在同一畫面中展示商品「${productName}」的多個角度（正面、45度、俯視、側面、斜角或局部特寫交替使用）。
+排版乾淨有設計感，可加入角度標示。繁體中文。`,
+
+    // 8. 收納/搭配展示圖
+    `${PRODUCT_LOCK}
+電商詳情頁第8張：收納或搭配展示圖。正方形構圖。
+展示商品「${productName}」的收納方式、搭配場景或整套使用情境。
+讓消費者想像實際使用後的生活樣貌，風格整齊美觀。`,
+
+    // 9. 賣點總結圖
+    `${PRODUCT_LOCK}
+電商詳情頁第9張：賣點總結圖。正方形構圖，設計感強。
+彙整商品「${productName}」的 3-4 個核心賣點，每個賣點簡潔一句，搭配 emoji 或圖示。
+整體版面清晰易讀，一眼抓住重點。繁體中文。`
   ]
 
   const results = []
@@ -937,43 +1002,68 @@ async function generateDetailImages(dataUrls, productName, productSize, apiKey) 
   return results
 }
 
-// ── Wencai (text) ──
+// ── Wencai (4-version product copy) ──
 async function generateWencai(dataUrls, productName, apiKey) {
+  const systemPrompt = `你是一位專業並擁有十年經驗的行銷文案撰寫人員。使用者提供商品名稱或圖片，你會運用商品資訊結合 Google Trend、熱詞分析以及 SEO 特性，撰寫吸引顧客購買的商品標題與特色介紹文案。你的用詞確保廣告用語合法合規，不撰寫任何違反台灣消費者保護法規的詞句。以繁體中文回覆，格式簡潔清楚，不使用 Markdown 符號（不使用 ** 或 # 等）。`
+
+  const userText = `商品名稱：${productName}
+
+請根據商品圖片與名稱，產出四個不同賣場風格的文案版本，格式如下：
+
+【文案1】
+賣場標題（格式：產地 品牌 共通品名 容量/規格）
+品名
+【商品摘要】：五句主要特色，每列前加 🔸
+【商品描述】：先寫完整商品名稱，再分三段：第一段商品簡介三句內；第二段五點吸引購買特色，每列加 ✅；第三段步驟式使用說明
+【商品規格】：容量、產地、貨源、全成分、有效日期、保存期限、保存方法逐行列出
+【國際條碼】
+【注意事項】
+
+【文案2】
+賣場標題（格式：產地 品牌 共通品名 容量 特色成分 【】 SEO搜尋字詞，使用全形空格）
+品名
+【商品特色】：五點特色，每列加 ✅
+【產品說明】：三句內簡單說明
+【使用方式】：步驟式
+【商品規格】：同文案1格式
+【國際條碼】
+【注意事項】：空白
+
+【文案3】
+賣場標題（格式：【】 產地 品牌 共通品名 容量 特色成分 SEO搜尋字詞）
+【商品特色】：三點特色，每列加 🔹
+【產品說明】：兩句內簡單說明
+【商品規格】：同文案1格式
+【國際條碼】
+【使用方式】：一句話
+【注意事項】：空白
+
+【文案4】
+賣場標題（格式：【】 產地 品牌 共通品名 容量 特色成分）
+【商品特色】：2-3項，每列加 🔸
+【產品說明】：針對商品分別撰寫3項特色與痛點
+【國際條碼】
+【使用方式】
+【容量】
+【產地】
+
+注意：各版本文案須調整用詞與順序，不可被識別為同一來源。不使用 Markdown 符號。`
+
   const content = [
-    ...dataUrls.slice(0, 2).map(url => ({ type: 'image_url', image_url: { url } })),
-    {
-      type: 'text',
-      text: `你是專業電商行銷文案師。根據商品「${productName}」的圖片，請提供以下內容，嚴格按照格式輸出：
-
-【商品特色】
-• 特色1（15字以內）
-• 特色2（15字以內）
-• 特色3（15字以內）
-• 特色4（15字以內）
-• 特色5（15字以內）
-
-【商品介紹】
-句子1：（詳細說明，台灣口語）
-句子2：（說明使用情境或材質）
-句子3：（強調價值或適用對象）
-
-【SEO關鍵字】
-關鍵字1,關鍵字2,關鍵字3,關鍵字4,關鍵字5,關鍵字6,關鍵字7,關鍵字8,關鍵字9,關鍵字10,關鍵字11,關鍵字12
-
-注意：關鍵字請按上方格式直接列出，不加空格，以逗號分隔，共10-12個。`
-    }
+    ...dataUrls.slice(0, 3).map(url => ({ type: 'image_url', image_url: { url } })),
+    { type: 'text', text: userText }
   ]
 
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json'
-    },
+    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'gpt-4o',
-      messages: [{ role: 'user', content }],
-      max_tokens: 1000
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content }
+      ],
+      max_tokens: 3500
     }),
     signal: abortController.signal
   })
@@ -1034,70 +1124,51 @@ function showResults() {
     document.getElementById('wencai-empty').classList.remove('hidden')
     document.getElementById('wencai-output').classList.add('hidden')
   }
+  document.getElementById('badge-xiangjing').textContent = generatedImages.xiangjing.length
+  document.getElementById('badge-detail').textContent = generatedImages.detail.length
 
   const total = generatedImages.xiangjing.length + generatedImages.detail.length
   document.getElementById('result-summary').textContent = `共 ${total} 張圖片已生成`
   document.getElementById('card-results').scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-let _seoKeywords = []
+let _wencaiVersions = []
 
 function parseAndRenderWencai(text) {
   document.getElementById('wencai-output').classList.remove('hidden')
+  document.getElementById('wencai-empty').classList.add('hidden')
 
-  // Parse 商品特色 (bullet points)
-  const featuresEl = document.getElementById('wencai-features')
-  featuresEl.innerHTML = ''
-  const featBlock = text.match(/【商品特色】([\s\S]+?)(?=【商品介紹】|【SEO|$)/i)
-  if (featBlock) {
-    const bullets = featBlock[1].match(/[•·\-\*]\s*(.+)/g) || featBlock[1].split('\n').filter(l => l.trim())
-    bullets.forEach(b => {
-      const item = b.replace(/^[•·\-\*]\s*/, '').trim()
-      if (item) featuresEl.innerHTML += `<li>${escHtml(item)}</li>`
-    })
-  }
-
-  // Parse 商品介紹 (3 sentences)
-  const descEl = document.getElementById('wencai-desc')
-  const introBlock = text.match(/【商品介紹】([\s\S]+?)(?=【SEO|$)/i)
-  if (introBlock) {
-    const lines = introBlock[1].split('\n')
-      .map(l => l.replace(/^句子\d+[：:]\s*/i, '').trim())
-      .filter(Boolean)
-    descEl.innerHTML = lines.map(l => `<p>${escHtml(l)}</p>`).join('')
-  }
-
-  // Parse SEO keywords
-  const seoEl = document.getElementById('wencai-seo')
-  const seoBlock = text.match(/【SEO關鍵字】([\s\S]+?)$/i)
-  if (seoBlock) {
-    const raw = seoBlock[1].replace(/關鍵字\d+/g, '').replace(/：|:/g, '').trim()
-    _seoKeywords = raw.split(/[,，、\n]/).map(k => k.trim()).filter(Boolean)
-    seoEl.innerHTML = _seoKeywords.map(k =>
-      `<span class="seo-tag" onclick="copyText(${JSON.stringify(k)})" style="cursor:pointer" title="點擊複製單個">${escHtml(k)}</span>`
-    ).join('')
-  }
-}
-
-function copyWencaiDesc() {
-  const lines = [...document.querySelectorAll('#wencai-desc p')].map(p => p.textContent).join('\n')
-  copyText(lines)
-  const btn = document.getElementById('btn-copy-desc')
-  const orig = btn.textContent; btn.textContent = '已複製'; setTimeout(() => btn.textContent = orig, 900)
-}
-
-function copyAllSeo() {
-  if (!_seoKeywords.length) return
-  const formatted = _seoKeywords.join(',')
-  navigator.clipboard.writeText(formatted).then(() => {
-    const btn = document.getElementById('btn-copy-seo')
-    const orig = btn.textContent; btn.textContent = '已複製！'; setTimeout(() => btn.textContent = orig, 900)
-  }).catch(() => {
-    const ta = document.createElement('textarea'); ta.value = _seoKeywords.join(',')
-    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove()
-    const btn = document.getElementById('btn-copy-seo')
-    const orig = btn.textContent; btn.textContent = '已複製！'; setTimeout(() => btn.textContent = orig, 900)
+  // Split into 4 versions by 【文案N】
+  _wencaiVersions = ['', '', '', '']
+  const parts = text.split(/(?=【文案[1234]】)/g).filter(s => s.trim())
+  parts.forEach(part => {
+    const m = part.match(/【文案([1234])】/)
+    if (m) {
+      const idx = parseInt(m[1]) - 1
+      _wencaiVersions[idx] = part.trim()
+    }
   })
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById(`wencai-raw-${i}`)
+    if (el) el.textContent = _wencaiVersions[i-1] || '（此版本未生成）'
+  }
+}
+
+function switchWencai(btn) {
+  document.querySelectorAll('.wencai-tab').forEach(t => t.classList.remove('active'))
+  document.querySelectorAll('.wencai-panel').forEach(p => p.classList.remove('active'))
+  btn.classList.add('active')
+  document.getElementById(`wencai-v${btn.dataset.v}`).classList.add('active')
+}
+
+function copyWencaiVersion(n) {
+  const text = _wencaiVersions[n-1] || ''
+  navigator.clipboard.writeText(text).catch(() => {
+    const ta = document.createElement('textarea'); ta.value = text
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove()
+  })
+  const btns = document.querySelectorAll(`#wencai-v${n} .btn-sm`)
+  if (btns[0]) { const orig = btns[0].textContent; btns[0].textContent = '已複製！'; setTimeout(() => btns[0].textContent = orig, 900) }
 }
 
 function escHtml(t) { return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
@@ -1127,6 +1198,52 @@ function downloadAll() {
   all.forEach((item, i) => {
     setTimeout(() => downloadImg(item.src, item.name), i * 300)
   })
+}
+
+// ── Zip download ──
+async function downloadAllZip() {
+  const all = [
+    ...generatedImages.xiangjing.map((s, i) => ({ src: s, name: `形象圖${i+1}.png` })),
+    ...generatedImages.detail.map((s, i) => ({ src: s, name: `詳情圖${i+1}.png` }))
+  ]
+  if (!all.length) return alert('沒有可下載的圖片')
+  await buildAndDownloadZip(all, '生成圖片.zip')
+}
+
+async function downloadOriginalZip() {
+  if (!images.length) return alert('尚未抓取任何圖片')
+  const productName = document.getElementById('product-name')?.value.trim() || '商品'
+  const btn = document.querySelector('[onclick="downloadOriginalZip()"]')
+  if (btn) { btn.disabled = true; btn.textContent = '準備中...' }
+  try {
+    const files = []
+    for (let i = 0; i < images.length; i++) {
+      if (btn) btn.textContent = `下載 ${i+1}/${images.length}...`
+      let dataUrl = images[i].dataUrl
+      if (!dataUrl) {
+        try { dataUrl = await proxyImage(images[i].src) } catch (_) { continue }
+      }
+      files.push({ src: dataUrl, name: `原始圖${i+1}.jpg` })
+    }
+    await buildAndDownloadZip(files, `${productName}_原始圖.zip`)
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '📦 下載原始圖' }
+  }
+}
+
+async function buildAndDownloadZip(files, zipName) {
+  if (!window.JSZip) return alert('JSZip 未載入，請重新整理頁面')
+  const zip = new JSZip()
+  for (const f of files) {
+    const b64 = f.src.split(',')[1]
+    if (b64) zip.file(f.name, b64, { base64: true })
+  }
+  const blob = await zip.generateAsync({ type: 'blob' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = zipName
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000)
 }
 
 // ── Copy ──
