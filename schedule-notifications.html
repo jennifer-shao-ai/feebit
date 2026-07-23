@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>自動排程通知 · 飛比特營運工具箱</title>
+<link rel="icon" href="favicon.svg">
+<script>if(location.search.includes("share"))document.documentElement.classList.add("standalone");</script>
+<link rel="stylesheet" href="style.css">
+<style>
+.sched-card { background: white; border-radius: var(--radius); padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); display: flex; flex-direction: column; gap: 10px; }
+.sched-card-header { display: flex; align-items: center; gap: 12px; }
+.sched-card-icon { font-size: 24px; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; background: var(--gray-50); border-radius: 10px; flex-shrink: 0; }
+.sched-card-meta .name { font-weight: 600; font-size: 14px; }
+.sched-card-meta .time { font-size: 11px; color: var(--primary); font-weight: 600; margin-top: 2px; }
+.sched-card-desc { font-size: 13px; color: var(--gray-600); line-height: 1.5; }
+.sched-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--gray-100); font-size: 12px; color: var(--gray-500); }
+.status-badge { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 12px; }
+.status-live { background: #dcfce7; color: var(--success); }
+.status-test { background: #fef3c7; color: var(--warning); }
+.log-list { list-style: none; }
+.log-list li { background: white; border-radius: var(--radius); padding: 12px 16px; margin-bottom: 8px; font-size: 13px; color: var(--gray-700); box-shadow: 0 1px 3px rgba(0,0,0,0.06); display: flex; gap: 10px; align-items: baseline; }
+.log-date { font-size: 11px; color: var(--gray-400); font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div id="sidebar">
+  <div class="sidebar-logo"><div class="brand">飛比特 Feebit</div><div class="sub">營運工具箱</div></div>
+  <div class="sidebar-section"><div class="sidebar-label">總覽</div><a class="nav-item" href="index.html"><span class="icon">🏠</span> 首頁</a></div>
+  <div class="sidebar-section"><div class="sidebar-label">財務</div>
+    <a class="nav-item" href="bank-converter.html"><span class="icon">🏦</span> 帳務轉換</a>
+    <a class="nav-item" href="accounting-ops.html"><span class="icon">📅</span> 例行帳務作業</a>
+    <a class="nav-item" href="finance-dashboard.html"><span class="icon">📊</span> 帳務分析</a>
+    <a class="nav-item" href="coupang-invoice.html"><span class="icon">🧾</span> 酷澎發票轉檔</a>
+    <a class="nav-item" href="coupang-reconcile.html"><span class="icon">🔍</span> 酷澎商城對帳</a>
+    <a class="nav-item" href="shopee-subsidy.html"><span class="icon">🚚</span> 蝦皮運費補助申請</a>
+    <a class="nav-item" href="shopee-converter.html"><span class="icon">🛒</span> 蝦皮撥款轉換</a>
+    <a class="nav-item" href="profit-calculator.html"><span class="icon">💰</span> 毛利試算機</a>
+    <a class="nav-item" href="brand-sales.html"><span class="icon">📈</span> 品牌銷售分析</a>
+  </div>
+  <div class="sidebar-section"><div class="sidebar-label">市場分析</div><a class="nav-item" href="market-tracker.html"><span class="icon">🔭</span> 品類競品分析</a></div>
+  <div class="sidebar-section"><div class="sidebar-label">行銷</div><div class="nav-item soon"><span class="icon">📢</span> 廣告文案<span class="soon-tag">即將推出</span></div></div>
+  <div class="sidebar-section"><div class="sidebar-label">客服</div><div class="nav-item soon"><span class="icon">💬</span> 客服回覆<span class="soon-tag">即將推出</span></div></div>
+  <div class="sidebar-section"><div class="sidebar-label">業務</div><a class="nav-item" href="purchase-order.html"><span class="icon">📄</span> 採購單轉換</a><div class="nav-item soon"><span class="icon">🤝</span> 廠商談判<span class="soon-tag">即將推出</span></div></div>
+  <div class="sidebar-section"><div class="sidebar-label">人事</div><a class="nav-item" href="attendance.html"><span class="icon">🗓️</span> 考勤查驗</a></div>
+  <div class="sidebar-section"><div class="sidebar-label">庫存</div><a class="nav-item" href="stock-analysis.html"><span class="icon">📦</span> 庫存訂貨分析</a>
+    <a class="nav-item" href="slow-mover-alert.html"><span class="icon">🔴</span> 滯銷品警示</a><a class="nav-item" href="feebit-inventory-filter.html"><span class="icon">🏪</span> 商品篩選工具</a>
+    <a class="nav-item" href="reorder-suggestions.html"><span class="icon">🔄</span> 庫存訂貨建議</a></div>
+  <div class="sidebar-section"><div class="sidebar-label">研發</div><a class="nav-item" href="research-notes.html"><span class="icon">📚</span> 研發筆記</a></div>
+  <div class="sidebar-section"><div class="sidebar-label">法規</div>    <a class="nav-item" href="fda-registration.html"><span class="icon">🧪</span> 化粧品登錄</a>
+    <a class="nav-item" href="ingredient-checker.html"><span class="icon">🧫</span> 食品成分比對</a>
+    <a class="nav-item" href="http://127.0.0.1:5050" target="_blank"><span class="icon">📋</span> PIF Builder</a></div>
+  <div class="sidebar-section"><div class="sidebar-label">生活</div><a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span> 旅行規劃</a></div>
+  <div class="sidebar-section"><div class="sidebar-label">自動化</div><a class="nav-item active" href="schedule-notifications.html"><span class="icon">⏰</span> 自動排程通知</a></div>
+  <div class="sidebar-section"><div class="sidebar-label">系統</div><a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a></div>
+  <div class="sidebar-footer">v1.0 · Feebit © 2026</div>
+</div>
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
+<div id="main">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="btn-hamburger" onclick="openSidebar()">☰</button>
+      <span class="topbar-title">自動排程通知</span>
+      <span class="topbar-badge">排程總覽</span>
+    </div>
+  </div>
+  <div class="page">
+    <p style="color:var(--gray-600);font-size:14px;margin-bottom:20px">目前所有自動化排程一覽，包含執行時間、內容與寄送信箱，新增排程時持續補充於此</p>
+    <div id="sched-list"></div>
+
+    <div class="tools-section-title">近期異動記錄</div>
+    <ul class="log-list" id="log-list"></ul>
+  </div>
+</div>
+<script>
+const SCHEDULES_DATA = [
+  {
+    icon: '📦',
+    name: '預購商品追蹤系統',
+    schedule: '週一至週五 08:30',
+    status: 'test',
+    desc: '自動掃描 LaLa V Collection 官網（Shopline）訂單信件，找出預購商品訂單，比對 Ragic 商品庫存與進貨單狀態，寄送彙整信。內容包含新增預購訂單、待發貨清單、商品總數統計（含進貨單提示）、已取消退回，並可在追蹤表單填寫人工查驗結果覆蓋系統判斷。',
+    mailbox: 'esuse.adobe@gmail.com',
+  },
+  {
+    icon: '📅',
+    name: '庫存自動核對系統',
+    schedule: '每日 17:00',
+    status: 'live',
+    desc: '讀取當天揀貨表，同步更新 Ragic 效期批次庫存，偵測效期歸零、庫存異動、數量異常、滯銷、效期重複五種異常並寄送日報。',
+    mailbox: 'lalav.feebit@gmail.com',
+  },
+  {
+    icon: '⚡',
+    name: 'Supabase 保活排程',
+    schedule: '每 6 天',
+    status: 'live',
+    desc: '呼叫 Supabase API，避免 free tier 因 7 天無活動自動暫停，維持研發筆記、帳務分析等工具的資料庫正常運作。',
+    mailbox: '—',
+  },
+];
+
+const LOG_DATA = [
+  { date: '2026-07-23', text: '預購商品追蹤系統上線測試，通知信箱暫定 esuse.adobe@gmail.com，穩定後改寄 info@lala-v.com' },
+];
+
+const STATUS_LABEL = { live: '正常運作', test: '測試中' };
+const STATUS_CLASS = { live: 'status-live', test: 'status-test' };
+
+const schedContainer = document.getElementById('sched-list');
+let schedHtml = '<div class="tools-grid">';
+SCHEDULES_DATA.forEach(s => {
+  schedHtml += `<div class="sched-card">
+    <div class="sched-card-header">
+      <div class="sched-card-icon">${s.icon}</div>
+      <div class="sched-card-meta">
+        <div class="name">${s.name}</div>
+        <div class="time">${s.schedule}</div>
+      </div>
+    </div>
+    <div class="sched-card-desc">${s.desc}</div>
+    <div class="sched-card-footer">
+      <span>📧 ${s.mailbox}</span>
+      <span class="status-badge ${STATUS_CLASS[s.status]}">${STATUS_LABEL[s.status]}</span>
+    </div>
+  </div>`;
+});
+schedHtml += '</div>';
+schedContainer.innerHTML = schedHtml;
+
+const logContainer = document.getElementById('log-list');
+logContainer.innerHTML = LOG_DATA.map(l => `<li><span class="log-date">${l.date}</span><span>${l.text}</span></li>`).join('');
+</script>
+<script>
+function openSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-overlay').classList.add('show'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('show'); }
+</script>
+</body>
+</html>
