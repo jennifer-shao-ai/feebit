@@ -206,7 +206,7 @@
     <a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span> 旅行規劃</a>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v1.7</div>
+  <div class="sidebar-footer">v1.8</div>
 </div>
 <div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.remove('open');this.classList.remove('active')"></div>
 
@@ -217,7 +217,7 @@
     <span class="topbar-title">商品圖一鍵生成</span>
     <div style="display:flex;gap:8px;align-items:center">
       <button class="btn-sm" onclick="openSettings()">⚙ API 設定</button>
-      <span class="topbar-badge">v1.7</span>
+      <span class="topbar-badge">v1.8</span>
     </div>
   </div>
 
@@ -313,6 +313,14 @@
             <label>確認 / 自訂品名</label>
             <input type="text" id="product-name" placeholder="選擇上方品名或自行輸入">
           </div>
+          <div class="field-row" style="margin-top:8px">
+            <label>品牌名稱 <span style="font-weight:400;color:var(--gray-400)">（用於文案標題格式）</span></label>
+            <input type="text" id="product-brand" placeholder="例：IKEA、無印良品、自有品牌">
+          </div>
+          <div class="field-row" style="margin-top:8px">
+            <label>產地 <span style="font-weight:400;color:var(--gray-400)">（用於文案標題格式）</span></label>
+            <input type="text" id="product-origin" placeholder="例：台灣、韓國、日本" value="台灣">
+          </div>
           <div style="margin-top:12px">
             <button class="btn-primary" onclick="proceedToGenerate()">確認，繼續生成</button>
           </div>
@@ -327,10 +335,17 @@
         <div class="gen-options">
           <div class="gen-option"><label><input type="checkbox" id="gen-xiangjing" checked> 形象圖（6 張）</label></div>
           <div class="gen-option"><label><input type="checkbox" id="gen-detail" checked> 詳情圖（9 張）</label></div>
+          <div class="gen-option"><label><input type="checkbox" id="gen-color" checked> 顏色白底圖</label></div>
           <div class="gen-option"><label><input type="checkbox" id="gen-wencai" checked> 文案（4 版賣場文案）</label></div>
         </div>
 
-        <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-top:16px;margin-bottom:6px">形象圖設定</div>
+        <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-top:16px;margin-bottom:6px">商品細節描述 <span style="font-weight:400;color:var(--gray-400);font-size:12px">（填越詳細，AI 走形機率越低）</span></div>
+        <div class="field-row" style="margin-bottom:8px">
+          <label>商品外觀細節 <span style="font-weight:400;color:var(--gray-400)">（例：10片花瓣均勻排列的蓮花造型、正六邊形、圓角矩形）</span></label>
+          <textarea id="product-desc-input" rows="2" placeholder="請描述商品的形狀、數量、特徵，例如：10片花瓣均勻排列的蓮花造型矽膠隔熱墊，中心有圓形凸起" style="width:100%;padding:9px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:13px;outline:none;resize:vertical;box-sizing:border-box;font-family:inherit"></textarea>
+        </div>
+
+        <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-top:14px;margin-bottom:6px">形象圖設定</div>
         <div class="field-row" style="margin-bottom:8px">
           <label>背景風格 <span style="font-weight:400;color:var(--gray-400)">（例：韓系簡約風、北歐清新、奢華大理石）</span></label>
           <input type="text" id="bg-style-input" placeholder="韓系簡約風" value="韓系簡約風">
@@ -340,10 +355,20 @@
           <input type="text" id="bg-elements-input" placeholder="留空則不加入特定元素">
         </div>
 
-        <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-top:16px;margin-bottom:6px">詳情圖設定</div>
+        <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-top:14px;margin-bottom:6px">詳情圖設定</div>
         <div class="field-row" style="margin-bottom:8px">
           <label>商品尺寸 <span style="font-weight:400;color:var(--gray-400)">（例：長30cm × 寬20cm × 高10cm）</span></label>
           <input type="text" id="product-size-input" placeholder="尺寸資訊（選填）">
+        </div>
+
+        <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-top:14px;margin-bottom:6px">顏色白底圖設定</div>
+        <div class="field-row" style="margin-bottom:8px">
+          <label>顏色款數</label>
+          <input type="number" id="color-count-input" min="1" max="10" value="1" style="width:80px;padding:9px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:14px;outline:none">
+        </div>
+        <div class="field-row" style="margin-bottom:8px">
+          <label>各顏色名稱 <span style="font-weight:400;color:var(--gray-400)">（用逗號分隔，例：紅色,藍色,綠色）</span></label>
+          <input type="text" id="color-names-input" placeholder="留空則自動編號（顏色1、顏色2...）">
         </div>
 
         <div class="gen-row">
@@ -368,6 +393,11 @@
           <div class="prog-item" id="prog-detail">
             <span class="prog-icon">📋</span>
             <span class="prog-label">詳情圖（行銷圖）</span>
+            <span class="prog-status">等待中</span>
+          </div>
+          <div class="prog-item" id="prog-color">
+            <span class="prog-icon">🎨</span>
+            <span class="prog-label">顏色白底圖</span>
             <span class="prog-status">等待中</span>
           </div>
           <div class="prog-item" id="prog-wencai">
@@ -397,6 +427,9 @@
           <button class="rtab" data-panel="panel-detail" onclick="switchResult(this)">
             詳情圖 <span class="rtab-badge" id="badge-detail">0</span>
           </button>
+          <button class="rtab" data-panel="panel-color" onclick="switchResult(this)">
+            顏色圖 <span class="rtab-badge" id="badge-color">0</span>
+          </button>
           <button class="rtab" data-panel="panel-wencai" onclick="switchResult(this)">
             文案
           </button>
@@ -406,6 +439,12 @@
         <div class="result-panel active" id="panel-xiangjing">
           <div class="result-images-grid" id="xiangjing-grid"></div>
           <div id="xiangjing-empty" class="hidden" style="text-align:center;color:var(--gray-400);padding:32px;font-size:13px">未生成形象圖</div>
+        </div>
+
+        <!-- 顏色白底圖 panel -->
+        <div class="result-panel" id="panel-color">
+          <div class="result-images-grid" id="color-grid"></div>
+          <div id="color-empty" class="hidden" style="text-align:center;color:var(--gray-400);padding:32px;font-size:13px">未生成顏色白底圖</div>
         </div>
 
         <!-- 詳情圖 panel -->
@@ -801,31 +840,43 @@ async function startGenerate() {
   // Show progress card
   document.getElementById('card-results').classList.add('hidden')
   document.getElementById('card-progress').classList.remove('hidden')
-  generatedImages = { xiangjing: [], detail: [] }
+  generatedImages = { xiangjing: [], detail: [], color: [] }
   generatedWencai = ''
   abortController = new AbortController()
+
+  const doColor = document.getElementById('gen-color')?.checked
 
   // Reset progress
   setProgStatus('prog-fetch', 'running', '載入圖片中...')
   setProgStatus('prog-xiangjing', 'wait', doXiangjing ? '等待中' : '略過')
   setProgStatus('prog-detail', 'wait', doDetail ? '等待中' : '略過')
+  setProgStatus('prog-color', 'wait', doColor ? '等待中' : '略過')
   setProgStatus('prog-wencai', 'wait', doWencai ? '等待中' : '略過')
 
   try {
-    // Step 1: get image data URLs
     const dataUrls = await getSelectedDataUrls()
     setProgStatus('prog-fetch', 'done', `完成（${dataUrls.length} 張）`)
 
     const bgStyle = document.getElementById('bg-style-input')?.value.trim() || '韓系簡約風'
     const bgElements = document.getElementById('bg-elements-input')?.value.trim() || ''
     const productSize = document.getElementById('product-size-input')?.value.trim() || ''
+    const productDesc = document.getElementById('product-desc-input')?.value.trim() || ''
+    const productBrand = document.getElementById('product-brand')?.value.trim() || ''
+    const productOrigin = document.getElementById('product-origin')?.value.trim() || '台灣'
 
-    // Run sequentially (形象圖 and 詳情圖 each make multiple API calls)
+    // Parse color list
+    const colorCount = parseInt(document.getElementById('color-count-input')?.value) || 1
+    const colorNamesRaw = document.getElementById('color-names-input')?.value.trim() || ''
+    const colorNames = colorNamesRaw
+      ? colorNamesRaw.split(/[,，、]/).map(c => c.trim()).filter(Boolean)
+      : Array.from({ length: colorCount }, (_, i) => `顏色${i + 1}`)
+    const colors = colorNames.slice(0, Math.max(colorCount, colorNames.length))
+
     const tasks = []
     if (doXiangjing) {
-      setProgStatus('prog-xiangjing', 'running', '生成中（3 張）...')
+      setProgStatus('prog-xiangjing', 'running', '生成中（6 張）...')
       tasks.push(
-        generateBgImages(dataUrls, productName, bgStyle, bgElements, apiKey)
+        generateBgImages(dataUrls, productName, bgStyle, bgElements, productDesc, apiKey)
           .then(imgs => { generatedImages.xiangjing = imgs; setProgStatus('prog-xiangjing', 'done', `完成（${imgs.length} 張）`) })
           .catch(e => setProgStatus('prog-xiangjing', 'error', '失敗：' + e.message))
       )
@@ -833,15 +884,23 @@ async function startGenerate() {
     if (doDetail) {
       setProgStatus('prog-detail', 'running', '生成第 1/9 張...')
       tasks.push(
-        generateDetailImages(dataUrls, productName, productSize, apiKey)
+        generateDetailImages(dataUrls, productName, productSize, productDesc, apiKey)
           .then(imgs => { generatedImages.detail = imgs; setProgStatus('prog-detail', 'done', `完成（${imgs.length} 張）`) })
           .catch(e => setProgStatus('prog-detail', 'error', '失敗：' + e.message))
+      )
+    }
+    if (doColor) {
+      setProgStatus('prog-color', 'running', `生成第 1/${colors.length} 款...`)
+      tasks.push(
+        generateColorImages(dataUrls, productName, colors, productDesc, apiKey)
+          .then(imgs => { generatedImages.color = imgs; setProgStatus('prog-color', 'done', `完成（${imgs.length} 張）`) })
+          .catch(e => setProgStatus('prog-color', 'error', '失敗：' + e.message))
       )
     }
     if (doWencai) {
       setProgStatus('prog-wencai', 'running', '生成中...')
       tasks.push(
-        generateWencai(dataUrls, productName, apiKey)
+        generateWencai(dataUrls, productName, productBrand, productOrigin, apiKey)
           .then(text => { generatedWencai = text; setProgStatus('prog-wencai', 'done', '完成') })
           .catch(e => setProgStatus('prog-wencai', 'error', '失敗：' + e.message))
       )
@@ -898,9 +957,10 @@ async function callImageGenAPI(dataUrls, promptText, apiKey) {
 }
 
 // ── 形象圖：6 張獨立生成 ──
-async function generateBgImages(dataUrls, productName, bgStyle, bgElements, apiKey) {
+async function generateBgImages(dataUrls, productName, bgStyle, bgElements, productDesc, apiKey) {
   const elemPart = bgElements ? `，加入 ${bgElements} 裝飾元素` : ''
-  const PRODUCT_LOCK = `⚠️ 嚴格限制：商品外觀、形狀、顏色、花紋、圖案、細節（包含花瓣數量、圖案元素數量）絕對不可有任何改變，必須與參考圖片完全一致，不得添加、刪除或修改任何細節。`
+  const descPart = productDesc ? `商品為：「${productDesc}」。` : ''
+  const PRODUCT_LOCK = `⚠️ 嚴格限制：${descPart}商品外觀、形狀、顏色、花紋、圖案、所有細節（包含花瓣數量、葉片數、圖案元素的精確數量與位置）絕對不可有任何改變，必須與參考圖片完全一致，不得添加、刪除或修改任何細節。`
   const variants = [
     '商品直立擺放，構圖自然有質感',
     '商品橫向或斜角擺放，展現商品不同面向',
@@ -929,8 +989,9 @@ ${PRODUCT_LOCK}
 }
 
 // ── 詳情圖：9 張逐一生成，按 image_plan 格式 ──
-async function generateDetailImages(dataUrls, productName, productSize, apiKey) {
-  const PRODUCT_LOCK = `⚠️ 嚴格限制：商品外觀、形狀、顏色、花紋、圖案、所有細節（含花瓣數量、圖案元素數量）絕對不可有任何改變，必須與參考圖片完全一致。`
+async function generateDetailImages(dataUrls, productName, productSize, productDesc, apiKey) {
+  const descPart = productDesc ? `商品為：「${productDesc}」。` : ''
+  const PRODUCT_LOCK = `⚠️ 嚴格限制：${descPart}商品外觀、形狀、顏色、花紋、圖案、所有細節（含花瓣數量、葉片數、圖案元素的精確數量與位置）絕對不可有任何改變，必須與參考圖片完全一致。`
   const sizeStr = productSize || '（尺寸請參考商品圖）'
   const imagePrompts = [
     // 1. 封面圖
@@ -1002,11 +1063,39 @@ async function generateDetailImages(dataUrls, productName, productSize, apiKey) 
   return results
 }
 
+// ── 顏色白底圖 ──
+async function generateColorImages(dataUrls, productName, colors, productDesc, apiKey) {
+  const descPart = productDesc ? `商品為：「${productDesc}」。` : ''
+  const PRODUCT_LOCK = `⚠️ 嚴格限制：${descPart}商品外觀、形狀、顏色、花紋、圖案、所有細節（含花瓣數量、葉片數、圖案元素的精確數量與位置）絕對不可有任何改變，必須與參考圖片完全一致。`
+  const results = []
+  for (let i = 0; i < colors.length; i++) {
+    setProgStatus('prog-color', 'running', `生成第 ${i + 1}/${colors.length} 款...`)
+    const colorDesc = colors[i] !== `顏色${i+1}` ? `，此款顏色為「${colors[i]}」` : ''
+    const prompt = `${PRODUCT_LOCK}
+請生成商品「${productName}」${colorDesc}的電商白底商品圖。
+純白色背景（#FFFFFF），無任何陰影、漸層或反射。
+商品完整置中展示，四周留適當留白，不裁切任何部分。
+正方形構圖（1:1），圖中絕對不放任何文字、標籤、浮水印或裝飾。`
+    try {
+      const img = await callImageGenAPI(dataUrls, prompt, apiKey)
+      results.push({ img, label: colors[i] })
+    } catch (e) {
+      if (e.name === 'AbortError') throw e
+      console.warn(`顏色圖 ${colors[i]} 失敗:`, e.message)
+    }
+  }
+  return results
+}
+
 // ── Wencai (4-version product copy) ──
-async function generateWencai(dataUrls, productName, apiKey) {
+async function generateWencai(dataUrls, productName, productBrand, productOrigin, apiKey) {
+  const brandPart = productBrand ? `品牌：${productBrand}` : ''
+  const originPart = productOrigin ? `產地：${productOrigin}` : ''
   const systemPrompt = `你是一位專業並擁有十年經驗的行銷文案撰寫人員。使用者提供商品名稱或圖片，你會運用商品資訊結合 Google Trend、熱詞分析以及 SEO 特性，撰寫吸引顧客購買的商品標題與特色介紹文案。你的用詞確保廣告用語合法合規，不撰寫任何違反台灣消費者保護法規的詞句。以繁體中文回覆，格式簡潔清楚，不使用 Markdown 符號（不使用 ** 或 # 等）。`
 
   const userText = `商品名稱：${productName}
+${brandPart}
+${originPart}
 
 請根據商品圖片與名稱，產出四個不同賣場風格的文案版本，格式如下：
 
@@ -1116,6 +1205,28 @@ function showResults() {
     document.getElementById('detail-empty').classList.remove('hidden')
   }
 
+  // 顏色白底圖
+  const cGrid = document.getElementById('color-grid')
+  cGrid.innerHTML = ''
+  const colorImgs = generatedImages.color || []
+  document.getElementById('badge-color').textContent = colorImgs.length
+  if (colorImgs.length) {
+    document.getElementById('color-empty').classList.add('hidden')
+    colorImgs.forEach((item, i) => {
+      const src = item.img || item
+      const label = item.label || `顏色${i+1}`
+      cGrid.innerHTML += `<div class="result-img-item">
+        <img src="${src}" alt="${label}">
+        <div class="result-img-footer">
+          <span class="result-img-label">${label}</span>
+          <button class="btn-sm" onclick="downloadImg('${src}','白底圖_${label}.png')">下載</button>
+        </div>
+      </div>`
+    })
+  } else {
+    document.getElementById('color-empty').classList.remove('hidden')
+  }
+
   // 文案
   if (generatedWencai) {
     document.getElementById('wencai-empty').classList.add('hidden')
@@ -1127,7 +1238,7 @@ function showResults() {
   document.getElementById('badge-xiangjing').textContent = generatedImages.xiangjing.length
   document.getElementById('badge-detail').textContent = generatedImages.detail.length
 
-  const total = generatedImages.xiangjing.length + generatedImages.detail.length
+  const total = generatedImages.xiangjing.length + generatedImages.detail.length + colorImgs.length
   document.getElementById('result-summary').textContent = `共 ${total} 張圖片已生成`
   document.getElementById('card-results').scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
@@ -1190,9 +1301,11 @@ function downloadImg(src, name) {
 }
 
 function downloadAll() {
+  const colorImgs = generatedImages.color || []
   const all = [
     ...generatedImages.xiangjing.map((s, i) => ({ src: s, name: `形象圖${i+1}.png` })),
-    ...generatedImages.detail.map((s, i) => ({ src: s, name: `詳情圖${i+1}.png` }))
+    ...generatedImages.detail.map((s, i) => ({ src: s, name: `詳情圖${i+1}.png` })),
+    ...colorImgs.map((item, i) => ({ src: item.img || item, name: `白底圖_${item.label || `顏色${i+1}`}.png` }))
   ]
   if (!all.length) return alert('沒有可下載的圖片')
   all.forEach((item, i) => {
@@ -1202,9 +1315,11 @@ function downloadAll() {
 
 // ── Zip download ──
 async function downloadAllZip() {
+  const colorImgs = generatedImages.color || []
   const all = [
     ...generatedImages.xiangjing.map((s, i) => ({ src: s, name: `形象圖${i+1}.png` })),
-    ...generatedImages.detail.map((s, i) => ({ src: s, name: `詳情圖${i+1}.png` }))
+    ...generatedImages.detail.map((s, i) => ({ src: s, name: `詳情圖${i+1}.png` })),
+    ...colorImgs.map((item, i) => ({ src: item.img || item, name: `白底圖_${item.label || `顏色${i+1}`}.png` }))
   ]
   if (!all.length) return alert('沒有可下載的圖片')
   await buildAndDownloadZip(all, '生成圖片.zip')
@@ -1268,7 +1383,7 @@ function copyText(text) {
 function resetTool() {
   images = []
   selectedIdx = new Set()
-  generatedImages = { xiangjing: [], detail: [] }
+  generatedImages = { xiangjing: [], detail: [], color: [] }
   generatedWencai = ''
   document.getElementById('images-grid').innerHTML = ''
   document.getElementById('images-section').classList.add('hidden')
