@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>食品成分法規比對 — 飛比特</title>
+<link rel="icon" href="favicon.svg">
+<style>
+:root{
+  --primary:#2563eb;--primary-light:#dbeafe;--primary-dark:#1d4ed8;
+  --success:#16a34a;--success-light:#dcfce7;
+  --warning:#d97706;--warning-light:#fef9c3;
+  --danger:#dc2626;--danger-light:#fee2e2;
+  --gray-50:#f9fafb;--gray-100:#f3f4f6;--gray-200:#e5e7eb;
+  --gray-400:#9ca3af;--gray-600:#4b5563;--gray-800:#1f2937;
+  --sidebar-bg:#0f172a;--sidebar-w:220px;--radius:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang TC','Microsoft JhengHei',sans-serif;background:var(--gray-100);color:var(--gray-800);min-height:100vh;display:flex}
+
+/* sidebar */
+#sidebar{width:var(--sidebar-w);min-height:100vh;background:var(--sidebar-bg);display:flex;flex-direction:column;flex-shrink:0;position:fixed;top:0;left:0;bottom:0;z-index:100;overflow-y:auto;overflow-x:hidden}
+.sb-logo{padding:20px 16px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
+.sb-logo .brand{color:#fff;font-size:16px;font-weight:700}
+.sb-logo .sub{color:rgba(255,255,255,.4);font-size:11px;margin-top:2px}
+.sb-sec{padding:16px 8px 4px}
+.sb-lbl{color:rgba(255,255,255,.3);font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:0 8px;margin-bottom:4px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:6px;cursor:pointer;color:rgba(255,255,255,.55);font-size:13px;font-weight:500;transition:all .15s;margin-bottom:2px;text-decoration:none}
+.nav-item:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.9)}
+.nav-item.active{background:var(--primary);color:#fff}
+.nav-item .icon{font-size:15px;width:20px;text-align:center;flex-shrink:0}
+.nav-item.soon{opacity:.4;cursor:default;pointer-events:none}
+.nav-item .soon-tag{margin-left:auto;font-size:9px;background:rgba(255,255,255,.15);padding:1px 5px;border-radius:3px;letter-spacing:.5px}
+.sb-footer{margin-top:auto;padding:16px;border-top:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.25);font-size:11px}
+
+/* main */
+#main{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column;min-height:100vh}
+.topbar{background:#fff;border-bottom:1px solid var(--gray-200);padding:0 24px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.topbar-title{font-size:15px;font-weight:600}
+.topbar-badge{background:var(--primary);color:#fff;padding:2px 8px;border-radius:12px;font-size:11px}
+.hamburger{display:none;background:none;border:none;cursor:pointer;padding:6px;border-radius:6px;color:var(--gray-800);font-size:20px;line-height:1}
+#overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:99}
+#overlay.active{display:block}
+.page{padding:24px;flex:1;max-width:1100px}
+
+/* cards */
+.card{background:#fff;border-radius:var(--radius);padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.07);margin-bottom:16px}
+.card-title{font-size:14px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+
+.banner{background:var(--warning-light);border:1.5px solid #fde68a;border-radius:var(--radius);padding:14px 16px;font-size:12.5px;color:#92400e;line-height:1.7;margin-bottom:16px}
+.banner b{font-weight:700}
+
+textarea{width:100%;min-height:140px;border:1.5px solid var(--gray-200);border-radius:6px;padding:12px;font-size:13.5px;font-family:inherit;outline:none;resize:vertical;line-height:1.6}
+textarea:focus{border-color:var(--primary)}
+.hint{font-size:11.5px;color:var(--gray-400);margin-top:6px;line-height:1.6}
+
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;font-family:inherit;border:none}
+.btn-p{background:var(--primary);color:#fff}
+.btn-p:hover{background:var(--primary-dark)}
+.btn-ghost{background:none;border:1.5px solid var(--gray-200);color:var(--gray-600)}
+.btn-ghost:hover{border-color:var(--primary);color:var(--primary)}
+.btn-sm{padding:5px 11px;font-size:11.5px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.actions{display:flex;gap:10px;margin-top:14px;align-items:center;flex-wrap:wrap}
+
+/* summary chips */
+.summary{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.sum-chip{border-radius:8px;padding:10px 16px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px}
+.sum-chip .n{font-size:18px}
+.sc-ok{background:var(--success-light);color:var(--success)}
+.sc-warn{background:var(--warning-light);color:var(--warning)}
+.sc-bad{background:var(--danger-light);color:var(--danger)}
+
+/* result rows */
+.result-row{border:1.5px solid var(--gray-200);border-radius:var(--radius);margin-bottom:10px;overflow:hidden}
+.rr-head{display:flex;align-items:center;gap:12px;padding:12px 14px}
+.rr-badge{flex-shrink:0;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap}
+.rb-ok{background:var(--success-light);color:var(--success)}
+.rb-warn{background:var(--warning-light);color:var(--warning)}
+.rb-bad{background:var(--danger-light);color:var(--danger)}
+.rr-name{font-weight:700;font-size:14px;flex:1;min-width:0}
+.rr-meta{font-size:11.5px;color:var(--gray-400)}
+.rr-body{padding:0 14px 14px;font-size:12.5px;color:var(--gray-600);line-height:1.7}
+.rr-note{background:var(--gray-50);border-radius:6px;padding:10px 12px;margin-top:4px}
+.rr-links{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.rr-link{font-size:11.5px;color:var(--primary);text-decoration:none;border:1.5px solid var(--primary-light);padding:4px 10px;border-radius:6px;font-weight:600}
+.rr-link:hover{background:var(--primary-light)}
+.ai-box{margin-top:10px;background:#eff6ff;border:1.5px solid var(--primary-light);border-radius:6px;padding:10px 12px;font-size:12.5px;color:#1e3a8a;line-height:1.7;display:none}
+.ai-box.show{display:block}
+.ai-box .src{margin-top:6px;font-size:11px;color:var(--primary)}
+.ai-box .src a{color:var(--primary)}
+
+.empty{text-align:center;padding:48px;color:var(--gray-400);font-size:14px}
+
+/* settings modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;border-radius:var(--radius);padding:22px;width:92%;max-width:420px}
+.modal h3{font-size:14px;margin-bottom:12px}
+.modal input{width:100%;border:1.5px solid var(--gray-200);border-radius:6px;padding:8px 10px;font-size:13px;font-family:inherit;outline:none;margin-bottom:10px}
+.modal input:focus{border-color:var(--primary)}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
+.conn-status{font-size:12px;margin-top:4px}
+.conn-ok{color:var(--success)}
+.conn-bad{color:var(--danger)}
+
+/* toast */
+#toast{position:fixed;bottom:24px;right:24px;background:#1f2937;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;opacity:0;transform:translateY(8px);transition:all .25s;z-index:999;pointer-events:none}
+#toast.show{opacity:1;transform:translateY(0)}
+
+@media(max-width:768px){
+  #sidebar{transform:translateX(-100%);transition:transform .25s ease}
+  #sidebar.open{transform:translateX(0)}
+  #main{margin-left:0}
+  .hamburger{display:flex;align-items:center;justify-content:center}
+  .page{padding:16px}
+  .topbar{padding:0 16px}
+  .nav-item.soon{display:none}
+  .rr-head{flex-wrap:wrap}
+}
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <div class="sb-logo">
+    <div class="brand">飛比特 Feebit</div>
+    <div class="sub">營運工具箱</div>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">總覽</div>
+    <a class="nav-item" href="index.html"><span class="icon">🏠</span>首頁</a>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">財務</div>
+    <a class="nav-item" href="bank-converter.html"><span class="icon">🏦</span>帳務轉換</a>
+    <a class="nav-item" href="accounting-ops.html"><span class="icon">📅</span>例行帳務作業</a>
+    <a class="nav-item" href="finance-dashboard.html"><span class="icon">📊</span>帳務分析</a>
+    <a class="nav-item" href="coupang-invoice.html"><span class="icon">🧾</span>酷澎發票轉檔</a>
+    <a class="nav-item" href="coupang-reconcile.html"><span class="icon">🔍</span>酷澎商城對帳</a>
+    <a class="nav-item" href="shopee-subsidy.html"><span class="icon">🚚</span>蝦皮運費補助申請</a>
+    <a class="nav-item" href="shopee-converter.html"><span class="icon">🛒</span>蝦皮撥款轉換</a>
+    <a class="nav-item" href="profit-calculator.html"><span class="icon">💰</span>毛利試算機</a>
+    <a class="nav-item" href="brand-sales.html"><span class="icon">📈</span>品牌銷售分析</a>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">市場分析</div>
+    <a class="nav-item" href="market-tracker.html"><span class="icon">🔭</span>品類競品分析</a>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">行銷</div>
+    <a class="nav-item" href="product-image-gen.html"><span class="icon">🎨</span>商品圖生成</a>
+    <div class="nav-item soon"><span class="icon">📢</span>廣告文案<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">客服</div>
+    <div class="nav-item soon"><span class="icon">💬</span>客服回覆<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">業務</div>
+    <a class="nav-item" href="purchase-order.html"><span class="icon">📄</span>採購單轉換</a>
+    <div class="nav-item soon"><span class="icon">🤝</span>廠商談判<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">人事</div>
+    <a class="nav-item" href="attendance.html"><span class="icon">🗓️</span>考勤查驗</a>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">庫存</div>
+    <a class="nav-item" href="stock-analysis.html"><span class="icon">📦</span>庫存訂貨分析</a>
+    <a class="nav-item" href="slow-mover-alert.html"><span class="icon">🔴</span>滯銷品警示</a>
+    <a class="nav-item" href="feebit-inventory-filter.html"><span class="icon">🏪</span>商品篩選工具</a>
+    <a class="nav-item" href="reorder-suggestions.html"><span class="icon">🔄</span>庫存訂貨建議</a>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">研發</div>
+    <a class="nav-item" href="research-notes.html"><span class="icon">📚</span>研發筆記</a>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">法規</div>
+    <a class="nav-item" href="fda-registration.html"><span class="icon">🧪</span>化粧品登錄</a>
+    <a class="nav-item active" href="ingredient-checker.html"><span class="icon">🧫</span>食品成分比對</a>
+    <a class="nav-item" href="http://127.0.0.1:5050" target="_blank"><span class="icon">📋</span>PIF Builder</a>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">生活</div>
+    <a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span>旅行規劃</a>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">系統</div>
+    <a class="nav-item" href="tools.html"><span class="icon">🔧</span>使用工具</a>
+  </div>
+  <div class="sb-footer">v1.0 · Feebit © 2026</div>
+</div>
+
+<div id="overlay" onclick="closeSidebar()"></div>
+
+<div id="main">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="hamburger" onclick="toggleSidebar()">☰</button>
+      <span class="topbar-title">食品成分法規比對</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="btn btn-ghost btn-sm" onclick="openSettings()">⚙️ AI 查詢設定</button>
+      <span class="topbar-badge">飛比特營運工具箱</span>
+    </div>
+  </div>
+
+  <div class="page">
+
+    <div class="banner">
+      <b>比對範圍：</b>財團法人食品工業發展研究所（FIRDI）「可供食品使用原料彙整一覽表」，共 752 筆（2026 年爬取快照）。
+      本清單為<b>食品原料</b>合法性資料，<b>不含食品添加物</b>（防腐劑、甜味劑、色素、乳化劑等，需另查 TFDA 食品添加物使用範圍及限量表）。
+      比對結果僅供初步篩查，正式合規判斷仍須人工確認最新公告。
+    </div>
+
+    <div class="card">
+      <div class="card-title">📋 貼上全成分內容</div>
+      <textarea id="input-text" placeholder="例如：水, 玻尿酸鈉, 維生素C, 塔格糖, 1,2-丙二醇, 乳酸菌..."></textarea>
+      <div class="hint">支援逗號「,」「、」分號「;」或換行分隔；含數字的化學名稱（如 1,2-丙二醇）會自動保留，不會被錯誤切割。</div>
+      <div class="actions">
+        <button class="btn btn-p" onclick="runCheck()">🔍 開始比對</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('input-text').value='';document.getElementById('results').innerHTML='';document.getElementById('summary').innerHTML=''" >清空</button>
+        <span id="db-status" class="hint" style="margin-top:0"></span>
+      </div>
+    </div>
+
+    <div id="summary" class="summary"></div>
+    <div id="results"></div>
+
+  </div>
+</div>
+
+<!-- settings modal -->
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal">
+    <h3>⚙️ AI 查詢後端設定</h3>
+    <p class="hint" style="margin-bottom:10px">未收錄成分的「AI 查詢法規來源」功能需要 Cloudflare Worker 後端，填入部署後的網址（見部署說明文件）。未設定時仍可使用比對功能與查詢連結。</p>
+    <input type="text" id="worker-url" placeholder="https://ingredient-checker.xxx.workers.dev">
+    <div id="conn-status" class="conn-status"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" onclick="testConnection()">測試連線</button>
+      <button class="btn btn-ghost btn-sm" onclick="closeSettings()">取消</button>
+      <button class="btn btn-p btn-sm" onclick="saveSettings()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── sidebar ──
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('overlay').classList.toggle('active')}
+function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('active')}
+
+// ── toast ──
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
+
+// ── settings ──
+const LS_WORKER='feebit_ingredient_checker_worker_url';
+function openSettings(){document.getElementById('worker-url').value=localStorage.getItem(LS_WORKER)||'';document.getElementById('conn-status').textContent='';document.getElementById('settings-modal').classList.add('show')}
+function closeSettings(){document.getElementById('settings-modal').classList.remove('show')}
+function saveSettings(){
+  const v=document.getElementById('worker-url').value.trim().replace(/\/$/,'');
+  localStorage.setItem(LS_WORKER,v);
+  toast('已儲存設定');
+  closeSettings();
+}
+async function testConnection(){
+  const url=document.getElementById('worker-url').value.trim().replace(/\/$/,'');
+  const el=document.getElementById('conn-status');
+  if(!url){el.textContent='請先輸入網址';el.className='conn-status conn-bad';return}
+  el.textContent='連線中...';el.className='conn-status';
+  try{
+    const res=await fetch(url+'/ping');
+    if(res.ok){el.textContent='✅ 連線成功';el.className='conn-status conn-ok'}
+    else{el.textContent='❌ 連線失敗（HTTP '+res.status+'）';el.className='conn-status conn-bad'}
+  }catch(e){el.textContent='❌ 連線失敗：'+e.message;el.className='conn-status conn-bad'}
+}
+
+// ── data loading & indexing ──
+let DB=[];
+let zhMap={}, enMap={};
+function normKey(s){return (s||'').trim().toLowerCase().replace(/\s+/g,'').replace(/[（(]/g,'(').replace(/[）)]/g,')')}
+
+async function loadDB(){
+  const statusEl=document.getElementById('db-status');
+  try{
+    const res=await fetch('data/firdi-food-ingredients.json');
+    DB=await res.json();
+    DB.forEach((rec,i)=>{
+      if(rec.zh_name){
+        const k=normKey(rec.zh_name);
+        (zhMap[k]=zhMap[k]||[]).push(i);
+      }
+      if(rec.en_name){
+        rec.en_name.split(/[,，]/).forEach(syn=>{
+          const k=normKey(syn);
+          if(k){(enMap[k]=enMap[k]||[]).push(i)}
+        });
+      }
+    });
+    statusEl.textContent=`已載入 FIRDI 資料庫 ${DB.length} 筆`;
+  }catch(e){
+    statusEl.textContent='⚠️ 資料庫載入失敗：'+e.message;
+  }
+}
+loadDB();
+
+// ── parsing ──
+function parseIngredients(text){
+  const PH=String.fromCharCode(0xE000);
+  let t=text.replace(/(\d),(?=\d)/g, '$1'+PH);
+  let parts=t.split(/[,，、;；\n]+/);
+  return parts.map(p=>p.split(PH).join(',').trim())
+    .map(p=>p.replace(/^\d+[\.\)、]\s*/,'').trim())
+    .filter(Boolean);
+}
+
+// ── matching ──
+function coreMatch(name){
+  const k=normKey(name);
+  if(!k) return null;
+  if(zhMap[k]) return zhMap[k];
+  if(enMap[k]) return enMap[k];
+  return null;
+}
+function matchToken(token){
+  let idxs=coreMatch(token);
+  if(!idxs){
+    // try stripping parenthetical content and matching the outer or inner part
+    const m=token.match(/^(.*?)[（(](.*?)[）)](.*)$/);
+    if(m){
+      idxs = coreMatch((m[1]+m[3]).trim()) || coreMatch(m[2].trim());
+    }
+  }
+  if(!idxs) return {status:'unmatched', token};
+  const records=[...new Set(idxs)].map(i=>DB[i]);
+  const hasNote=records.some(r=>r.note && r.note.trim());
+  return {status: hasNote?'conditional':'ok', token, records};
+}
+
+// ── run check ──
+function runCheck(){
+  const text=document.getElementById('input-text').value;
+  const tokens=parseIngredients(text);
+  if(!tokens.length){toast('請先貼上成分內容');return}
+  const results=tokens.map(matchToken);
+  renderResults(results);
+}
+
+function esc(s){return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+function renderResults(results){
+  const ok=results.filter(r=>r.status==='ok').length;
+  const cond=results.filter(r=>r.status==='conditional').length;
+  const bad=results.filter(r=>r.status==='unmatched').length;
+  document.getElementById('summary').innerHTML=`
+    <div class="sum-chip sc-ok"><span class="n">${ok}</span> 合規（無特別限制）</div>
+    <div class="sum-chip sc-warn"><span class="n">${cond}</span> 合規但有使用限制</div>
+    <div class="sum-chip sc-bad"><span class="n">${bad}</span> 未收錄／需查證</div>
+  `;
+
+  const html=results.map((r,idx)=>{
+    if(r.status==='ok'){
+      const rec=r.records[0];
+      return `<div class="result-row">
+        <div class="rr-head">
+          <span class="rr-badge rb-ok">✅ 合規</span>
+          <span class="rr-name">${esc(r.token)}</span>
+          <span class="rr-meta">${esc(rec.category||'')}</span>
+        </div>
+      </div>`;
+    }
+    if(r.status==='conditional'){
+      const notes=[...new Set(r.records.map(x=>x.note).filter(Boolean))];
+      return `<div class="result-row">
+        <div class="rr-head">
+          <span class="rr-badge rb-warn">⚠️ 有限制</span>
+          <span class="rr-name">${esc(r.token)}</span>
+          <span class="rr-meta">${esc(r.records[0].category||'')}</span>
+        </div>
+        <div class="rr-body">
+          ${notes.map(n=>`<div class="rr-note">${esc(n)}</div>`).join('')}
+          <div class="rr-links">
+            <a class="rr-link" target="_blank" href="https://mms.firdi.org.tw/fl/fmlist?q=${encodeURIComponent(r.records[0].zh_name)}">📖 FIRDI 原始資料</a>
+          </div>
+        </div>
+      </div>`;
+    }
+    // unmatched
+    const q=encodeURIComponent(r.token);
+    return `<div class="result-row" id="row-${idx}">
+      <div class="rr-head">
+        <span class="rr-badge rb-bad">❌ 未收錄</span>
+        <span class="rr-name">${esc(r.token)}</span>
+        <span class="rr-meta">查無此原料於清單中</span>
+      </div>
+      <div class="rr-body">
+        可能原因：屬於食品添加物（非本清單範圍）、化粧品/工業用原料、尚未核准之新資源食品，或名稱寫法與清單不同（建議確認俗名/學名）。
+        <div class="rr-links">
+          <a class="rr-link" target="_blank" href="https://mms.firdi.org.tw/fl/fmlist?q=${q}">📖 FIRDI 站內搜尋</a>
+          <a class="rr-link" target="_blank" href="https://www.google.com/search?q=site:fda.gov.tw+${q}">🔍 TFDA 官網搜尋</a>
+          <a class="rr-link" target="_blank" href="https://www.google.com/search?q=site:law.moj.gov.tw+${q}">⚖️ 全國法規資料庫搜尋</a>
+          <button class="btn btn-p btn-sm" onclick="aiLookup(${idx}, '${r.token.replace(/'/g,"\\'")}')">🤖 AI 查詢法規來源</button>
+        </div>
+        <div class="ai-box" id="ai-${idx}"></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('results').innerHTML = html || '<div class="empty">沒有可比對的成分，請確認輸入內容</div>';
+}
+
+// ── AI lookup via worker ──
+async function aiLookup(idx, name){
+  const url=(localStorage.getItem(LS_WORKER)||'').trim();
+  const box=document.getElementById('ai-'+idx);
+  if(!url){
+    toast('請先在「⚙️ AI 查詢設定」填入 Worker 網址');
+    openSettings();
+    return;
+  }
+  box.classList.add('show');
+  box.innerHTML='查詢中...';
+  try{
+    const res=await fetch(url+'/lookup',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name})
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    const sources=(data.sources||[]).map(s=>`<a href="${esc(s)}" target="_blank">${esc(s)}</a>`).join('<br>');
+    box.innerHTML=`<div>${esc(data.explanation||'查無說明')}</div>${sources?`<div class="src">資料來源：<br>${sources}</div>`:''}`;
+  }catch(e){
+    box.innerHTML='⚠️ 查詢失敗：'+esc(e.message)+'（請確認 Worker 網址是否正確、已部署）';
+  }
+}
+</script>
+</body>
+</html>
