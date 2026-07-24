@@ -125,6 +125,21 @@
 .results-actions { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
 .results-actions .label { font-size: 12px; color: var(--gray-500); margin-left: auto; }
 
+/* ── Mode toggle ── */
+.mode-toggle { display: flex; gap: 0; border: 1px solid var(--gray-200); border-radius: 8px; overflow: hidden; margin-bottom: 16px; width: fit-content; }
+.mode-btn { padding: 7px 18px; font-size: 13px; font-weight: 600; background: white; color: var(--gray-500); border: none; cursor: pointer; }
+.mode-btn.active { background: var(--primary); color: white; }
+
+/* ── GPT prompt cards ── */
+.gpt-panel { display: none; }
+.gpt-panel.active { display: block; }
+.gpt-card { border: 1px solid var(--gray-200); border-radius: 8px; padding: 14px; margin-bottom: 12px; }
+.gpt-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.gpt-card-title { font-size: 13px; font-weight: 700; color: var(--gray-800); }
+.gpt-card-actions { display: flex; gap: 6px; }
+.gpt-prompt-preview { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 6px; padding: 10px; font-size: 12px; color: var(--gray-600); line-height: 1.6; max-height: 120px; overflow-y: auto; white-space: pre-wrap; font-family: inherit; }
+.gpt-imgs-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #1e40af; }
+
 /* ── Spinner ── */
 @keyframes spin { to { transform: rotate(360deg); } }
 .spinner { width: 16px; height: 16px; border: 2px solid var(--gray-200); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; flex-shrink: 0; }
@@ -206,7 +221,7 @@
     <a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span> 旅行規劃</a>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v1.8</div>
+  <div class="sidebar-footer">v1.9</div>
 </div>
 <div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.remove('open');this.classList.remove('active')"></div>
 
@@ -217,7 +232,7 @@
     <span class="topbar-title">商品圖一鍵生成</span>
     <div style="display:flex;gap:8px;align-items:center">
       <button class="btn-sm" onclick="openSettings()">⚙ API 設定</button>
-      <span class="topbar-badge">v1.8</span>
+      <span class="topbar-badge">v1.9</span>
     </div>
   </div>
 
@@ -371,8 +386,85 @@
           <input type="text" id="color-names-input" placeholder="留空則自動編號（顏色1、顏色2...）">
         </div>
 
-        <div class="gen-row">
+        <!-- ── 生成模式切換 ── -->
+        <div style="margin-top:18px;margin-bottom:4px;font-size:13px;font-weight:600;color:var(--gray-700)">生成模式</div>
+        <div class="mode-toggle">
+          <button class="mode-btn active" id="mode-btn-api" onclick="setMode('api')">API 模式</button>
+          <button class="mode-btn" id="mode-btn-chatgpt" onclick="setMode('chatgpt')">ChatGPT 模式</button>
+        </div>
+
+        <!-- API 模式按鈕 -->
+        <div class="gen-row" id="gen-row-api">
           <button class="btn-primary" id="btn-generate" onclick="startGenerate()">一鍵生成</button>
+        </div>
+
+        <!-- ChatGPT 模式面板 -->
+        <div id="gen-row-chatgpt" class="gpt-panel" style="margin-top:10px">
+          <div class="gpt-imgs-row">
+            <span>📦</span>
+            <span>先下載商品圖上傳至 GPT，再複製各任務的指令貼上</span>
+            <button class="btn-sm" onclick="downloadSelectedZipForGpt()" style="margin-left:auto">下載商品圖</button>
+          </div>
+
+          <!-- 形象圖 -->
+          <div class="gpt-card" id="gpt-card-xiangjing">
+            <div class="gpt-card-header">
+              <span class="gpt-card-title">🎨 形象圖 GPT</span>
+              <div class="gpt-card-actions">
+                <button class="btn-sm" onclick="copyGptPrompt('xiangjing',this)">複製指令</button>
+                <button class="btn-sm btn-primary" onclick="openGptWindow('xiangjing')">開啟 GPT</button>
+              </div>
+            </div>
+            <div class="gpt-prompt-preview" id="preview-xiangjing">（填寫商品資訊後自動產生）</div>
+          </div>
+
+          <!-- 詳情圖 -->
+          <div class="gpt-card" id="gpt-card-detail">
+            <div class="gpt-card-header">
+              <span class="gpt-card-title">📋 詳情圖 GPT</span>
+              <div class="gpt-card-actions">
+                <button class="btn-sm" onclick="copyGptPrompt('detail',this)">複製指令</button>
+                <button class="btn-sm btn-primary" onclick="openGptWindow('detail')">開啟 GPT</button>
+              </div>
+            </div>
+            <div class="gpt-prompt-preview" id="preview-detail">（填寫商品資訊後自動產生）</div>
+          </div>
+
+          <!-- 顏色白底圖 -->
+          <div class="gpt-card" id="gpt-card-color">
+            <div class="gpt-card-header">
+              <span class="gpt-card-title">🖼 顏色白底圖 GPT</span>
+              <div class="gpt-card-actions">
+                <button class="btn-sm" onclick="copyGptPrompt('color',this)">複製指令</button>
+                <button class="btn-sm btn-primary" onclick="openGptWindow('color')">開啟 GPT</button>
+              </div>
+            </div>
+            <div class="gpt-prompt-preview" id="preview-color">（填寫商品資訊後自動產生）</div>
+          </div>
+
+          <!-- 文案 -->
+          <div class="gpt-card" id="gpt-card-wencai">
+            <div class="gpt-card-header">
+              <span class="gpt-card-title">✍️ 文案 GPT</span>
+              <div class="gpt-card-actions">
+                <button class="btn-sm" onclick="copyGptPrompt('wencai',this)">複製指令</button>
+                <button class="btn-sm btn-primary" onclick="openGptWindow('wencai')">開啟 GPT</button>
+              </div>
+            </div>
+            <div class="gpt-prompt-preview" id="preview-wencai">（填寫商品資訊後自動產生）</div>
+          </div>
+
+          <!-- 標題 -->
+          <div class="gpt-card" id="gpt-card-title">
+            <div class="gpt-card-header">
+              <span class="gpt-card-title">🏷 標題 GPT</span>
+              <div class="gpt-card-actions">
+                <button class="btn-sm" onclick="copyGptPrompt('title',this)">複製指令</button>
+                <button class="btn-sm btn-primary" onclick="openGptWindow('title')">開啟 GPT</button>
+              </div>
+            </div>
+            <div class="gpt-prompt-preview" id="preview-title">（填寫商品資訊後自動產生）</div>
+          </div>
         </div>
       </div>
 
@@ -489,13 +581,40 @@
 
 <!-- ── Settings Modal ── -->
 <div class="modal-backdrop" id="settings-modal">
-  <div class="modal-box">
-    <h2>⚙ API 設定</h2>
+  <div class="modal-box" style="max-width:540px">
+    <h2>⚙ 設定</h2>
+
+    <div style="font-size:13px;font-weight:700;color:var(--gray-700);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--gray-200)">API 模式設定</div>
     <div class="modal-field">
       <label>OpenAI API Key</label>
       <input type="password" id="input-openai-key" placeholder="sk-...">
       <div class="modal-hint">Key 只存在本機瀏覽器，不會上傳至任何伺服器</div>
     </div>
+
+    <div style="font-size:13px;font-weight:700;color:var(--gray-700);margin-top:18px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--gray-200)">ChatGPT 模式 — 各 GPT 網址設定</div>
+    <div class="modal-hint" style="margin-bottom:10px">每個任務可設定不同的 Custom GPT 連結，切換到 ChatGPT 模式時會自動開啟對應視窗。</div>
+
+    <div class="modal-field">
+      <label>形象圖 GPT 網址</label>
+      <input type="text" id="input-gpt-xiangjing" placeholder="https://chatgpt.com/g/...">
+    </div>
+    <div class="modal-field">
+      <label>詳情圖 GPT 網址</label>
+      <input type="text" id="input-gpt-detail" placeholder="https://chatgpt.com/g/...">
+    </div>
+    <div class="modal-field">
+      <label>顏色白底圖 GPT 網址</label>
+      <input type="text" id="input-gpt-color" placeholder="https://chatgpt.com/g/...">
+    </div>
+    <div class="modal-field">
+      <label>文案 GPT 網址</label>
+      <input type="text" id="input-gpt-wencai" placeholder="https://chatgpt.com/g/...">
+    </div>
+    <div class="modal-field">
+      <label>標題 GPT 網址</label>
+      <input type="text" id="input-gpt-title" placeholder="https://chatgpt.com/g/...">
+    </div>
+
     <div class="modal-actions">
       <button class="btn-sm" onclick="closeSettings()">取消</button>
       <button class="btn-primary" onclick="saveSettings()">儲存</button>
@@ -517,16 +636,152 @@ let abortController = null
 
 // ── Settings ──
 function getApiKey() { return localStorage.getItem('pig_openai_key') || '' }
+function getGptUrl(task) { return localStorage.getItem('pig_gpt_' + task) || '' }
 function openSettings() {
   document.getElementById('input-openai-key').value = getApiKey()
+  ;['xiangjing','detail','color','wencai','title'].forEach(t => {
+    document.getElementById('input-gpt-' + t).value = getGptUrl(t)
+  })
   document.getElementById('settings-modal').classList.add('open')
 }
 function closeSettings() { document.getElementById('settings-modal').classList.remove('open') }
 function saveSettings() {
   const key = document.getElementById('input-openai-key').value.trim()
   if (key) localStorage.setItem('pig_openai_key', key)
+  ;['xiangjing','detail','color','wencai','title'].forEach(t => {
+    const v = document.getElementById('input-gpt-' + t).value.trim()
+    if (v) localStorage.setItem('pig_gpt_' + t, v)
+    else localStorage.removeItem('pig_gpt_' + t)
+  })
   closeSettings()
   checkKeyBanner()
+}
+
+// ── Mode toggle ──
+function getMode() { return localStorage.getItem('pig_mode') || 'api' }
+function setMode(mode) {
+  localStorage.setItem('pig_mode', mode)
+  document.getElementById('mode-btn-api').classList.toggle('active', mode === 'api')
+  document.getElementById('mode-btn-chatgpt').classList.toggle('active', mode === 'chatgpt')
+  document.getElementById('gen-row-api').style.display = mode === 'api' ? '' : 'none'
+  document.getElementById('gen-row-chatgpt').classList.toggle('active', mode === 'chatgpt')
+  if (mode === 'chatgpt') refreshGptPreviews()
+}
+
+// ── GPT prompt builders ──
+function buildGptPrompt(task) {
+  const name = (document.getElementById('product-name') && document.getElementById('product-name').value.trim()) || '（商品名稱）'
+  const brand = (document.getElementById('product-brand') && document.getElementById('product-brand').value.trim()) || ''
+  const origin = (document.getElementById('product-origin') && document.getElementById('product-origin').value.trim()) || '台灣'
+  const bgStyle = (document.getElementById('bg-style-input') && document.getElementById('bg-style-input').value.trim()) || '韓系簡約風'
+  const bgElements = (document.getElementById('bg-elements-input') && document.getElementById('bg-elements-input').value.trim()) || ''
+  const size = (document.getElementById('product-size-input') && document.getElementById('product-size-input').value.trim()) || ''
+  const desc = (document.getElementById('product-desc-input') && document.getElementById('product-desc-input').value.trim()) || ''
+  const colorCount = (document.getElementById('color-count-input') && document.getElementById('color-count-input').value) || '1'
+  const colorNames = (document.getElementById('color-names-input') && document.getElementById('color-names-input').value.trim()) || ''
+
+  const descPart = desc ? `（${desc}）` : ''
+  const colorList = colorNames ? colorNames.split(',').map(c=>c.trim()).filter(Boolean) :
+    Array.from({length: parseInt(colorCount)}, (_,i) => `顏色${i+1}`)
+
+  if (task === 'xiangjing') return `我有一個商品叫做「${name}」${descPart}，我需要銷售用的商品形象圖。
+不要讓商品擺放太整齊，商品角度自由去做變換，也可以把商品轉橫向的放，但商品整體形象樣貌不可以變動。
+我希望背景以「${bgStyle}」為主${bgElements ? `，搭配${bgElements}` : ''}，幫我尺寸生成為正方形。
+請生成6張，每張構圖不同（直立、橫向、45度、俯視、生活情境1、生活情境2）。`
+
+  if (task === 'detail') return `我有一個商品叫做「${name}」${descPart}，我需要電商詳情頁行銷圖片，請按照以下格式各生成一張（共9張）：
+
+1. 封面圖：商品名稱＋核心賣點＋情境照，不出現尺寸
+2. 尺寸圖：標示長/寬/厚度，加「※尺寸為人工測量，可能存在些許誤差」${size ? `，商品尺寸：${size}` : ''}
+3. 材質圖：突顯材質質感與手感
+4. 細節圖：局部細節特寫
+5. 功能圖：使用功能與用途說明
+6. 使用情境圖：商品擺放在實際使用環境，商品尺寸需符合實際比例
+7. 多角度展示圖：正面、側面、背面等多角度
+8. 收納展示圖：展示收納或搭配方式
+9. 賣點總結圖：匯整主要賣點的精美總結圖
+
+所有圖片都要適合台灣蝦皮電商使用，繁體中文，正方形或長方形皆可。`
+
+  if (task === 'color') return `我有一個商品叫做「${name}」${descPart}，請為以下${colorList.length}個顏色分別各生成一張商品圖：
+${colorList.map((c,i)=>`${i+1}. ${c}`).join('\n')}
+
+每張圖規格：
+- 純白色背景 #FFFFFF
+- 商品完整置中
+- 無任何文字、標籤或說明
+- 正方形構圖
+- 商品外觀顏色必須符合各顏色名稱`
+
+  if (task === 'wencai') return `請幫我為以下商品撰寫4個版本的蝦皮賣場文案：
+
+商品名稱：${name}
+品牌：${brand || '（請填入品牌）'}
+產地：${origin}
+${desc ? `商品說明：${desc}` : ''}
+
+4個版本的文案格式如下：
+版本1：活潑親切風，適合年輕族群
+版本2：專業精品風，強調品質與質感
+版本3：實用簡潔風，重點條列
+版本4：促銷活動風，強調優惠與限時
+
+每個版本都需包含：商品標題（30字以內）、主要賣點（3-5點）、商品描述（150字以內）、適用情境
+注意：符合台灣廣告法規，不誇大不實。`
+
+  if (task === 'title') return `請幫我為以下商品生成適合台灣蝦皮賣場的商品標題：
+
+商品名稱：${name}
+品牌：${brand || '（請填入品牌）'}
+產地：${origin}
+${desc ? `商品說明：${desc}` : ''}
+
+要求：
+- 生成5個不同版本的標題
+- 每個標題30字以內
+- 包含關鍵字（商品名稱、品牌、特色）
+- 符合蝦皮搜尋優化（SEO）
+- 吸引台灣消費者點擊`
+
+  return ''
+}
+
+function refreshGptPreviews() {
+  ;['xiangjing','detail','color','wencai','title'].forEach(task => {
+    const el = document.getElementById('preview-' + task)
+    if (el) el.textContent = buildGptPrompt(task)
+  })
+}
+
+async function copyGptPrompt(task, btn) {
+  const prompt = buildGptPrompt(task)
+  await navigator.clipboard.writeText(prompt)
+  if (btn) { btn.textContent = '✓ 已複製'; setTimeout(() => { btn.textContent = '複製指令' }, 1500) }
+}
+
+function openGptWindow(task) {
+  const url = getGptUrl(task)
+  if (!url) {
+    alert('尚未設定 ' + {xiangjing:'形象圖',detail:'詳情圖',color:'顏色白底圖',wencai:'文案',title:'標題'}[task] + ' 的 GPT 網址，請先至設定頁面填入。')
+    openSettings()
+    return
+  }
+  window.open(url, '_blank')
+}
+
+async function downloadSelectedZipForGpt() {
+  const selected = images.filter((_,i) => selectedIdx.has(i))
+  if (!selected.length) { alert('請先在左側勾選要上傳的商品圖'); return }
+  const files = []
+  for (let i = 0; i < selected.length; i++) {
+    const img = selected[i]
+    const dataUrl = img.dataUrl || img.src
+    if (!dataUrl.startsWith('data:')) continue
+    const ext = dataUrl.split(';')[0].split('/')[1] || 'jpg'
+    files.push({ name: `商品圖_${i+1}.${ext}`, dataUrl })
+  }
+  if (!files.length) { alert('無可下載的商品圖'); return }
+  await buildAndDownloadZip(files, '商品圖_GPT上傳用.zip')
 }
 function checkKeyBanner() {
   const banner = document.getElementById('key-banner')
@@ -1408,6 +1663,14 @@ function dataUrlToBlob(dataUrl) {
 checkKeyBanner()
 initBookmarklet()
 loadFromUrlParams()
+setMode(getMode())
+
+// Auto-refresh GPT previews when user types in settings fields
+;['product-name','product-brand','product-origin','bg-style-input','bg-elements-input',
+  'product-size-input','product-desc-input','color-count-input','color-names-input'].forEach(id => {
+  const el = document.getElementById(id)
+  if (el) el.addEventListener('input', () => { if (getMode() === 'chatgpt') refreshGptPreviews() })
+})
 </script>
 </body>
 </html>
