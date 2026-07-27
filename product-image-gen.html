@@ -140,6 +140,12 @@
 .gpt-prompt-preview { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 6px; padding: 10px; font-size: 12px; color: var(--gray-600); line-height: 1.6; max-height: 120px; overflow-y: auto; white-space: pre-wrap; font-family: inherit; }
 .gpt-imgs-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #1e40af; }
 
+/* ── GPT quick shortcuts ── */
+.gpt-shortcut-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.gpt-shortcut-btn { display: inline-flex; align-items: center; gap: 5px; padding: 7px 14px; border: 1px solid var(--gray-200); border-radius: 20px; font-size: 12px; font-weight: 600; color: var(--gray-700); background: white; cursor: pointer; text-decoration: none; transition: border-color .15s, color .15s, background .15s; }
+.gpt-shortcut-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+.gpt-shortcut-btn.no-url { opacity: .4; pointer-events: none; }
+
 /* ── Spinner ── */
 @keyframes spin { to { transform: rotate(360deg); } }
 .spinner { width: 16px; height: 16px; border: 2px solid var(--gray-200); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; flex-shrink: 0; }
@@ -221,7 +227,7 @@
     <a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span> 旅行規劃</a>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v1.9</div>
+  <div class="sidebar-footer">v2.0</div>
 </div>
 <div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.remove('open');this.classList.remove('active')"></div>
 
@@ -232,7 +238,7 @@
     <span class="topbar-title">商品圖一鍵生成</span>
     <div style="display:flex;gap:8px;align-items:center">
       <button class="btn-sm" onclick="openSettings()">⚙ API 設定</button>
-      <span class="topbar-badge">v1.9</span>
+      <span class="topbar-badge">v2.0</span>
     </div>
   </div>
 
@@ -243,6 +249,15 @@
       <div id="key-banner" class="key-banner">
         ⚠️ 尚未設定 OpenAI API Key，功能無法使用。
         <a onclick="openSettings()">點此設定</a>
+      </div>
+
+      <!-- ── GPT 快速入口 ── -->
+      <div class="pig-card" id="card-gpt-shortcuts" style="margin-bottom:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-weight:700;font-size:14px;color:var(--gray-800)">GPT 工具快捷</div>
+          <button class="btn-sm" onclick="openSettings()">管理連結</button>
+        </div>
+        <div class="gpt-shortcut-grid" id="gpt-shortcut-grid"></div>
       </div>
 
       <!-- ── Step 1: 上傳商品圖 ── -->
@@ -591,29 +606,9 @@
       <div class="modal-hint">Key 只存在本機瀏覽器，不會上傳至任何伺服器</div>
     </div>
 
-    <div style="font-size:13px;font-weight:700;color:var(--gray-700);margin-top:18px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--gray-200)">ChatGPT 模式 — 各 GPT 網址設定</div>
-    <div class="modal-hint" style="margin-bottom:10px">每個任務可設定不同的 Custom GPT 連結，切換到 ChatGPT 模式時會自動開啟對應視窗。</div>
-
-    <div class="modal-field">
-      <label>形象圖 GPT 網址</label>
-      <input type="text" id="input-gpt-xiangjing" placeholder="https://chatgpt.com/g/...">
-    </div>
-    <div class="modal-field">
-      <label>詳情圖 GPT 網址</label>
-      <input type="text" id="input-gpt-detail" placeholder="https://chatgpt.com/g/...">
-    </div>
-    <div class="modal-field">
-      <label>顏色白底圖 GPT 網址</label>
-      <input type="text" id="input-gpt-color" placeholder="https://chatgpt.com/g/...">
-    </div>
-    <div class="modal-field">
-      <label>文案 GPT 網址</label>
-      <input type="text" id="input-gpt-wencai" placeholder="https://chatgpt.com/g/...">
-    </div>
-    <div class="modal-field">
-      <label>標題 GPT 網址</label>
-      <input type="text" id="input-gpt-title" placeholder="https://chatgpt.com/g/...">
-    </div>
+    <div style="font-size:13px;font-weight:700;color:var(--gray-700);margin-top:18px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--gray-200)">ChatGPT 模式 — GPT 網址管理</div>
+    <div class="modal-hint" style="margin-bottom:10px">可直接更換為你的 Custom GPT 連結，修改後點儲存即生效。</div>
+    <div id="settings-gpt-fields"><!-- rendered by JS --></div>
 
     <div class="modal-actions">
       <button class="btn-sm" onclick="closeSettings()">取消</button>
@@ -634,27 +629,70 @@ let generatedImages = { xiangjing: [], detail: [] }
 let generatedWencai = ''
 let abortController = null
 
+// ── GPT tool definitions ──
+const GPT_TOOLS = [
+  { key: 'naming',    label: '產品名稱命名',   icon: '💡', defaultUrl: 'https://chatgpt.com/share/6a66c537-6334-83ee-82ba-f17cb1a80e5b' },
+  { key: 'title',     label: '蝦皮主圖標題',   icon: '🏷',  defaultUrl: 'https://chatgpt.com/share/6a66c4f7-a488-83e8-afb8-cc1cca095f3c' },
+  { key: 'storename', label: '賣場名稱生成',   icon: '🏪', defaultUrl: 'https://chatgpt.com/share/6a66c5f2-8fac-83ee-b6f7-483ba1433b59' },
+  { key: 'seo',       label: 'SEO 關鍵字',     icon: '🔍', defaultUrl: 'https://chatgpt.com/share/6a66c55f-fbac-83e8-833b-490e426ffb9b' },
+  { key: 'weburl',    label: '官網 URL',        icon: '🔗', defaultUrl: 'https://chatgpt.com/share/6a66c572-9148-83e8-aa64-90bc99770151' },
+  { key: 'wencai',    label: '商品文案（一）', icon: '✍️', defaultUrl: 'https://chatgpt.com/share/6a66c594-e260-83e8-902b-82bada4640ba' },
+  { key: 'wencai2',   label: '商品文案（二）', icon: '✍️', defaultUrl: 'https://chatgpt.com/share/6a66c61a-d858-83e8-8650-143d04df3d0c' },
+  { key: 'gift',      label: '禮品包裝特色',   icon: '🎁', defaultUrl: 'https://chatgpt.com/share/6a66c604-606c-83e8-ab95-822dd2f76095' },
+  { key: 'detail',    label: '詳情圖生成',     icon: '📋', defaultUrl: 'https://chatgpt.com/share/6a66c64f-2194-83e8-a63c-1093c195dd5e' },
+  { key: 'xiangjing', label: '形象圖生成',     icon: '🎨', defaultUrl: '' },
+  { key: 'color',     label: '顏色白底圖',     icon: '🖼',  defaultUrl: '' },
+]
+
 // ── Settings ──
 function getApiKey() { return localStorage.getItem('pig_openai_key') || '' }
-function getGptUrl(task) { return localStorage.getItem('pig_gpt_' + task) || '' }
+function getGptUrl(key) {
+  const stored = localStorage.getItem('pig_gpt_' + key)
+  if (stored !== null) return stored
+  const tool = GPT_TOOLS.find(t => t.key === key)
+  return tool ? tool.defaultUrl : ''
+}
+
+function renderSettingsGptFields() {
+  const container = document.getElementById('settings-gpt-fields')
+  if (!container) return
+  container.innerHTML = GPT_TOOLS.map(t => `
+    <div class="modal-field">
+      <label>${t.icon} ${t.label}</label>
+      <input type="text" id="input-gpt-${t.key}" value="${getGptUrl(t.key).replace(/"/g,'&quot;')}" placeholder="https://chatgpt.com/share/...">
+    </div>`).join('')
+}
+
+function renderGptShortcuts() {
+  const grid = document.getElementById('gpt-shortcut-grid')
+  if (!grid) return
+  grid.innerHTML = GPT_TOOLS.map(t => {
+    const url = getGptUrl(t.key)
+    return url
+      ? `<a class="gpt-shortcut-btn" href="${url}" target="_blank" rel="noopener">${t.icon} ${t.label}</a>`
+      : `<span class="gpt-shortcut-btn no-url">${t.icon} ${t.label}</span>`
+  }).join('')
+}
+
 function openSettings() {
+  renderSettingsGptFields()
   document.getElementById('input-openai-key').value = getApiKey()
-  ;['xiangjing','detail','color','wencai','title'].forEach(t => {
-    document.getElementById('input-gpt-' + t).value = getGptUrl(t)
-  })
   document.getElementById('settings-modal').classList.add('open')
 }
 function closeSettings() { document.getElementById('settings-modal').classList.remove('open') }
 function saveSettings() {
   const key = document.getElementById('input-openai-key').value.trim()
   if (key) localStorage.setItem('pig_openai_key', key)
-  ;['xiangjing','detail','color','wencai','title'].forEach(t => {
-    const v = document.getElementById('input-gpt-' + t).value.trim()
-    if (v) localStorage.setItem('pig_gpt_' + t, v)
-    else localStorage.removeItem('pig_gpt_' + t)
+  GPT_TOOLS.forEach(t => {
+    const el = document.getElementById('input-gpt-' + t.key)
+    if (!el) return
+    const v = el.value.trim()
+    if (v) localStorage.setItem('pig_gpt_' + t.key, v)
+    else localStorage.removeItem('pig_gpt_' + t.key)
   })
   closeSettings()
   checkKeyBanner()
+  renderGptShortcuts()
 }
 
 // ── Mode toggle ──
@@ -762,7 +800,8 @@ async function copyGptPrompt(task, btn) {
 function openGptWindow(task) {
   const url = getGptUrl(task)
   if (!url) {
-    alert('尚未設定 ' + {xiangjing:'形象圖',detail:'詳情圖',color:'顏色白底圖',wencai:'文案',title:'標題'}[task] + ' 的 GPT 網址，請先至設定頁面填入。')
+    const tool = GPT_TOOLS.find(t => t.key === task)
+    alert(`尚未設定「${tool ? tool.label : task}」的 GPT 網址，請先至設定頁面填入。`)
     openSettings()
     return
   }
@@ -1664,6 +1703,7 @@ checkKeyBanner()
 initBookmarklet()
 loadFromUrlParams()
 setMode(getMode())
+renderGptShortcuts()
 
 // Auto-refresh GPT previews when user types in settings fields
 ;['product-name','product-brand','product-origin','bg-style-input','bg-elements-input',
