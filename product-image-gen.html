@@ -125,6 +125,16 @@
 .results-actions { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
 .results-actions .label { font-size: 12px; color: var(--gray-500); margin-left: auto; }
 
+/* ── Workflow grid (Steps 2-9) ── */
+.workflow-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.workflow-wide { grid-column: 1 / -1; }
+.workflow-card h2 { margin-top: 0; }
+.step-hint { background: var(--gray-50); border: 1px solid var(--gray-100); border-radius: 8px; padding: 10px 13px; font-size: 12px; color: var(--gray-600); margin: 10px 0 14px; line-height: 1.6; }
+.step-prompt { width: 100%; padding: 10px 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 12px; color: var(--gray-700); resize: vertical; box-sizing: border-box; font-family: inherit; line-height: 1.7; margin-bottom: 10px; outline: none; }
+.step-prompt:focus { border-color: var(--primary); }
+.step-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+@media (max-width: 600px) { .workflow-grid { grid-template-columns: 1fr; } }
+
 /* ── Mode toggle ── */
 .mode-toggle { display: flex; gap: 0; border: 1px solid var(--gray-200); border-radius: 8px; overflow: hidden; margin-bottom: 16px; width: fit-content; }
 .mode-btn { padding: 7px 18px; font-size: 13px; font-weight: 600; background: white; color: var(--gray-500); border: none; cursor: pointer; }
@@ -227,7 +237,7 @@
     <a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span> 旅行規劃</a>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v2.0</div>
+  <div class="sidebar-footer">v2.1</div>
 </div>
 <div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.remove('open');this.classList.remove('active')"></div>
 
@@ -235,39 +245,23 @@
 <div id="main">
   <div class="topbar">
     <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open');document.getElementById('sidebar-overlay').classList.toggle('active')">&#9776;</button>
-    <span class="topbar-title">商品圖一鍵生成</span>
+    <span class="topbar-title">新品上架作業</span>
     <div style="display:flex;gap:8px;align-items:center">
-      <button class="btn-sm" onclick="openSettings()">⚙ API 設定</button>
-      <span class="topbar-badge">v2.0</span>
+      <button class="btn-sm" onclick="openSettings()">⚙ 設定</button>
+      <span class="topbar-badge">v2.1</span>
     </div>
   </div>
 
   <div class="page">
     <div class="pig-layout">
 
-      <!-- ── API Key Banner ── -->
-      <div id="key-banner" class="key-banner">
-        ⚠️ 尚未設定 OpenAI API Key，功能無法使用。
-        <a onclick="openSettings()">點此設定</a>
-      </div>
-
-      <!-- ── GPT 快速入口 ── -->
-      <div class="pig-card" id="card-gpt-shortcuts" style="margin-bottom:16px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <div style="font-weight:700;font-size:14px;color:var(--gray-800)">GPT 工具快捷</div>
-          <button class="btn-sm" onclick="openSettings()">管理連結</button>
-        </div>
-        <div class="gpt-shortcut-grid" id="gpt-shortcut-grid"></div>
-      </div>
-
-      <!-- ── Step 1: 上傳商品圖 ── -->
+      <!-- ── Step 1: 抓取商品圖片 ── -->
       <div class="pig-card" id="card-input">
-        <h2><span class="step-num">1</span> 匯入商品圖片</h2>
+        <h2><span class="step-num">1</span> 抓取商品圖片</h2>
 
-        <!-- Bookmarklet banner -->
         <div style="background:var(--primary-light);border:1px solid var(--primary);border-radius:8px;padding:12px 16px;margin-bottom:14px">
           <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:6px">⚡ 一鍵抓圖書籤（最快）</div>
-          <div style="font-size:12px;color:var(--gray-600);margin-bottom:8px">把下方按鈕拖曳到瀏覽器書籤列，之後在任何淘寶商品頁點一下，自動帶入所有圖片。</div>
+          <div style="font-size:12px;color:var(--gray-600);margin-bottom:8px">把下方按鈕拖曳到書籤列，在淘寶商品頁點一下，自動帶入全部圖片。</div>
           <a id="bookmarklet-link" href="" style="display:inline-block;background:var(--primary);color:white;padding:7px 16px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;cursor:grab">⚡ 飛比特抓圖</a>
           <span style="font-size:11px;color:var(--gray-400);margin-left:8px">← 拖曳到書籤列</span>
         </div>
@@ -277,7 +271,6 @@
           <button class="pig-tab" id="tab-btn-imgurl" onclick="switchTab('imgurl')">貼圖片網址</button>
         </div>
 
-        <!-- Upload tab (now primary) -->
         <div id="tab-upload">
           <div class="dropzone" id="dropzone"
             onclick="document.getElementById('file-input').click()"
@@ -291,304 +284,110 @@
           <input type="file" id="file-input" accept="image/*" multiple style="display:none" onchange="handleFileInput(this.files)">
         </div>
 
-        <!-- Image URL tab (secondary) -->
         <div id="tab-imgurl" class="hidden">
-          <textarea id="img-urls" rows="3" placeholder="貼上 alicdn.com 圖片網址，每行一個" style="width:100%;padding:9px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:13px;outline:none;resize:vertical;box-sizing:border-box;font-family:inherit"></textarea>
+          <textarea id="img-urls" rows="3" placeholder="貼上圖片網址，每行一個" style="width:100%;padding:9px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:13px;outline:none;resize:vertical;box-sizing:border-box;font-family:inherit"></textarea>
           <div style="margin-top:8px">
             <button class="btn-primary" onclick="loadImageUrls()">載入圖片</button>
             <span id="url-load-status" style="font-size:12px;color:var(--gray-400);margin-left:8px"></span>
           </div>
         </div>
 
-        <!-- Upload tab -->
-        <div id="tab-upload" class="hidden">
-          <div class="dropzone" id="dropzone"
-            onclick="document.getElementById('file-input').click()"
-            ondragover="event.preventDefault();this.classList.add('drag-over')"
-            ondragleave="this.classList.remove('drag-over')"
-            ondrop="handleDrop(event)">
-            <div class="dz-icon">📁</div>
-            <div>點擊或拖曳上傳商品圖片</div>
-            <div style="font-size:12px;color:var(--gray-400);margin-top:4px">支援 JPG、PNG，可多張</div>
-          </div>
-          <input type="file" id="file-input" accept="image/*" multiple style="display:none" onchange="handleFileInput(this.files)">
-        </div>
-
-        <!-- Images preview -->
         <div id="images-section" class="hidden">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;flex-wrap:wrap;gap:8px">
-            <div style="font-size:13px;font-weight:600;color:var(--gray-700)">選擇要使用的圖片（建議選 1-3 張）</div>
-            <div style="display:flex;gap:6px">
-              <button class="btn-sm" onclick="downloadOriginalZip()">📦 下載原始圖</button>
-              <button class="btn-sm" onclick="clearImages()">清除全部</button>
+            <div style="font-size:13px;font-weight:600;color:var(--gray-700)">已載入 <span id="img-count">0</span> 張圖片｜勾選後可下載</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="btn-sm" onclick="selectAllImages()">全選</button>
+              <button class="btn-sm" onclick="downloadSelectedZipForGpt()">📦 下載選取圖片</button>
+              <button class="btn-sm" onclick="downloadOriginalZip()">💾 下載全部原圖</button>
+              <button class="btn-sm" onclick="clearImages()">清除</button>
             </div>
           </div>
           <div id="images-grid" class="images-grid"></div>
-          <div style="margin-top:12px">
-            <button class="btn-primary" id="btn-analyze" onclick="analyzeProduct()">下一步：AI 建議品名</button>
-          </div>
         </div>
       </div>
 
-      <!-- ── Step 2: 品名確認 ── -->
-      <div class="pig-card hidden" id="card-names">
-        <h2><span class="step-num">2</span> 確認商品名稱</h2>
-        <div id="names-loading" style="color:var(--gray-400);font-size:13px;display:flex;align-items:center;gap:8px">
-          <div class="spinner"></div> AI 分析商品圖中...
-        </div>
-        <div id="names-result" class="hidden">
-          <div style="font-size:13px;color:var(--gray-600);margin-bottom:10px">點選其中一款作為品名，或自行輸入：</div>
-          <div id="name-options"></div>
-          <div class="field-row" style="margin-top:12px">
-            <label>確認 / 自訂品名</label>
-            <input type="text" id="product-name" placeholder="選擇上方品名或自行輸入">
-          </div>
-          <div class="field-row" style="margin-top:8px">
-            <label>品牌名稱 <span style="font-weight:400;color:var(--gray-400)">（用於文案標題格式）</span></label>
-            <input type="text" id="product-brand" placeholder="例：IKEA、無印良品、自有品牌">
-          </div>
-          <div class="field-row" style="margin-top:8px">
-            <label>產地 <span style="font-weight:400;color:var(--gray-400)">（用於文案標題格式）</span></label>
-            <input type="text" id="product-origin" placeholder="例：台灣、韓國、日本" value="台灣">
-          </div>
-          <div style="margin-top:12px">
-            <button class="btn-primary" onclick="proceedToGenerate()">確認，繼續生成</button>
+      <!-- ── 作業流程 Steps 2-9 ── -->
+      <div class="workflow-grid">
+
+        <!-- Step 2: 形象圖 & 白底圖（全寬） -->
+        <div class="pig-card workflow-wide">
+          <h2><span class="step-num">2</span> 形象圖 &amp; 白底圖生成</h2>
+          <div class="step-hint">先在 Step 1 下載商品圖 → 開啟 GPT → 上傳圖片 → 貼上建議指令</div>
+          <div style="font-size:12px;font-weight:600;color:var(--gray-700);margin-bottom:6px">建議指令（可直接修改「幾個顏色商品」部分後複製）</div>
+          <textarea class="step-prompt" id="prompt-xiangjing" rows="5">我要製作商品形象圖，需要生成五張獨立的形象圖片，一張白底圖，共六張圖，圖片尺寸都要是正方形，圖中要有"幾個顏色商品，或是商品名稱，或指定顏色款式"，商品不可變形、不可任意更改產品本身的規格、尺寸或圖案，包含花瓣數量、實際大小，生成五張角度用途不同，具有居家生活質感的商品形象圖以及實際使用情境圖，並且請注意商品的大小比例，需要與環境比例相符</textarea>
+          <div class="step-actions">
+            <button class="btn-sm" onclick="copyStepPrompt('xiangjing',this)">複製指令</button>
+            <button class="btn-sm" onclick="downloadSelectedZipForGpt()">📦 下載商品圖</button>
+            <button class="btn-primary" onclick="openGptWindow('xiangjing')">開啟 GPT →</button>
           </div>
         </div>
-      </div>
 
-      <!-- ── Step 3: 生成設定 ── -->
-      <div class="pig-card hidden" id="card-options">
-        <h2><span class="step-num">3</span> 生成設定</h2>
-
-        <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-bottom:6px">要生成哪些內容？</div>
-        <div class="gen-options">
-          <div class="gen-option"><label><input type="checkbox" id="gen-xiangjing" checked> 形象圖（6 張）</label></div>
-          <div class="gen-option"><label><input type="checkbox" id="gen-detail" checked> 詳情圖（9 張）</label></div>
-          <div class="gen-option"><label><input type="checkbox" id="gen-color" checked> 顏色白底圖</label></div>
-          <div class="gen-option"><label><input type="checkbox" id="gen-wencai" checked> 文案（4 版賣場文案）</label></div>
-        </div>
-
-        <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-top:16px;margin-bottom:6px">商品細節描述 <span style="font-weight:400;color:var(--gray-400);font-size:12px">（填越詳細，AI 走形機率越低）</span></div>
-        <div class="field-row" style="margin-bottom:8px">
-          <label>商品外觀細節 <span style="font-weight:400;color:var(--gray-400)">（例：10片花瓣均勻排列的蓮花造型、正六邊形、圓角矩形）</span></label>
-          <textarea id="product-desc-input" rows="2" placeholder="請描述商品的形狀、數量、特徵，例如：10片花瓣均勻排列的蓮花造型矽膠隔熱墊，中心有圓形凸起" style="width:100%;padding:9px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:13px;outline:none;resize:vertical;box-sizing:border-box;font-family:inherit"></textarea>
-        </div>
-
-        <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-top:14px;margin-bottom:6px">形象圖設定</div>
-        <div class="field-row" style="margin-bottom:8px">
-          <label>背景風格 <span style="font-weight:400;color:var(--gray-400)">（例：韓系簡約風、北歐清新、奢華大理石）</span></label>
-          <input type="text" id="bg-style-input" placeholder="韓系簡約風" value="韓系簡約風">
-        </div>
-        <div class="field-row" style="margin-bottom:8px">
-          <label>加入元素 <span style="font-weight:400;color:var(--gray-400)">（選填，例：蝴蝶結、花朵、木質感）</span></label>
-          <input type="text" id="bg-elements-input" placeholder="留空則不加入特定元素">
-        </div>
-
-        <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-top:14px;margin-bottom:6px">詳情圖設定</div>
-        <div class="field-row" style="margin-bottom:8px">
-          <label>商品尺寸 <span style="font-weight:400;color:var(--gray-400)">（例：長30cm × 寬20cm × 高10cm）</span></label>
-          <input type="text" id="product-size-input" placeholder="尺寸資訊（選填）">
-        </div>
-
-        <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-top:14px;margin-bottom:6px">顏色白底圖設定</div>
-        <div class="field-row" style="margin-bottom:8px">
-          <label>顏色款數</label>
-          <input type="number" id="color-count-input" min="1" max="10" value="1" style="width:80px;padding:9px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:14px;outline:none">
-        </div>
-        <div class="field-row" style="margin-bottom:8px">
-          <label>各顏色名稱 <span style="font-weight:400;color:var(--gray-400)">（用逗號分隔，例：紅色,藍色,綠色）</span></label>
-          <input type="text" id="color-names-input" placeholder="留空則自動編號（顏色1、顏色2...）">
-        </div>
-
-        <!-- ── 生成模式切換 ── -->
-        <div style="margin-top:18px;margin-bottom:4px;font-size:13px;font-weight:600;color:var(--gray-700)">生成模式</div>
-        <div class="mode-toggle">
-          <button class="mode-btn active" id="mode-btn-api" onclick="setMode('api')">API 模式</button>
-          <button class="mode-btn" id="mode-btn-chatgpt" onclick="setMode('chatgpt')">ChatGPT 模式</button>
-        </div>
-
-        <!-- API 模式按鈕 -->
-        <div class="gen-row" id="gen-row-api">
-          <button class="btn-primary" id="btn-generate" onclick="startGenerate()">一鍵生成</button>
-        </div>
-
-        <!-- ChatGPT 模式面板 -->
-        <div id="gen-row-chatgpt" class="gpt-panel" style="margin-top:10px">
-          <div class="gpt-imgs-row">
-            <span>📦</span>
-            <span>先下載商品圖上傳至 GPT，再複製各任務的指令貼上</span>
-            <button class="btn-sm" onclick="downloadSelectedZipForGpt()" style="margin-left:auto">下載商品圖</button>
-          </div>
-
-          <!-- 形象圖 -->
-          <div class="gpt-card" id="gpt-card-xiangjing">
-            <div class="gpt-card-header">
-              <span class="gpt-card-title">🎨 形象圖 GPT</span>
-              <div class="gpt-card-actions">
-                <button class="btn-sm" onclick="copyGptPrompt('xiangjing',this)">複製指令</button>
-                <button class="btn-sm btn-primary" onclick="openGptWindow('xiangjing')">開啟 GPT</button>
-              </div>
-            </div>
-            <div class="gpt-prompt-preview" id="preview-xiangjing">（填寫商品資訊後自動產生）</div>
-          </div>
-
-          <!-- 詳情圖 -->
-          <div class="gpt-card" id="gpt-card-detail">
-            <div class="gpt-card-header">
-              <span class="gpt-card-title">📋 詳情圖 GPT</span>
-              <div class="gpt-card-actions">
-                <button class="btn-sm" onclick="copyGptPrompt('detail',this)">複製指令</button>
-                <button class="btn-sm btn-primary" onclick="openGptWindow('detail')">開啟 GPT</button>
-              </div>
-            </div>
-            <div class="gpt-prompt-preview" id="preview-detail">（填寫商品資訊後自動產生）</div>
-          </div>
-
-          <!-- 顏色白底圖 -->
-          <div class="gpt-card" id="gpt-card-color">
-            <div class="gpt-card-header">
-              <span class="gpt-card-title">🖼 顏色白底圖 GPT</span>
-              <div class="gpt-card-actions">
-                <button class="btn-sm" onclick="copyGptPrompt('color',this)">複製指令</button>
-                <button class="btn-sm btn-primary" onclick="openGptWindow('color')">開啟 GPT</button>
-              </div>
-            </div>
-            <div class="gpt-prompt-preview" id="preview-color">（填寫商品資訊後自動產生）</div>
-          </div>
-
-          <!-- 文案 -->
-          <div class="gpt-card" id="gpt-card-wencai">
-            <div class="gpt-card-header">
-              <span class="gpt-card-title">✍️ 文案 GPT</span>
-              <div class="gpt-card-actions">
-                <button class="btn-sm" onclick="copyGptPrompt('wencai',this)">複製指令</button>
-                <button class="btn-sm btn-primary" onclick="openGptWindow('wencai')">開啟 GPT</button>
-              </div>
-            </div>
-            <div class="gpt-prompt-preview" id="preview-wencai">（填寫商品資訊後自動產生）</div>
-          </div>
-
-          <!-- 標題 -->
-          <div class="gpt-card" id="gpt-card-title">
-            <div class="gpt-card-header">
-              <span class="gpt-card-title">🏷 標題 GPT</span>
-              <div class="gpt-card-actions">
-                <button class="btn-sm" onclick="copyGptPrompt('title',this)">複製指令</button>
-                <button class="btn-sm btn-primary" onclick="openGptWindow('title')">開啟 GPT</button>
-              </div>
-            </div>
-            <div class="gpt-prompt-preview" id="preview-title">（填寫商品資訊後自動產生）</div>
+        <!-- Step 3: 產品名稱命名 -->
+        <div class="pig-card">
+          <h2><span class="step-num">3</span> 產品名稱命名</h2>
+          <div class="step-hint">直接丟入商品圖，或輸入商品名稱大方向即可</div>
+          <div class="step-actions">
+            <button class="btn-primary" onclick="openGptWindow('naming')">開啟 GPT →</button>
           </div>
         </div>
-      </div>
 
-      <!-- ── Step 3: 進度 ── -->
-      <div class="pig-card hidden" id="card-progress">
-        <div class="progress-title">生成中，請稍候...</div>
-        <div class="prog-list">
-          <div class="prog-item" id="prog-fetch">
-            <span class="prog-icon">🖼</span>
-            <span class="prog-label">抓取商品圖片</span>
-            <span class="prog-status">等待中</span>
-          </div>
-          <div class="prog-item" id="prog-xiangjing">
-            <span class="prog-icon">🎨</span>
-            <span class="prog-label">形象圖（換背景）</span>
-            <span class="prog-status">等待中</span>
-          </div>
-          <div class="prog-item" id="prog-detail">
-            <span class="prog-icon">📋</span>
-            <span class="prog-label">詳情圖（行銷圖）</span>
-            <span class="prog-status">等待中</span>
-          </div>
-          <div class="prog-item" id="prog-color">
-            <span class="prog-icon">🎨</span>
-            <span class="prog-label">顏色白底圖</span>
-            <span class="prog-status">等待中</span>
-          </div>
-          <div class="prog-item" id="prog-wencai">
-            <span class="prog-icon">✍️</span>
-            <span class="prog-label">文案（4 版賣場文案）</span>
-            <span class="prog-status">等待中</span>
+        <!-- Step 4: 商品文案 & 禮品包裝（全寬） -->
+        <div class="pig-card workflow-wide">
+          <h2><span class="step-num">4</span> 商品文案 &amp; 禮品包裝特色</h2>
+          <div class="step-hint">直接丟入商品名稱或商品圖</div>
+          <div class="step-actions">
+            <button class="btn-primary" onclick="openGptWindow('wencai')">商品文案（一）→</button>
+            <button class="btn-primary" onclick="openGptWindow('wencai2')">商品文案（二）→</button>
+            <button class="btn-primary" onclick="openGptWindow('gift')">禮品包裝特色 →</button>
           </div>
         </div>
-        <div style="margin-top:12px">
-          <button class="btn-sm" onclick="cancelGenerate()">取消</button>
-        </div>
-      </div>
 
-      <!-- ── Step 4: 結果 ── -->
-      <div class="pig-card hidden" id="card-results">
-        <div class="results-actions">
-          <button class="btn-primary" onclick="downloadAllZip()">📦 下載全部壓縮檔</button>
-          <button class="btn-sm" onclick="downloadAll()">逐張下載</button>
-          <button class="btn-sm" onclick="resetTool()">重新開始</button>
-          <span class="label" id="result-summary"></span>
-        </div>
-
-        <div class="results-tabs">
-          <button class="rtab active" data-panel="panel-xiangjing" onclick="switchResult(this)">
-            形象圖 <span class="rtab-badge" id="badge-xiangjing">0</span>
-          </button>
-          <button class="rtab" data-panel="panel-detail" onclick="switchResult(this)">
-            詳情圖 <span class="rtab-badge" id="badge-detail">0</span>
-          </button>
-          <button class="rtab" data-panel="panel-color" onclick="switchResult(this)">
-            顏色圖 <span class="rtab-badge" id="badge-color">0</span>
-          </button>
-          <button class="rtab" data-panel="panel-wencai" onclick="switchResult(this)">
-            文案
-          </button>
-        </div>
-
-        <!-- 形象圖 panel -->
-        <div class="result-panel active" id="panel-xiangjing">
-          <div class="result-images-grid" id="xiangjing-grid"></div>
-          <div id="xiangjing-empty" class="hidden" style="text-align:center;color:var(--gray-400);padding:32px;font-size:13px">未生成形象圖</div>
-        </div>
-
-        <!-- 顏色白底圖 panel -->
-        <div class="result-panel" id="panel-color">
-          <div class="result-images-grid" id="color-grid"></div>
-          <div id="color-empty" class="hidden" style="text-align:center;color:var(--gray-400);padding:32px;font-size:13px">未生成顏色白底圖</div>
-        </div>
-
-        <!-- 詳情圖 panel -->
-        <div class="result-panel" id="panel-detail">
-          <div class="detail-scroll" id="detail-grid"></div>
-          <div id="detail-empty" class="hidden" style="text-align:center;color:var(--gray-400);padding:32px;font-size:13px">未生成詳情圖</div>
-        </div>
-
-        <!-- 文案 panel -->
-        <div class="result-panel" id="panel-wencai">
-          <div id="wencai-output" class="hidden">
-            <div class="wencai-tabs">
-              <button class="wencai-tab active" data-v="1" onclick="switchWencai(this)">文案 1</button>
-              <button class="wencai-tab" data-v="2" onclick="switchWencai(this)">文案 2</button>
-              <button class="wencai-tab" data-v="3" onclick="switchWencai(this)">文案 3</button>
-              <button class="wencai-tab" data-v="4" onclick="switchWencai(this)">文案 4</button>
-            </div>
-            <div class="wencai-panel active" id="wencai-v1">
-              <div class="wencai-copy-row"><button class="btn-sm" onclick="copyWencaiVersion(1)">複製全文</button></div>
-              <pre class="wencai-raw" id="wencai-raw-1"></pre>
-            </div>
-            <div class="wencai-panel" id="wencai-v2">
-              <div class="wencai-copy-row"><button class="btn-sm" onclick="copyWencaiVersion(2)">複製全文</button></div>
-              <pre class="wencai-raw" id="wencai-raw-2"></pre>
-            </div>
-            <div class="wencai-panel" id="wencai-v3">
-              <div class="wencai-copy-row"><button class="btn-sm" onclick="copyWencaiVersion(3)">複製全文</button></div>
-              <pre class="wencai-raw" id="wencai-raw-3"></pre>
-            </div>
-            <div class="wencai-panel" id="wencai-v4">
-              <div class="wencai-copy-row"><button class="btn-sm" onclick="copyWencaiVersion(4)">複製全文</button></div>
-              <pre class="wencai-raw" id="wencai-raw-4"></pre>
-            </div>
+        <!-- Step 5: SEO 關鍵字 -->
+        <div class="pig-card">
+          <h2><span class="step-num">5</span> 官網 SEO 關鍵字</h2>
+          <div class="step-hint">直接丟入商品名稱</div>
+          <div class="step-actions">
+            <button class="btn-primary" onclick="openGptWindow('seo')">開啟 GPT →</button>
           </div>
-          <div id="wencai-empty" style="text-align:center;color:var(--gray-400);padding:32px;font-size:13px">未生成文案</div>
         </div>
-      </div>
+
+        <!-- Step 6: 官網 URL -->
+        <div class="pig-card">
+          <h2><span class="step-num">6</span> 官網商品 URL</h2>
+          <div class="step-hint">直接丟入商品名稱</div>
+          <div class="step-actions">
+            <button class="btn-primary" onclick="openGptWindow('weburl')">開啟 GPT →</button>
+          </div>
+        </div>
+
+        <!-- Step 7: 蝦皮主圖標題 -->
+        <div class="pig-card">
+          <h2><span class="step-num">7</span> 蝦皮主圖標題</h2>
+          <div class="step-hint">直接丟入商品名稱</div>
+          <div class="step-actions">
+            <button class="btn-primary" onclick="openGptWindow('title')">開啟 GPT →</button>
+          </div>
+        </div>
+
+        <!-- Step 8: 蝦皮賣場名稱 -->
+        <div class="pig-card">
+          <h2><span class="step-num">8</span> 蝦皮賣場名稱生成</h2>
+          <div class="step-hint">直接丟入商品名稱</div>
+          <div class="step-actions">
+            <button class="btn-primary" onclick="openGptWindow('storename')">開啟 GPT →</button>
+          </div>
+        </div>
+
+        <!-- Step 9: 詳情圖（全寬） -->
+        <div class="pig-card workflow-wide">
+          <h2><span class="step-num">9</span> 商品詳情圖生成</h2>
+          <div class="step-hint">丟入 Step 2 生成的商品形象圖</div>
+          <div class="step-actions">
+            <button class="btn-primary" onclick="openGptWindow('detail')">開啟 GPT →</button>
+          </div>
+        </div>
+
+      </div><!-- end workflow-grid -->
 
     </div><!-- end pig-layout -->
   </div>
@@ -789,6 +588,18 @@ function refreshGptPreviews() {
     const el = document.getElementById('preview-' + task)
     if (el) el.textContent = buildGptPrompt(task)
   })
+}
+
+async function copyStepPrompt(task, btn) {
+  const el = document.getElementById('prompt-' + task)
+  if (!el) return
+  await navigator.clipboard.writeText(el.value)
+  if (btn) { btn.textContent = '✓ 已複製'; setTimeout(() => { btn.textContent = '複製指令' }, 1500) }
+}
+
+function selectAllImages() {
+  images.forEach((_, i) => selectedIdx.add(i))
+  renderImageGrid()
 }
 
 async function copyGptPrompt(task, btn) {
@@ -1084,6 +895,8 @@ function renderImageGrid() {
     grid.appendChild(div)
   })
   document.getElementById('images-section').classList.toggle('hidden', images.length === 0)
+  const cnt = document.getElementById('img-count')
+  if (cnt) cnt.textContent = images.length
 }
 
 function toggleSelect(i) {
@@ -1702,7 +1515,6 @@ function dataUrlToBlob(dataUrl) {
 checkKeyBanner()
 initBookmarklet()
 loadFromUrlParams()
-setMode(getMode())
 renderGptShortcuts()
 
 // Auto-refresh GPT previews when user types in settings fields
