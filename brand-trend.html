@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>品牌趨勢分析 · 飛比特</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<style>
+.container{max-width:1280px;margin:0 auto}
+.filter-bar{background:white;border-radius:var(--radius);padding:16px 18px;margin-bottom:18px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.filter-row{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
+.filter-group{display:flex;flex-direction:column;gap:6px}
+.filter-group-label{font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.04em}
+.chip-row{display:flex;gap:6px;flex-wrap:wrap;max-width:640px}
+.chip{padding:5px 12px;border-radius:20px;border:1px solid var(--gray-300);background:white;font-size:12.5px;cursor:pointer;user-select:none;transition:all .12s;color:var(--gray-700)}
+.chip.active{background:var(--primary);color:white;border-color:var(--primary)}
+.chip.all{font-weight:600}
+.sort-select{padding:7px 10px;border:1px solid var(--gray-300);border-radius:var(--radius);font-size:13px;background:white}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.card{background:white;border-radius:var(--radius);padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.card-label{font-size:12px;color:var(--gray-500);margin-bottom:6px;font-weight:500}
+.card-value{font-size:24px;font-weight:800;color:var(--gray-800);line-height:1}
+.card-sub{font-size:12px;color:var(--gray-400);margin-top:6px}
+.tabs{display:flex;gap:0;border-bottom:2px solid var(--gray-200);margin-bottom:18px}
+.tab{padding:10px 18px;cursor:pointer;font-size:14px;color:var(--gray-500);border-bottom:2px solid transparent;margin-bottom:-2px;user-select:none}
+.tab:hover{color:var(--primary)}
+.tab.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:600}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.table-wrap{background:white;border-radius:var(--radius);box-shadow:0 1px 3px rgba(0,0,0,.08);overflow:hidden}
+.table-header{padding:14px 18px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.table-header h3{font-size:15px;font-weight:700}
+.table-hint{font-size:12px;color:var(--gray-400)}
+table{width:100%;border-collapse:collapse}
+thead th{background:var(--gray-50);padding:9px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--gray-100);white-space:nowrap}
+tbody td{padding:9px 14px;font-size:13px;border-bottom:1px solid var(--gray-50);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:#fafafa}
+.rank{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--gray-100);font-size:11px;font-weight:700;color:var(--gray-500)}
+.rank.r1{background:#fef3c7;color:#92400e}
+.rank.r2{background:#e5e7eb;color:#374151}
+.rank.r3{background:#ffedd5;color:#9a3412}
+.brand-cell{display:flex;align-items:center;gap:6px}
+.brand-text{font-weight:600}
+.edit-btn{opacity:0;background:none;border:1px solid var(--gray-200);border-radius:4px;padding:2px 7px;font-size:11px;color:var(--gray-500);cursor:pointer;transition:opacity .15s;white-space:nowrap}
+tbody tr:hover .edit-btn{opacity:1}
+.edit-btn:hover{border-color:var(--primary);color:var(--primary)}
+.brand-edit-input{border:1px solid var(--primary);border-radius:6px;padding:4px 10px;font-size:13px;font-weight:600;width:200px;outline:none}
+.edit-hint{font-size:11px;color:var(--gray-400);white-space:nowrap}
+.sales-cell{display:flex;align-items:center;gap:10px}
+.bar-track{width:110px;height:6px;background:var(--gray-100);border-radius:3px;flex-shrink:0}
+.bar-fill{height:6px;border-radius:3px;background:var(--primary)}
+.sales-num{font-weight:700;font-size:14px}
+.sales-pct{font-size:11px;color:var(--gray-400)}
+.toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.btn{padding:7px 14px;border-radius:7px;font-size:13px;cursor:pointer;border:none;font-weight:500}
+.btn-ghost{background:transparent;color:var(--gray-600);border:1px solid var(--gray-300)}
+.btn-ghost:hover{background:var(--gray-50)}
+.btn-primary{background:var(--primary);color:white}
+.btn-primary:hover{background:var(--primary-dark)}
+.btn-danger{background:transparent;color:var(--danger);border:1px solid #fecaca}
+.btn-danger:hover{background:#fef2f2}
+.search-input{border:1px solid var(--gray-300);border-radius:7px;padding:7px 12px;font-size:13px;width:200px}
+.empty-state{padding:44px;text-align:center;color:var(--gray-400);font-size:14px}
+.count-badge{background:var(--gray-100);border-radius:4px;padding:1px 6px;font-size:11px;color:var(--gray-500)}
+.growth-pos{color:var(--success);font-weight:700}
+.growth-neg{color:var(--danger);font-weight:700}
+.source-tag{font-size:10px;padding:1px 6px;border-radius:4px;background:var(--gray-100);color:var(--gray-500)}
+.source-tag.manual{background:#ecfdf5;color:#047857}
+/* modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:var(--radius);padding:24px;width:440px;max-width:92vw}
+.modal h3{margin-bottom:16px;font-size:16px}
+.form-field{margin-bottom:14px}
+.form-field label{font-size:12px;color:var(--gray-600);display:block;margin-bottom:4px;font-weight:600}
+.form-field input,.form-field select{width:100%;padding:8px 10px;border:1px solid var(--gray-300);border-radius:var(--radius);font-size:13px}
+.form-row{display:flex;gap:10px}
+.form-row .form-field{flex:1}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+.compare-picker{display:flex;gap:24px;flex-wrap:wrap;margin-bottom:16px}
+.compare-col{flex:1;min-width:220px}
+.compare-col h4{font-size:13px;margin-bottom:8px;color:var(--gray-600)}
+@media (max-width:900px){.cards{grid-template-columns:repeat(2,1fr)}.bar-track{display:none}}
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <div class="sidebar-logo">
+    <div class="brand">飛比特 Feebit</div>
+    <div class="sub">營運工具箱</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">總覽</div>
+    <a class="nav-item" href="index.html"><span class="icon">🏠</span> 首頁</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">財務</div>
+    <a class="nav-item" href="bank-converter.html"><span class="icon">🏦</span> 帳務轉換</a>
+    <a class="nav-item" href="accounting-ops.html"><span class="icon">📅</span> 例行帳務作業</a>
+    <a class="nav-item" href="finance-dashboard.html"><span class="icon">📊</span> 帳務分析</a>
+    <a class="nav-item" href="coupang-invoice.html"><span class="icon">🧾</span> 酷澎發票轉檔</a>
+    <a class="nav-item" href="coupang-reconcile.html"><span class="icon">🔍</span> 酷澎商城對帳</a>
+    <a class="nav-item" href="shopee-subsidy.html"><span class="icon">🚚</span> 蝦皮運費補助申請</a>
+    <a class="nav-item" href="shopee-converter.html"><span class="icon">🛒</span> 蝦皮撥款轉換</a>
+    <a class="nav-item" href="profit-calculator.html"><span class="icon">💰</span> 毛利試算機</a>
+    <a class="nav-item" href="brand-sales.html"><span class="icon">📈</span> 品牌銷售分析</a>
+    <a class="nav-item" href="channel-revenue.html"><span class="icon">🛍️</span> 通路營收分析</a>
+    <a class="nav-item active" href="brand-trend.html"><span class="icon">📊</span> 品牌趨勢分析</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">市場分析</div>
+    <a class="nav-item" href="market-tracker.html" id="nav-market"><span class="icon">🔭</span> 品類競品分析</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">行銷</div>
+    <div class="nav-item soon"><span class="icon">📢</span> 廣告文案<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">客服</div>
+    <div class="nav-item soon"><span class="icon">💬</span> 客服回覆<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">業務</div>
+    <a class="nav-item" href="purchase-order.html"><span class="icon">📄</span> 採購單轉換</a>
+    <div class="nav-item soon"><span class="icon">🤝</span> 廠商談判<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">人事</div>
+    <a class="nav-item" href="attendance.html"><span class="icon">🗓️</span> 考勤查驗</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">庫存</div>
+    <a class="nav-item" href="stock-analysis.html"><span class="icon">📦</span> 庫存訂貨分析</a>
+    <a class="nav-item" href="slow-mover-alert.html"><span class="icon">🔴</span> 滯銷品警示</a>
+    <a class="nav-item" href="feebit-inventory-filter.html"><span class="icon">🏪</span> 商品篩選工具</a>
+    <a class="nav-item" href="reorder-suggestions.html"><span class="icon">🔄</span> 庫存訂貨建議</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">研發</div>
+    <a class="nav-item" href="research-notes.html"><span class="icon">📚</span> 研發筆記</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">法規</div>
+        <a class="nav-item" href="fda-registration.html"><span class="icon">🧪</span> 化粧品登錄</a>
+    <a class="nav-item" href="http://127.0.0.1:5050" target="_blank"><span class="icon">📋</span> PIF Builder</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">生活</div>
+    <a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span> 旅行規劃</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">系統</div>
+    <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
+  </div>
+  <div class="sidebar-footer">v1.0 · Feebit © 2026</div>
+</div>
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<div id="main">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="btn-hamburger" onclick="toggleSidebar()">☰</button>
+      <span class="topbar-title">📊 品牌趨勢分析</span>
+      <span style="font-size:11px;color:#aaa;font-weight:400;">v1.0</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="btn btn-primary" onclick="openAddModal()">＋ 新增資料</button>
+      <button class="btn btn-ghost" onclick="exportBackup()">匯出備份</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('import-input').click()">匯入</button>
+      <input type="file" id="import-input" accept=".json" style="display:none" onchange="handleImport(event)">
+    </div>
+  </div>
+  <div class="page">
+  <div class="container">
+
+    <!-- FILTER BAR -->
+    <div class="filter-bar">
+      <div class="filter-row">
+        <div class="filter-group">
+          <div class="filter-group-label">賣場</div>
+          <div class="chip-row" id="shop-filter"></div>
+        </div>
+        <div class="filter-group">
+          <div class="filter-group-label">月份</div>
+          <div class="chip-row" id="month-filter"></div>
+        </div>
+        <div class="filter-group">
+          <div class="filter-group-label">排序</div>
+          <select class="sort-select" id="sort-select" onchange="renderAll()">
+            <option value="revenue-desc">營業額（高→低）</option>
+            <option value="revenue-asc">營業額（低→高）</option>
+            <option value="name-asc">品牌名稱（A→Z）</option>
+            <option value="name-desc">品牌名稱（Z→A）</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUMMARY CARDS -->
+    <div class="cards" id="cards"></div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <div class="tab active" data-tab="rank-tab" onclick="switchTab(this)">品牌排行</div>
+      <div class="tab" data-tab="shop-tab" onclick="switchTab(this)">分賣場明細</div>
+      <div class="tab" data-tab="compare-tab" onclick="switchTab(this)">月份比對</div>
+      <div class="tab" data-tab="data-tab" onclick="switchTab(this)">資料管理</div>
+    </div>
+
+    <!-- TAB: 品牌排行 -->
+    <div id="rank-tab" class="tab-content active">
+      <div class="table-wrap">
+        <div class="table-header">
+          <h3>品牌銷售排行</h3>
+          <span class="table-hint">點擊「編輯」可重新命名／合併品牌，輸入已存在的品牌名稱即可合併</span>
+        </div>
+        <table>
+          <thead><tr>
+            <th style="width:50px">排名</th>
+            <th>品牌</th>
+            <th style="width:80px">賣場數</th>
+            <th style="width:280px">營業額</th>
+          </tr></thead>
+          <tbody id="rank-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB: 分賣場明細 -->
+    <div id="shop-tab" class="tab-content">
+      <div class="table-wrap">
+        <div class="table-header">
+          <h3>品牌 × 賣場 交叉表</h3>
+          <span class="table-hint">依目前篩選的賣場與月份彙總</span>
+        </div>
+        <div style="overflow-x:auto">
+        <table id="cross-table"><thead></thead><tbody></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: 月份比對 -->
+    <div id="compare-tab" class="tab-content">
+      <div class="table-wrap" style="padding:18px">
+        <div class="compare-picker">
+          <div class="compare-col">
+            <h4>期間 A（勾選月份）</h4>
+            <div class="chip-row" id="cmp-a-months"></div>
+          </div>
+          <div class="compare-col">
+            <h4>期間 B（勾選月份）</h4>
+            <div class="chip-row" id="cmp-b-months"></div>
+          </div>
+        </div>
+        <div class="small-note" style="font-size:12px;color:var(--gray-500);margin-bottom:10px">會套用目前的「賣場」篩選；比較品牌營業額增減</div>
+        <button class="btn btn-primary" onclick="runCompare()">開始比對</button>
+      </div>
+      <div class="table-wrap" style="margin-top:14px">
+        <table>
+          <thead><tr><th>品牌</th><th>期間 A</th><th>期間 B</th><th>增減</th></tr></thead>
+          <tbody id="compare-tbody"><tr><td colspan="4" class="empty-state">選好月份後按「開始比對」</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB: 資料管理 -->
+    <div id="data-tab" class="tab-content">
+      <div class="table-wrap">
+        <div class="table-header">
+          <h3>原始資料列表</h3>
+          <div class="toolbar">
+            <input class="search-input" id="data-search" placeholder="搜尋品牌或賣場…" oninput="renderDataTable()">
+          </div>
+        </div>
+        <table>
+          <thead><tr>
+            <th>賣場</th><th>年月</th><th>品牌</th><th style="width:120px">營業額</th><th style="width:70px">來源</th><th style="width:110px">操作</th>
+          </tr></thead>
+          <tbody id="data-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+  </div>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-overlay" id="add-modal">
+  <div class="modal">
+    <h3 id="add-modal-title">新增資料</h3>
+    <div class="form-field">
+      <label>賣場</label>
+      <input list="shop-datalist" id="f-shop" placeholder="例如：蝦皮-寶媽小舖、momo、選新賣場請直接輸入">
+      <datalist id="shop-datalist"></datalist>
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label>年份</label>
+        <input type="number" id="f-year" placeholder="2026">
+      </div>
+      <div class="form-field">
+        <label>月份</label>
+        <select id="f-month">
+          <option value="1">1月</option><option value="2">2月</option><option value="3">3月</option>
+          <option value="4">4月</option><option value="5">5月</option><option value="6">6月</option>
+          <option value="7">7月</option><option value="8">8月</option><option value="9">9月</option>
+          <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-field">
+      <label>品牌</label>
+      <input list="brand-datalist-add" id="f-brand" placeholder="例如：MARY&MAY，選新品牌請直接輸入">
+      <datalist id="brand-datalist-add"></datalist>
+    </div>
+    <div class="form-field">
+      <label>營業額（TWD）</label>
+      <input type="number" id="f-revenue" placeholder="12345">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeAddModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveAddModal()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// Storage
+// ══════════════════════════════════════════
+const STORAGE_KEY = 'feebit_brand_trend_records_v1';
+
+const SEED_RECORDS = [{"id": 267, "shop": "momo", "month": "2026-01", "brand": "MARY&MAY", "revenue": 12427, "source": "ragic-import"}, {"id": 268, "shop": "momo", "month": "2026-01", "brand": "Dr.SEED", "revenue": 6086, "source": "ragic-import"}, {"id": 266, "shop": "momo", "month": "2026-01", "brand": "AXIS-Y安舒研", "revenue": 5031, "source": "ragic-import"}, {"id": 269, "shop": "momo", "month": "2026-01", "brand": "Athens雅典", "revenue": 2018, "source": "ragic-import"}, {"id": 28, "shop": "蝦皮-LaLaV安妞", "month": "2026-01", "brand": "rom&nd", "revenue": 77945, "source": "ragic-import"}, {"id": 26, "shop": "蝦皮-LaLaV安妞", "month": "2026-01", "brand": "鐘根堂LACTO-FIT", "revenue": 37140, "source": "ragic-import"}, {"id": 27, "shop": "蝦皮-LaLaV安妞", "month": "2026-01", "brand": "W.DRESSROOM", "revenue": 29317, "source": "ragic-import"}, {"id": 36, "shop": "蝦皮-LaLaV安妞", "month": "2026-01", "brand": "MARY&MAY", "revenue": 23673, "source": "ragic-import"}, {"id": 32, "shop": "蝦皮-LaLaV安妞", "month": "2026-01", "brand": "ILLIYOON一理潤", "revenue": 19567, "source": "ragic-import"}, {"id": 33, "shop": "蝦皮-LaLaV安妞", "month": "2026-01", "brand": "Dr.SEED", "revenue": 17260, "source": "ragic-import"}, {"id": 40, "shop": "蝦皮-LaLaV安妞", "month": "2026-01", "brand": "AXIS-Y安舒研", "revenue": 13973, "source": "ragic-import"}, {"id": 37, "shop": "蝦皮-LaLaV安妞", "month": "2026-01", "brand": "SOMEBYMI", "revenue": 7825, "source": "ragic-import"}, {"id": 31, "shop": "蝦皮-LaLaV安妞", "month": "2026-01", "brand": "FRUDIA", "revenue": 6633, "source": "ragic-import"}, {"id": 35, "shop": "蝦皮-LaLaV安妞", "month": "2026-01", "brand": "COSRX", "revenue": 4947, "source": "ragic-import"}, {"id": 34, "shop": "蝦皮-LaLaV安妞", "month": "2026-01", "brand": "BY_OUR", "revenue": 4677, "source": "ragic-import"}, {"id": 38, "shop": "蝦皮-LaLaV安妞", "month": "2026-01", "brand": "Heimish", "revenue": 4126, "source": "ragic-import"}, {"id": 29, "shop": "蝦皮-LaLaV安妞", "month": "2026-01", "brand": "G.Life", "revenue": 3285, "source": "ragic-import"}, {"id": 41, "shop": "蝦皮-LaLaV安妞", "month": "2026-01", "brand": "mixsoon", "revenue": 2404, "source": "ragic-import"}, {"id": 48, "shop": "蝦皮-LaLaV安妞", "month": "2026-01", "brand": "CNP", "revenue": 1751, "source": "ragic-import"}, {"id": 30, "shop": "蝦皮-LaLaV安妞", "month": "2026-01", "brand": "BARULAB", "revenue": 1708, "source": "ragic-import"}, {"id": 50, "shop": "蝦皮-LaLaV安妞", "month": "2026-01", "brand": "Medicube", "revenue": 1095, "source": "ragic-import"}, {"id": 42, "shop": "蝦皮-LaLaV安妞", "month": "2026-01", "brand": "innisfree", "revenue": 698, "source": "ragic-import"}, {"id": 51, "shop": "蝦皮-LaLaV安妞", "month": "2026-01", "brand": "KUNDAL昆黛爾", "revenue": 546, "source": "ragic-import"}, {"id": 44, "shop": "蝦皮-LaLaV安妞", "month": "2026-01", "brand": "efilow", "revenue": 468, "source": "ragic-import"}, {"id": 46, "shop": "蝦皮-LaLaV安妞", "month": "2026-01", "brand": "Peripera", "revenue": 294, "source": "ragic-import"}, {"id": 47, "shop": "蝦皮-LaLaV安妞", "month": "2026-01", "brand": "TOCOBO", "revenue": 244, "source": "ragic-import"}, {"id": 39, "shop": "蝦皮-LaLaV安妞", "month": "2026-01", "brand": "NINE LESS", "revenue": 138, "source": "ragic-import"}, {"id": 43, "shop": "蝦皮-LaLaV安妞", "month": "2026-01", "brand": "Torriden", "revenue": 113, "source": "ragic-import"}, {"id": 45, "shop": "蝦皮-LaLaV安妞", "month": "2026-01", "brand": "PURITO SEOUL", "revenue": 59, "source": "ragic-import"}, {"id": 49, "shop": "蝦皮-LaLaV安妞", "month": "2026-01", "brand": "雜貨配件(無品牌)", "revenue": 56, "source": "ragic-import"}, {"id": 1, "shop": "蝦皮-寶媽小舖", "month": "2026-01", "brand": "COW STYLE", "revenue": 2825, "source": "ragic-import"}, {"id": 2, "shop": "蝦皮-寶媽小舖", "month": "2026-01", "brand": "KUMANO熊野油脂", "revenue": 2581, "source": "ragic-import"}, {"id": 5, "shop": "蝦皮-寶媽小舖", "month": "2026-01", "brand": "Mise-En-Scène 魅尚萱", "revenue": 1574, "source": "ragic-import"}, {"id": 3, "shop": "蝦皮-寶媽小舖", "month": "2026-01", "brand": "TSUBAKI思波綺", "revenue": 1478, "source": "ragic-import"}, {"id": 4, "shop": "蝦皮-寶媽小舖", "month": "2026-01", "brand": "RYO呂", "revenue": 576, "source": "ragic-import"}, {"id": 6, "shop": "蝦皮-寶媽小舖", "month": "2026-01", "brand": "Curel珂潤", "revenue": 409, "source": "ragic-import"}, {"id": 7, "shop": "蝦皮-寶媽小舖", "month": "2026-01", "brand": "ILLIYOON一理潤", "revenue": 367, "source": "ragic-import"}, {"id": 8, "shop": "蝦皮-寶媽小舖", "month": "2026-01", "brand": "G.Life", "revenue": 263, "source": "ragic-import"}, {"id": 16, "shop": "蝦皮-桑爹選物", "month": "2026-01", "brand": "RYO呂", "revenue": 19249, "source": "ragic-import"}, {"id": 17, "shop": "蝦皮-桑爹選物", "month": "2026-01", "brand": "KUMANO熊野油脂", "revenue": 6610, "source": "ragic-import"}, {"id": 18, "shop": "蝦皮-桑爹選物", "month": "2026-01", "brand": "Dr.SEED", "revenue": 5521, "source": "ragic-import"}, {"id": 19, "shop": "蝦皮-桑爹選物", "month": "2026-01", "brand": "鐘根堂LACTO-FIT", "revenue": 1942, "source": "ragic-import"}, {"id": 20, "shop": "蝦皮-桑爹選物", "month": "2026-01", "brand": "Mise-En-Scène 魅尚萱", "revenue": 1845, "source": "ragic-import"}, {"id": 22, "shop": "蝦皮-桑爹選物", "month": "2026-01", "brand": "AXIS-Y安舒研", "revenue": 1658, "source": "ragic-import"}, {"id": 23, "shop": "蝦皮-桑爹選物", "month": "2026-01", "brand": "COSRX", "revenue": 1302, "source": "ragic-import"}, {"id": 21, "shop": "蝦皮-桑爹選物", "month": "2026-01", "brand": "W.DRESSROOM", "revenue": 1135, "source": "ragic-import"}, {"id": 25, "shop": "蝦皮-桑爹選物", "month": "2026-01", "brand": "ILLIYOON一理潤", "revenue": 699, "source": "ragic-import"}, {"id": 24, "shop": "蝦皮-桑爹選物", "month": "2026-01", "brand": "Skin1004", "revenue": 486, "source": "ragic-import"}, {"id": 11, "shop": "蝦皮-玩美妍選", "month": "2026-01", "brand": "Heimish", "revenue": 2293, "source": "ragic-import"}, {"id": 10, "shop": "蝦皮-玩美妍選", "month": "2026-01", "brand": "W.DRESSROOM", "revenue": 2208, "source": "ragic-import"}, {"id": 12, "shop": "蝦皮-玩美妍選", "month": "2026-01", "brand": "rom&nd", "revenue": 1739, "source": "ragic-import"}, {"id": 9, "shop": "蝦皮-玩美妍選", "month": "2026-01", "brand": "FRUDIA", "revenue": 1595, "source": "ragic-import"}, {"id": 14, "shop": "蝦皮-玩美妍選", "month": "2026-01", "brand": "Dr.SEED", "revenue": 1311, "source": "ragic-import"}, {"id": 13, "shop": "蝦皮-玩美妍選", "month": "2026-01", "brand": "SOMEBYMI", "revenue": 1178, "source": "ragic-import"}, {"id": 15, "shop": "蝦皮-玩美妍選", "month": "2026-01", "brand": "ILLIYOON一理潤", "revenue": 389, "source": "ragic-import"}, {"id": 270, "shop": "momo", "month": "2026-02", "brand": "Dr.SEED", "revenue": 14796, "source": "ragic-import"}, {"id": 271, "shop": "momo", "month": "2026-02", "brand": "MARY&MAY", "revenue": 10306, "source": "ragic-import"}, {"id": 272, "shop": "momo", "month": "2026-02", "brand": "AXIS-Y安舒研", "revenue": 2795, "source": "ragic-import"}, {"id": 274, "shop": "momo", "month": "2026-02", "brand": "Athens雅典", "revenue": 2018, "source": "ragic-import"}, {"id": 273, "shop": "momo", "month": "2026-02", "brand": "G.Life", "revenue": 1287, "source": "ragic-import"}, {"id": 79, "shop": "蝦皮-LaLaV安妞", "month": "2026-02", "brand": "rom&nd", "revenue": 77815, "source": "ragic-import"}, {"id": 78, "shop": "蝦皮-LaLaV安妞", "month": "2026-02", "brand": "W.DRESSROOM", "revenue": 36872, "source": "ragic-import"}, {"id": 84, "shop": "蝦皮-LaLaV安妞", "month": "2026-02", "brand": "ILLIYOON一理潤", "revenue": 14772, "source": "ragic-import"}, {"id": 88, "shop": "蝦皮-LaLaV安妞", "month": "2026-02", "brand": "MARY&MAY", "revenue": 14583, "source": "ragic-import"}, {"id": 80, "shop": "蝦皮-LaLaV安妞", "month": "2026-02", "brand": "鐘根堂LACTO-FIT", "revenue": 11345, "source": "ragic-import"}, {"id": 87, "shop": "蝦皮-LaLaV安妞", "month": "2026-02", "brand": "Dr.SEED", "revenue": 8592, "source": "ragic-import"}, {"id": 92, "shop": "蝦皮-LaLaV安妞", "month": "2026-02", "brand": "AXIS-Y安舒研", "revenue": 6214, "source": "ragic-import"}, {"id": 85, "shop": "蝦皮-LaLaV安妞", "month": "2026-02", "brand": "COSRX", "revenue": 5217, "source": "ragic-import"}, {"id": 81, "shop": "蝦皮-LaLaV安妞", "month": "2026-02", "brand": "FRUDIA", "revenue": 3311, "source": "ragic-import"}, {"id": 82, "shop": "蝦皮-LaLaV安妞", "month": "2026-02", "brand": "G.Life", "revenue": 1176, "source": "ragic-import"}, {"id": 91, "shop": "蝦皮-LaLaV安妞", "month": "2026-02", "brand": "BY_OUR", "revenue": 1056, "source": "ragic-import"}, {"id": 94, "shop": "蝦皮-LaLaV安妞", "month": "2026-02", "brand": "KUNDAL昆黛爾", "revenue": 1014, "source": "ragic-import"}, {"id": 89, "shop": "蝦皮-LaLaV安妞", "month": "2026-02", "brand": "資料缺失-商品已刪除", "revenue": 906, "source": "ragic-import"}, {"id": 97, "shop": "蝦皮-LaLaV安妞", "month": "2026-02", "brand": "Be The Skin", "revenue": 846, "source": "ragic-import"}, {"id": 98, "shop": "蝦皮-LaLaV安妞", "month": "2026-02", "brand": "mixsoon", "revenue": 646, "source": "ragic-import"}, {"id": 83, "shop": "蝦皮-LaLaV安妞", "month": "2026-02", "brand": "BARULAB", "revenue": 576, "source": "ragic-import"}, {"id": 101, "shop": "蝦皮-LaLaV安妞", "month": "2026-02", "brand": "CNP", "revenue": 459, "source": "ragic-import"}, {"id": 99, "shop": "蝦皮-LaLaV安妞", "month": "2026-02", "brand": "Elizavecca", "revenue": 390, "source": "ragic-import"}, {"id": 96, "shop": "蝦皮-LaLaV安妞", "month": "2026-02", "brand": "innisfree", "revenue": 369, "source": "ragic-import"}, {"id": 86, "shop": "蝦皮-LaLaV安妞", "month": "2026-02", "brand": "NINE LESS", "revenue": 280, "source": "ragic-import"}, {"id": 90, "shop": "蝦皮-LaLaV安妞", "month": "2026-02", "brand": "Torriden", "revenue": 255, "source": "ragic-import"}, {"id": 93, "shop": "蝦皮-LaLaV安妞", "month": "2026-02", "brand": "Peripera", "revenue": 250, "source": "ragic-import"}, {"id": 100, "shop": "蝦皮-LaLaV安妞", "month": "2026-02", "brand": "efilow", "revenue": 249, "source": "ragic-import"}, {"id": 95, "shop": "蝦皮-LaLaV安妞", "month": "2026-02", "brand": "TOCOBO", "revenue": 58, "source": "ragic-import"}, {"id": 56, "shop": "蝦皮-寶媽小舖", "month": "2026-02", "brand": "Mise-En-Scène 魅尚萱", "revenue": 1875, "source": "ragic-import"}, {"id": 54, "shop": "蝦皮-寶媽小舖", "month": "2026-02", "brand": "KUMANO熊野油脂", "revenue": 1326, "source": "ragic-import"}, {"id": 55, "shop": "蝦皮-寶媽小舖", "month": "2026-02", "brand": "RYO呂", "revenue": 1136, "source": "ragic-import"}, {"id": 53, "shop": "蝦皮-寶媽小舖", "month": "2026-02", "brand": "COW STYLE", "revenue": 1051, "source": "ragic-import"}, {"id": 57, "shop": "蝦皮-寶媽小舖", "month": "2026-02", "brand": "SOTHING向物", "revenue": 649, "source": "ragic-import"}, {"id": 52, "shop": "蝦皮-寶媽小舖", "month": "2026-02", "brand": "NINE LESS", "revenue": 580, "source": "ragic-import"}, {"id": 67, "shop": "蝦皮-桑爹選物", "month": "2026-02", "brand": "RYO呂", "revenue": 20893, "source": "ragic-import"}, {"id": 66, "shop": "蝦皮-桑爹選物", "month": "2026-02", "brand": "W.DRESSROOM", "revenue": 14837, "source": "ragic-import"}, {"id": 68, "shop": "蝦皮-桑爹選物", "month": "2026-02", "brand": "KUMANO熊野油脂", "revenue": 5813, "source": "ragic-import"}, {"id": 69, "shop": "蝦皮-桑爹選物", "month": "2026-02", "brand": "Mise-En-Scène 魅尚萱", "revenue": 4963, "source": "ragic-import"}, {"id": 70, "shop": "蝦皮-桑爹選物", "month": "2026-02", "brand": "AXIS-Y安舒研", "revenue": 2830, "source": "ragic-import"}, {"id": 72, "shop": "蝦皮-桑爹選物", "month": "2026-02", "brand": "Dr.SEED", "revenue": 2085, "source": "ragic-import"}, {"id": 71, "shop": "蝦皮-桑爹選物", "month": "2026-02", "brand": "COSRX", "revenue": 1067, "source": "ragic-import"}, {"id": 73, "shop": "蝦皮-桑爹選物", "month": "2026-02", "brand": "ILLIYOON一理潤", "revenue": 968, "source": "ragic-import"}, {"id": 74, "shop": "蝦皮-桑爹選物", "month": "2026-02", "brand": "KUNDAL昆黛爾", "revenue": 680, "source": "ragic-import"}, {"id": 76, "shop": "蝦皮-桑爹選物", "month": "2026-02", "brand": "Skin1004", "revenue": 599, "source": "ragic-import"}, {"id": 77, "shop": "蝦皮-桑爹選物", "month": "2026-02", "brand": "MEDI-PEEL", "revenue": 459, "source": "ragic-import"}, {"id": 75, "shop": "蝦皮-桑爹選物", "month": "2026-02", "brand": "SOMEBYMI", "revenue": 419, "source": "ragic-import"}, {"id": 58, "shop": "蝦皮-玩美妍選", "month": "2026-02", "brand": "W.DRESSROOM", "revenue": 4054, "source": "ragic-import"}, {"id": 59, "shop": "蝦皮-玩美妍選", "month": "2026-02", "brand": "FRUDIA", "revenue": 1602, "source": "ragic-import"}, {"id": 61, "shop": "蝦皮-玩美妍選", "month": "2026-02", "brand": "Heimish", "revenue": 1493, "source": "ragic-import"}, {"id": 63, "shop": "蝦皮-玩美妍選", "month": "2026-02", "brand": "MARY&MAY", "revenue": 1190, "source": "ragic-import"}, {"id": 62, "shop": "蝦皮-玩美妍選", "month": "2026-02", "brand": "資料缺失-商品已刪除", "revenue": 876, "source": "ragic-import"}, {"id": 64, "shop": "蝦皮-玩美妍選", "month": "2026-02", "brand": "COSRX", "revenue": 470, "source": "ragic-import"}, {"id": 65, "shop": "蝦皮-玩美妍選", "month": "2026-02", "brand": "SOTHING向物", "revenue": 400, "source": "ragic-import"}, {"id": 60, "shop": "蝦皮-玩美妍選", "month": "2026-02", "brand": "OOTD", "revenue": 245, "source": "ragic-import"}, {"id": 276, "shop": "momo", "month": "2026-03", "brand": "MARY&MAY", "revenue": 12429, "source": "ragic-import"}, {"id": 275, "shop": "momo", "month": "2026-03", "brand": "Dr.SEED", "revenue": 11310, "source": "ragic-import"}, {"id": 278, "shop": "momo", "month": "2026-03", "brand": "Athens雅典", "revenue": 2966, "source": "ragic-import"}, {"id": 277, "shop": "momo", "month": "2026-03", "brand": "AXIS-Y安舒研", "revenue": 1677, "source": "ragic-import"}, {"id": 279, "shop": "momo", "month": "2026-03", "brand": "G.Life", "revenue": 429, "source": "ragic-import"}, {"id": 127, "shop": "蝦皮-LaLaV安妞", "month": "2026-03", "brand": "rom&nd", "revenue": 82303, "source": "ragic-import"}, {"id": 128, "shop": "蝦皮-LaLaV安妞", "month": "2026-03", "brand": "W.DRESSROOM", "revenue": 50757, "source": "ragic-import"}, {"id": 131, "shop": "蝦皮-LaLaV安妞", "month": "2026-03", "brand": "MARY&MAY", "revenue": 29434, "source": "ragic-import"}, {"id": 129, "shop": "蝦皮-LaLaV安妞", "month": "2026-03", "brand": "鐘根堂LACTO-FIT", "revenue": 24567, "source": "ragic-import"}, {"id": 130, "shop": "蝦皮-LaLaV安妞", "month": "2026-03", "brand": "ILLIYOON一理潤", "revenue": 18342, "source": "ragic-import"}, {"id": 133, "shop": "蝦皮-LaLaV安妞", "month": "2026-03", "brand": "AXIS-Y安舒研", "revenue": 13145, "source": "ragic-import"}, {"id": 137, "shop": "蝦皮-LaLaV安妞", "month": "2026-03", "brand": "Dr.SEED", "revenue": 9192, "source": "ragic-import"}, {"id": 132, "shop": "蝦皮-LaLaV安妞", "month": "2026-03", "brand": "FRUDIA", "revenue": 6623, "source": "ragic-import"}, {"id": 136, "shop": "蝦皮-LaLaV安妞", "month": "2026-03", "brand": "COSRX", "revenue": 4744, "source": "ragic-import"}, {"id": 135, "shop": "蝦皮-LaLaV安妞", "month": "2026-03", "brand": "資料缺失-商品已刪除", "revenue": 3570, "source": "ragic-import"}, {"id": 134, "shop": "蝦皮-LaLaV安妞", "month": "2026-03", "brand": "MEDI-PEEL", "revenue": 3315, "source": "ragic-import"}, {"id": 138, "shop": "蝦皮-LaLaV安妞", "month": "2026-03", "brand": "G.Life", "revenue": 2501, "source": "ragic-import"}, {"id": 140, "shop": "蝦皮-LaLaV安妞", "month": "2026-03", "brand": "SOMEBYMI", "revenue": 1937, "source": "ragic-import"}, {"id": 139, "shop": "蝦皮-LaLaV安妞", "month": "2026-03", "brand": "Heimish", "revenue": 1606, "source": "ragic-import"}, {"id": 141, "shop": "蝦皮-LaLaV安妞", "month": "2026-03", "brand": "efilow", "revenue": 1406, "source": "ragic-import"}, {"id": 142, "shop": "蝦皮-LaLaV安妞", "month": "2026-03", "brand": "Jumiso", "revenue": 1157, "source": "ragic-import"}, {"id": 143, "shop": "蝦皮-LaLaV安妞", "month": "2026-03", "brand": "CNP", "revenue": 842, "source": "ragic-import"}, {"id": 144, "shop": "蝦皮-LaLaV安妞", "month": "2026-03", "brand": "Athens雅典", "revenue": 616, "source": "ragic-import"}, {"id": 145, "shop": "蝦皮-LaLaV安妞", "month": "2026-03", "brand": "mixsoon", "revenue": 586, "source": "ragic-import"}, {"id": 146, "shop": "蝦皮-LaLaV安妞", "month": "2026-03", "brand": "SOTHING向物", "revenue": 586, "source": "ragic-import"}, {"id": 147, "shop": "蝦皮-LaLaV安妞", "month": "2026-03", "brand": "Peripera", "revenue": 421, "source": "ragic-import"}, {"id": 153, "shop": "蝦皮-LaLaV安妞", "month": "2026-03", "brand": "TOCOBO", "revenue": 408, "source": "ragic-import"}, {"id": 148, "shop": "蝦皮-LaLaV安妞", "month": "2026-03", "brand": "Elizavecca", "revenue": 399, "source": "ragic-import"}, {"id": 149, "shop": "蝦皮-LaLaV安妞", "month": "2026-03", "brand": "9wishes", "revenue": 398, "source": "ragic-import"}, {"id": 150, "shop": "蝦皮-LaLaV安妞", "month": "2026-03", "brand": "BARULAB", "revenue": 351, "source": "ragic-import"}, {"id": 151, "shop": "蝦皮-LaLaV安妞", "month": "2026-03", "brand": "MISSHA", "revenue": 307, "source": "ragic-import"}, {"id": 152, "shop": "蝦皮-LaLaV安妞", "month": "2026-03", "brand": "BY_OUR", "revenue": 269, "source": "ragic-import"}, {"id": 154, "shop": "蝦皮-LaLaV安妞", "month": "2026-03", "brand": "Torriden", "revenue": 65, "source": "ragic-import"}, {"id": 157, "shop": "蝦皮-LaLaV安妞", "month": "2026-03", "brand": "NINE LESS", "revenue": 58, "source": "ragic-import"}, {"id": 155, "shop": "蝦皮-LaLaV安妞", "month": "2026-03", "brand": "OOTD", "revenue": 49, "source": "ragic-import"}, {"id": 156, "shop": "蝦皮-LaLaV安妞", "month": "2026-03", "brand": "PURITO SEOUL", "revenue": 39, "source": "ragic-import"}, {"id": 102, "shop": "蝦皮-寶媽小舖", "month": "2026-03", "brand": "KUMANO熊野油脂", "revenue": 4102, "source": "ragic-import"}, {"id": 103, "shop": "蝦皮-寶媽小舖", "month": "2026-03", "brand": "COW STYLE", "revenue": 1016, "source": "ragic-import"}, {"id": 105, "shop": "蝦皮-寶媽小舖", "month": "2026-03", "brand": "Mise-En-Scène 魅尚萱", "revenue": 807, "source": "ragic-import"}, {"id": 104, "shop": "蝦皮-寶媽小舖", "month": "2026-03", "brand": "RYO呂", "revenue": 566, "source": "ragic-import"}, {"id": 106, "shop": "蝦皮-寶媽小舖", "month": "2026-03", "brand": "雜貨配件(無品牌)", "revenue": 50, "source": "ragic-import"}, {"id": 115, "shop": "蝦皮-桑爹選物", "month": "2026-03", "brand": "W.DRESSROOM", "revenue": 22937, "source": "ragic-import"}, {"id": 116, "shop": "蝦皮-桑爹選物", "month": "2026-03", "brand": "RYO呂", "revenue": 18709, "source": "ragic-import"}, {"id": 117, "shop": "蝦皮-桑爹選物", "month": "2026-03", "brand": "KUMANO熊野油脂", "revenue": 8266, "source": "ragic-import"}, {"id": 118, "shop": "蝦皮-桑爹選物", "month": "2026-03", "brand": "Dr.SEED", "revenue": 7708, "source": "ragic-import"}, {"id": 119, "shop": "蝦皮-桑爹選物", "month": "2026-03", "brand": "AXIS-Y安舒研", "revenue": 3759, "source": "ragic-import"}, {"id": 123, "shop": "蝦皮-桑爹選物", "month": "2026-03", "brand": "Mise-En-Scène 魅尚萱", "revenue": 2409, "source": "ragic-import"}, {"id": 120, "shop": "蝦皮-桑爹選物", "month": "2026-03", "brand": "COSRX", "revenue": 2216, "source": "ragic-import"}, {"id": 121, "shop": "蝦皮-桑爹選物", "month": "2026-03", "brand": "ILLIYOON一理潤", "revenue": 1916, "source": "ragic-import"}, {"id": 122, "shop": "蝦皮-桑爹選物", "month": "2026-03", "brand": "Skin1004", "revenue": 1712, "source": "ragic-import"}, {"id": 124, "shop": "蝦皮-桑爹選物", "month": "2026-03", "brand": "KUNDAL昆黛爾", "revenue": 520, "source": "ragic-import"}, {"id": 125, "shop": "蝦皮-桑爹選物", "month": "2026-03", "brand": "SOMEBYMI", "revenue": 424, "source": "ragic-import"}, {"id": 126, "shop": "蝦皮-桑爹選物", "month": "2026-03", "brand": "雜貨配件(無品牌)", "revenue": 35, "source": "ragic-import"}, {"id": 108, "shop": "蝦皮-玩美妍選", "month": "2026-03", "brand": "W.DRESSROOM", "revenue": 5055, "source": "ragic-import"}, {"id": 107, "shop": "蝦皮-玩美妍選", "month": "2026-03", "brand": "Heimish", "revenue": 4268, "source": "ragic-import"}, {"id": 109, "shop": "蝦皮-玩美妍選", "month": "2026-03", "brand": "ILLIYOON一理潤", "revenue": 1716, "source": "ragic-import"}, {"id": 110, "shop": "蝦皮-玩美妍選", "month": "2026-03", "brand": "rom&nd", "revenue": 896, "source": "ragic-import"}, {"id": 111, "shop": "蝦皮-玩美妍選", "month": "2026-03", "brand": "FRUDIA", "revenue": 626, "source": "ragic-import"}, {"id": 112, "shop": "蝦皮-玩美妍選", "month": "2026-03", "brand": "KUNDAL昆黛爾", "revenue": 329, "source": "ragic-import"}, {"id": 113, "shop": "蝦皮-玩美妍選", "month": "2026-03", "brand": "NINE LESS", "revenue": 174, "source": "ragic-import"}, {"id": 114, "shop": "蝦皮-玩美妍選", "month": "2026-03", "brand": "PURITO SEOUL", "revenue": 39, "source": "ragic-import"}, {"id": 283, "shop": "momo", "month": "2026-04", "brand": "MARY&MAY", "revenue": 9624, "source": "manual"}, {"id": 284, "shop": "momo", "month": "2026-04", "brand": "Dr.SEED", "revenue": 4500, "source": "manual"}, {"id": 285, "shop": "momo", "month": "2026-04", "brand": "Athens雅典", "revenue": 2096, "source": "manual"}, {"id": 286, "shop": "momo", "month": "2026-04", "brand": "AXIS-Y安舒研", "revenue": 1677, "source": "manual"}, {"id": 186, "shop": "蝦皮-LaLaV安妞", "month": "2026-04", "brand": "rom&nd", "revenue": 76803, "source": "ragic-import"}, {"id": 187, "shop": "蝦皮-LaLaV安妞", "month": "2026-04", "brand": "W.DRESSROOM", "revenue": 32984, "source": "ragic-import"}, {"id": 190, "shop": "蝦皮-LaLaV安妞", "month": "2026-04", "brand": "MARY&MAY", "revenue": 28259, "source": "ragic-import"}, {"id": 185, "shop": "蝦皮-LaLaV安妞", "month": "2026-04", "brand": "鐘根堂LACTO-FIT", "revenue": 27719, "source": "ragic-import"}, {"id": 188, "shop": "蝦皮-LaLaV安妞", "month": "2026-04", "brand": "ILLIYOON一理潤", "revenue": 27283, "source": "ragic-import"}, {"id": 192, "shop": "蝦皮-LaLaV安妞", "month": "2026-04", "brand": "Dr.SEED", "revenue": 17460, "source": "ragic-import"}, {"id": 189, "shop": "蝦皮-LaLaV安妞", "month": "2026-04", "brand": "COSRX", "revenue": 11008, "source": "ragic-import"}, {"id": 194, "shop": "蝦皮-LaLaV安妞", "month": "2026-04", "brand": "AXIS-Y安舒研", "revenue": 9108, "source": "ragic-import"}, {"id": 191, "shop": "蝦皮-LaLaV安妞", "month": "2026-04", "brand": "資料缺失-商品已刪除", "revenue": 6888, "source": "ragic-import"}, {"id": 193, "shop": "蝦皮-LaLaV安妞", "month": "2026-04", "brand": "Heimish", "revenue": 3336, "source": "ragic-import"}, {"id": 195, "shop": "蝦皮-LaLaV安妞", "month": "2026-04", "brand": "FRUDIA", "revenue": 2911, "source": "ragic-import"}, {"id": 197, "shop": "蝦皮-LaLaV安妞", "month": "2026-04", "brand": "SOMEBYMI", "revenue": 2417, "source": "ragic-import"}, {"id": 196, "shop": "蝦皮-LaLaV安妞", "month": "2026-04", "brand": "Be The Skin", "revenue": 1531, "source": "ragic-import"}, {"id": 200, "shop": "蝦皮-LaLaV安妞", "month": "2026-04", "brand": "MEDI-PEEL", "revenue": 1303, "source": "ragic-import"}, {"id": 198, "shop": "蝦皮-LaLaV安妞", "month": "2026-04", "brand": "mixsoon", "revenue": 1190, "source": "ragic-import"}, {"id": 199, "shop": "蝦皮-LaLaV安妞", "month": "2026-04", "brand": "BARULAB", "revenue": 1072, "source": "ragic-import"}, {"id": 201, "shop": "蝦皮-LaLaV安妞", "month": "2026-04", "brand": "BY_OUR", "revenue": 758, "source": "ragic-import"}, {"id": 202, "shop": "蝦皮-LaLaV安妞", "month": "2026-04", "brand": "innisfree", "revenue": 751, "source": "ragic-import"}, {"id": 203, "shop": "蝦皮-LaLaV安妞", "month": "2026-04", "brand": "雜貨配件(無品牌)", "revenue": 637, "source": "ragic-import"}, {"id": 204, "shop": "蝦皮-LaLaV安妞", "month": "2026-04", "brand": "Medicube", "revenue": 636, "source": "ragic-import"}, {"id": 205, "shop": "蝦皮-LaLaV安妞", "month": "2026-04", "brand": "Jumiso", "revenue": 597, "source": "ragic-import"}, {"id": 207, "shop": "蝦皮-LaLaV安妞", "month": "2026-04", "brand": "NINE LESS", "revenue": 551, "source": "ragic-import"}, {"id": 208, "shop": "蝦皮-LaLaV安妞", "month": "2026-04", "brand": "Elizavecca", "revenue": 478, "source": "ragic-import"}, {"id": 206, "shop": "蝦皮-LaLaV安妞", "month": "2026-04", "brand": "CNP", "revenue": 439, "source": "ragic-import"}, {"id": 209, "shop": "蝦皮-LaLaV安妞", "month": "2026-04", "brand": "Torriden", "revenue": 390, "source": "ragic-import"}, {"id": 210, "shop": "蝦皮-LaLaV安妞", "month": "2026-04", "brand": "MISSHA", "revenue": 314, "source": "ragic-import"}, {"id": 211, "shop": "蝦皮-LaLaV安妞", "month": "2026-04", "brand": "G.Life", "revenue": 276, "source": "ragic-import"}, {"id": 212, "shop": "蝦皮-LaLaV安妞", "month": "2026-04", "brand": "efilow", "revenue": 229, "source": "ragic-import"}, {"id": 213, "shop": "蝦皮-LaLaV安妞", "month": "2026-04", "brand": "9wishes", "revenue": 196, "source": "ragic-import"}, {"id": 214, "shop": "蝦皮-LaLaV安妞", "month": "2026-04", "brand": "TOCOBO", "revenue": 154, "source": "ragic-import"}, {"id": 158, "shop": "蝦皮-寶媽小舖", "month": "2026-04", "brand": "KUMANO熊野油脂", "revenue": 5050, "source": "ragic-import"}, {"id": 159, "shop": "蝦皮-寶媽小舖", "month": "2026-04", "brand": "COW STYLE", "revenue": 1068, "source": "ragic-import"}, {"id": 160, "shop": "蝦皮-寶媽小舖", "month": "2026-04", "brand": "RYO呂", "revenue": 858, "source": "ragic-import"}, {"id": 161, "shop": "蝦皮-寶媽小舖", "month": "2026-04", "brand": "NINE LESS", "revenue": 580, "source": "ragic-import"}, {"id": 162, "shop": "蝦皮-寶媽小舖", "month": "2026-04", "brand": "Mise-En-Scène 魅尚萱", "revenue": 458, "source": "ragic-import"}, {"id": 163, "shop": "蝦皮-寶媽小舖", "month": "2026-04", "brand": "BY_OUR", "revenue": 389, "source": "ragic-import"}, {"id": 174, "shop": "蝦皮-桑爹選物", "month": "2026-04", "brand": "KUMANO熊野油脂", "revenue": 17030, "source": "ragic-import"}, {"id": 175, "shop": "蝦皮-桑爹選物", "month": "2026-04", "brand": "Dr.SEED", "revenue": 8096, "source": "ragic-import"}, {"id": 176, "shop": "蝦皮-桑爹選物", "month": "2026-04", "brand": "RYO呂", "revenue": 6480, "source": "ragic-import"}, {"id": 179, "shop": "蝦皮-桑爹選物", "month": "2026-04", "brand": "Mise-En-Scène 魅尚萱", "revenue": 3785, "source": "ragic-import"}, {"id": 178, "shop": "蝦皮-桑爹選物", "month": "2026-04", "brand": "ILLIYOON一理潤", "revenue": 3255, "source": "ragic-import"}, {"id": 177, "shop": "蝦皮-桑爹選物", "month": "2026-04", "brand": "W.DRESSROOM", "revenue": 3052, "source": "ragic-import"}, {"id": 180, "shop": "蝦皮-桑爹選物", "month": "2026-04", "brand": "Skin1004", "revenue": 2904, "source": "ragic-import"}, {"id": 181, "shop": "蝦皮-桑爹選物", "month": "2026-04", "brand": "AXIS-Y安舒研", "revenue": 1854, "source": "ragic-import"}, {"id": 182, "shop": "蝦皮-桑爹選物", "month": "2026-04", "brand": "COSRX", "revenue": 1268, "source": "ragic-import"}, {"id": 183, "shop": "蝦皮-桑爹選物", "month": "2026-04", "brand": "MEDI-PEEL", "revenue": 459, "source": "ragic-import"}, {"id": 184, "shop": "蝦皮-桑爹選物", "month": "2026-04", "brand": "SOMEBYMI", "revenue": 429, "source": "ragic-import"}, {"id": 164, "shop": "蝦皮-玩美妍選", "month": "2026-04", "brand": "W.DRESSROOM", "revenue": 3453, "source": "ragic-import"}, {"id": 165, "shop": "蝦皮-玩美妍選", "month": "2026-04", "brand": "Heimish", "revenue": 1890, "source": "ragic-import"}, {"id": 166, "shop": "蝦皮-玩美妍選", "month": "2026-04", "brand": "FRUDIA", "revenue": 1292, "source": "ragic-import"}, {"id": 167, "shop": "蝦皮-玩美妍選", "month": "2026-04", "brand": "rom&nd", "revenue": 936, "source": "ragic-import"}, {"id": 168, "shop": "蝦皮-玩美妍選", "month": "2026-04", "brand": "Jumiso", "revenue": 475, "source": "ragic-import"}, {"id": 169, "shop": "蝦皮-玩美妍選", "month": "2026-04", "brand": "COSRX", "revenue": 319, "source": "ragic-import"}, {"id": 170, "shop": "蝦皮-玩美妍選", "month": "2026-04", "brand": "innisfree", "revenue": 182, "source": "ragic-import"}, {"id": 171, "shop": "蝦皮-玩美妍選", "month": "2026-04", "brand": "TOCOBO", "revenue": 99, "source": "ragic-import"}, {"id": 172, "shop": "蝦皮-玩美妍選", "month": "2026-04", "brand": "BARULAB", "revenue": 64, "source": "ragic-import"}, {"id": 173, "shop": "蝦皮-玩美妍選", "month": "2026-04", "brand": "OOTD", "revenue": 49, "source": "ragic-import"}, {"id": 282, "shop": "momo", "month": "2026-05", "brand": "MARY&MAY", "revenue": 5924, "source": "ragic-import"}, {"id": 280, "shop": "momo", "month": "2026-05", "brand": "Dr.SEED", "revenue": 5239, "source": "ragic-import"}, {"id": 281, "shop": "momo", "month": "2026-05", "brand": "AXIS-Y安舒研", "revenue": 1118, "source": "ragic-import"}, {"id": 237, "shop": "蝦皮-LaLaV安妞", "month": "2026-05", "brand": "rom&nd", "revenue": 70191, "source": "ragic-import"}, {"id": 238, "shop": "蝦皮-LaLaV安妞", "month": "2026-05", "brand": "W.DRESSROOM", "revenue": 45257, "source": "ragic-import"}, {"id": 240, "shop": "蝦皮-LaLaV安妞", "month": "2026-05", "brand": "ILLIYOON一理潤", "revenue": 39721, "source": "ragic-import"}, {"id": 239, "shop": "蝦皮-LaLaV安妞", "month": "2026-05", "brand": "MARY&MAY", "revenue": 29423, "source": "ragic-import"}, {"id": 243, "shop": "蝦皮-LaLaV安妞", "month": "2026-05", "brand": "AXIS-Y安舒研", "revenue": 16131, "source": "ragic-import"}, {"id": 248, "shop": "蝦皮-LaLaV安妞", "month": "2026-05", "brand": "Dr.SEED", "revenue": 13355, "source": "ragic-import"}, {"id": 241, "shop": "蝦皮-LaLaV安妞", "month": "2026-05", "brand": "innisfree", "revenue": 10802, "source": "ragic-import"}, {"id": 242, "shop": "蝦皮-LaLaV安妞", "month": "2026-05", "brand": "鐘根堂LACTO-FIT", "revenue": 8858, "source": "ragic-import"}, {"id": 244, "shop": "蝦皮-LaLaV安妞", "month": "2026-05", "brand": "MEDI-PEEL", "revenue": 5428, "source": "ragic-import"}, {"id": 245, "shop": "蝦皮-LaLaV安妞", "month": "2026-05", "brand": "COSRX", "revenue": 3866, "source": "ragic-import"}, {"id": 247, "shop": "蝦皮-LaLaV安妞", "month": "2026-05", "brand": "Heimish", "revenue": 3725, "source": "ragic-import"}, {"id": 246, "shop": "蝦皮-LaLaV安妞", "month": "2026-05", "brand": "BY_OUR", "revenue": 3521, "source": "ragic-import"}, {"id": 249, "shop": "蝦皮-LaLaV安妞", "month": "2026-05", "brand": "FRUDIA", "revenue": 2241, "source": "ragic-import"}, {"id": 250, "shop": "蝦皮-LaLaV安妞", "month": "2026-05", "brand": "SOMEBYMI", "revenue": 1459, "source": "ragic-import"}, {"id": 251, "shop": "蝦皮-LaLaV安妞", "month": "2026-05", "brand": "efilow", "revenue": 1071, "source": "ragic-import"}, {"id": 252, "shop": "蝦皮-LaLaV安妞", "month": "2026-05", "brand": "Medicube", "revenue": 1068, "source": "ragic-import"}, {"id": 256, "shop": "蝦皮-LaLaV安妞", "month": "2026-05", "brand": "KUNDAL昆黛爾", "revenue": 919, "source": "ragic-import"}, {"id": 253, "shop": "蝦皮-LaLaV安妞", "month": "2026-05", "brand": "BARULAB", "revenue": 858, "source": "ragic-import"}, {"id": 254, "shop": "蝦皮-LaLaV安妞", "month": "2026-05", "brand": "CNP", "revenue": 800, "source": "ragic-import"}, {"id": 257, "shop": "蝦皮-LaLaV安妞", "month": "2026-05", "brand": "NINE LESS", "revenue": 725, "source": "ragic-import"}, {"id": 255, "shop": "蝦皮-LaLaV安妞", "month": "2026-05", "brand": "mixsoon", "revenue": 646, "source": "ragic-import"}, {"id": 258, "shop": "蝦皮-LaLaV安妞", "month": "2026-05", "brand": "Elizavecca", "revenue": 399, "source": "ragic-import"}, {"id": 259, "shop": "蝦皮-LaLaV安妞", "month": "2026-05", "brand": "Torriden", "revenue": 256, "source": "ragic-import"}, {"id": 260, "shop": "蝦皮-LaLaV安妞", "month": "2026-05", "brand": "Jumiso", "revenue": 238, "source": "ragic-import"}, {"id": 261, "shop": "蝦皮-LaLaV安妞", "month": "2026-05", "brand": "Be The Skin", "revenue": 205, "source": "ragic-import"}, {"id": 262, "shop": "蝦皮-LaLaV安妞", "month": "2026-05", "brand": "雜貨配件(無品牌)", "revenue": 194, "source": "ragic-import"}, {"id": 264, "shop": "蝦皮-LaLaV安妞", "month": "2026-05", "brand": "PURITO SEOUL", "revenue": 156, "source": "ragic-import"}, {"id": 263, "shop": "蝦皮-LaLaV安妞", "month": "2026-05", "brand": "SOLEP", "revenue": 117, "source": "ragic-import"}, {"id": 265, "shop": "蝦皮-LaLaV安妞", "month": "2026-05", "brand": "OOTD", "revenue": 98, "source": "ragic-import"}, {"id": 215, "shop": "蝦皮-寶媽小舖", "month": "2026-05", "brand": "KUMANO熊野油脂", "revenue": 4984, "source": "ragic-import"}, {"id": 216, "shop": "蝦皮-寶媽小舖", "month": "2026-05", "brand": "hadalabo肌研", "revenue": 2450, "source": "ragic-import"}, {"id": 217, "shop": "蝦皮-寶媽小舖", "month": "2026-05", "brand": "BY_OUR", "revenue": 829, "source": "ragic-import"}, {"id": 218, "shop": "蝦皮-寶媽小舖", "month": "2026-05", "brand": "Mise-En-Scène 魅尚萱", "revenue": 647, "source": "ragic-import"}, {"id": 219, "shop": "蝦皮-寶媽小舖", "month": "2026-05", "brand": "MISSHA", "revenue": 299, "source": "ragic-import"}, {"id": 220, "shop": "蝦皮-寶媽小舖", "month": "2026-05", "brand": "COW STYLE", "revenue": 174, "source": "ragic-import"}, {"id": 221, "shop": "蝦皮-寶媽小舖", "month": "2026-05", "brand": "雜貨配件(無品牌)", "revenue": 15, "source": "ragic-import"}, {"id": 227, "shop": "蝦皮-桑爹選物", "month": "2026-05", "brand": "KUMANO熊野油脂", "revenue": 12582, "source": "ragic-import"}, {"id": 228, "shop": "蝦皮-桑爹選物", "month": "2026-05", "brand": "Dr.SEED", "revenue": 12271, "source": "ragic-import"}, {"id": 229, "shop": "蝦皮-桑爹選物", "month": "2026-05", "brand": "W.DRESSROOM", "revenue": 7222, "source": "ragic-import"}, {"id": 230, "shop": "蝦皮-桑爹選物", "month": "2026-05", "brand": "RYO呂", "revenue": 4820, "source": "ragic-import"}, {"id": 231, "shop": "蝦皮-桑爹選物", "month": "2026-05", "brand": "ILLIYOON一理潤", "revenue": 1715, "source": "ragic-import"}, {"id": 234, "shop": "蝦皮-桑爹選物", "month": "2026-05", "brand": "Mise-En-Scène 魅尚萱", "revenue": 1639, "source": "ragic-import"}, {"id": 233, "shop": "蝦皮-桑爹選物", "month": "2026-05", "brand": "AXIS-Y安舒研", "revenue": 1558, "source": "ragic-import"}, {"id": 232, "shop": "蝦皮-桑爹選物", "month": "2026-05", "brand": "SOMEBYMI", "revenue": 848, "source": "ragic-import"}, {"id": 235, "shop": "蝦皮-桑爹選物", "month": "2026-05", "brand": "innisfree", "revenue": 147, "source": "ragic-import"}, {"id": 236, "shop": "蝦皮-桑爹選物", "month": "2026-05", "brand": "雜貨配件(無品牌)", "revenue": 120, "source": "ragic-import"}, {"id": 223, "shop": "蝦皮-玩美妍選", "month": "2026-05", "brand": "W.DRESSROOM", "revenue": 8242, "source": "ragic-import"}, {"id": 222, "shop": "蝦皮-玩美妍選", "month": "2026-05", "brand": "Heimish", "revenue": 6546, "source": "ragic-import"}, {"id": 224, "shop": "蝦皮-玩美妍選", "month": "2026-05", "brand": "Dr.SEED", "revenue": 1311, "source": "ragic-import"}, {"id": 225, "shop": "蝦皮-玩美妍選", "month": "2026-05", "brand": "innisfree", "revenue": 817, "source": "ragic-import"}, {"id": 226, "shop": "蝦皮-玩美妍選", "month": "2026-05", "brand": "FRUDIA", "revenue": 805, "source": "ragic-import"}];
+
+let RECORDS = [];
+let nextId = 1;
+let editingBrand = null;
+
+function loadRecords() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw) {
+    try { RECORDS = JSON.parse(raw); } catch(e) { RECORDS = SEED_RECORDS.slice(); }
+  } else {
+    RECORDS = SEED_RECORDS.slice();
+  }
+  nextId = RECORDS.reduce((m,r) => Math.max(m, r.id||0), 0) + 1;
+}
+function saveRecords() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(RECORDS));
+}
+
+// ══════════════════════════════════════════
+// Filter state
+// ══════════════════════════════════════════
+let activeShops = new Set();
+let activeMonths = new Set();
+
+function allShops() { return [...new Set(RECORDS.map(r => r.shop))].sort(); }
+function allMonths() { return [...new Set(RECORDS.map(r => r.month))].sort(); }
+function allBrands() { return [...new Set(RECORDS.map(r => r.brand))].sort(); }
+
+function monthLabel(m) {
+  const [y,mo] = m.split('-');
+  return `${y}/${parseInt(mo)}月`;
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmt(n) { return Math.round(n).toLocaleString('zh-TW'); }
+
+// ══════════════════════════════════════════
+// Filter bar render
+// ══════════════════════════════════════════
+function renderFilterBar() {
+  const shops = allShops();
+  const months = allMonths();
+
+  document.getElementById('shop-filter').innerHTML = `
+    <span class="chip all ${activeShops.size===shops.length?'active':''}" onclick="toggleAllShops()">全部</span>
+    ` + shops.map(s => `<span class="chip ${activeShops.has(s)?'active':''}" onclick="toggleShop('${esc(s)}')">${esc(s)}</span>`).join('');
+
+  document.getElementById('month-filter').innerHTML = `
+    <span class="chip all ${activeMonths.size===months.length?'active':''}" onclick="toggleAllMonths()">全部</span>
+    ` + months.map(m => `<span class="chip ${activeMonths.has(m)?'active':''}" onclick="toggleMonth('${m}')">${monthLabel(m)}</span>`).join('');
+}
+function toggleShop(s) {
+  if (activeShops.has(s)) activeShops.delete(s); else activeShops.add(s);
+  renderFilterBar(); renderAll();
+}
+function toggleAllShops() {
+  const shops = allShops();
+  activeShops = activeShops.size === shops.length ? new Set() : new Set(shops);
+  renderFilterBar(); renderAll();
+}
+function toggleMonth(m) {
+  if (activeMonths.has(m)) activeMonths.delete(m); else activeMonths.add(m);
+  renderFilterBar(); renderAll();
+}
+function toggleAllMonths() {
+  const months = allMonths();
+  activeMonths = activeMonths.size === months.length ? new Set() : new Set(months);
+  renderFilterBar(); renderAll();
+}
+
+function filteredRecords() {
+  return RECORDS.filter(r => activeShops.has(r.shop) && activeMonths.has(r.month));
+}
+
+// ══════════════════════════════════════════
+// Aggregation
+// ══════════════════════════════════════════
+function computeBrandGroups(records) {
+  const m = {};
+  for (const r of records) {
+    if (!m[r.brand]) m[r.brand] = { brand: r.brand, revenue: 0, shops: new Set() };
+    m[r.brand].revenue += r.revenue;
+    m[r.brand].shops.add(r.shop);
+  }
+  let groups = Object.values(m).map(g => ({ brand: g.brand, revenue: g.revenue, shopCount: g.shops.size }));
+  const sort = document.getElementById('sort-select')?.value || 'revenue-desc';
+  if (sort === 'revenue-desc') groups.sort((a,b) => b.revenue - a.revenue);
+  else if (sort === 'revenue-asc') groups.sort((a,b) => a.revenue - b.revenue);
+  else if (sort === 'name-asc') groups.sort((a,b) => a.brand.localeCompare(b.brand));
+  else if (sort === 'name-desc') groups.sort((a,b) => b.brand.localeCompare(a.brand));
+  return groups;
+}
+
+// ══════════════════════════════════════════
+// Render: cards
+// ══════════════════════════════════════════
+function renderCards() {
+  const recs = filteredRecords();
+  const total = recs.reduce((s,r) => s+r.revenue, 0);
+  const groups = computeBrandGroups(recs);
+  const shopsInView = new Set(recs.map(r=>r.shop));
+  const monthsInView = new Set(recs.map(r=>r.month));
+
+  document.getElementById('cards').innerHTML = `
+    <div class="card">
+      <div class="card-label">篩選後總營業額</div>
+      <div class="card-value">NT$ ${fmt(total)}</div>
+      <div class="card-sub">${recs.length} 筆資料</div>
+    </div>
+    <div class="card">
+      <div class="card-label">品牌數</div>
+      <div class="card-value">${groups.length}</div>
+      <div class="card-sub">個品牌</div>
+    </div>
+    <div class="card">
+      <div class="card-label">涵蓋賣場</div>
+      <div class="card-value">${shopsInView.size}</div>
+      <div class="card-sub">個賣場</div>
+    </div>
+    <div class="card">
+      <div class="card-label">涵蓋月份</div>
+      <div class="card-value">${monthsInView.size}</div>
+      <div class="card-sub">個月</div>
+    </div>
+  `;
+}
+
+// ══════════════════════════════════════════
+// Render: brand ranking tab
+// ══════════════════════════════════════════
+function renderRankTable() {
+  const recs = filteredRecords();
+  const groups = computeBrandGroups(recs);
+  const total = groups.reduce((s,g) => s+g.revenue, 0) || 1;
+  const maxRev = Math.max(...groups.map(g=>g.revenue), 1);
+  const brands = allBrands();
+  const opts = brands.map(b => `<option value="${esc(b)}">`).join('');
+
+  document.getElementById('rank-tbody').innerHTML = groups.length === 0
+    ? `<tr><td colspan="4" class="empty-state">此篩選條件下沒有資料</td></tr>`
+    : groups.map((g,i) => {
+      const rk = i+1;
+      const rc = rk===1?'r1':rk===2?'r2':rk===3?'r3':'';
+      const bw = Math.max((g.revenue/maxRev)*100, 3);
+      const pc = ((g.revenue/total)*100).toFixed(1);
+      const isEditing = editingBrand === g.brand;
+      const nameCell = isEditing
+        ? `<input id="brand-edit-input" class="brand-edit-input" list="rank-brand-datalist" value="${esc(g.brand)}"
+             onkeydown="onBrandKeydown(event,'${esc(g.brand)}')" onblur="saveBrandEdit('${esc(g.brand)}')">
+           <datalist id="rank-brand-datalist">${opts}</datalist>
+           <span class="edit-hint">Enter 儲存 · Esc 取消</span>`
+        : `<span class="brand-text">${esc(g.brand)}</span>
+           <button class="edit-btn" onclick="startBrandEdit('${esc(g.brand)}')">編輯</button>`;
+      return `
+        <tr>
+          <td><span class="rank ${rc}">${rk}</span></td>
+          <td><div class="brand-cell">${nameCell}</div></td>
+          <td><span class="count-badge">${g.shopCount} 個</span></td>
+          <td>
+            <div class="sales-cell">
+              <div class="bar-track"><div class="bar-fill" style="width:${bw}px"></div></div>
+              <span class="sales-num">NT$ ${fmt(g.revenue)}</span>
+              <span class="sales-pct">${pc}%</span>
+            </div>
+          </td>
+        </tr>`;
+    }).join('');
+
+  if (editingBrand !== null) {
+    const inp = document.getElementById('brand-edit-input');
+    if (inp) { inp.focus(); inp.select(); }
+  }
+}
+function startBrandEdit(brand) { editingBrand = brand; renderRankTable(); }
+function onBrandKeydown(evt, oldBrand) {
+  if (evt.key === 'Enter') { evt.preventDefault(); saveBrandEdit(oldBrand); }
+  if (evt.key === 'Escape') { editingBrand = null; renderRankTable(); }
+}
+function saveBrandEdit(oldBrand) {
+  const inp = document.getElementById('brand-edit-input');
+  const newBrand = inp ? inp.value.trim() : '';
+  editingBrand = null;
+  if (newBrand && newBrand !== oldBrand) {
+    for (const r of RECORDS) { if (r.brand === oldBrand) r.brand = newBrand; }
+    saveRecords();
+  }
+  renderAll();
+}
+
+// ══════════════════════════════════════════
+// Render: cross table (brand x shop)
+// ══════════════════════════════════════════
+function renderCrossTable() {
+  const recs = filteredRecords();
+  const shops = [...activeShops].sort();
+  const m = {};
+  for (const r of recs) {
+    if (!m[r.brand]) m[r.brand] = {};
+    m[r.brand][r.shop] = (m[r.brand][r.shop] || 0) + r.revenue;
+  }
+  const brandTotals = Object.entries(m).map(([b,shopMap]) => {
+    const total = Object.values(shopMap).reduce((s,v)=>s+v,0);
+    return { brand: b, shopMap, total };
+  });
+  const sort = document.getElementById('sort-select')?.value || 'revenue-desc';
+  if (sort === 'revenue-desc') brandTotals.sort((a,b)=>b.total-a.total);
+  else if (sort === 'revenue-asc') brandTotals.sort((a,b)=>a.total-b.total);
+  else if (sort === 'name-asc') brandTotals.sort((a,b)=>a.brand.localeCompare(b.brand));
+  else brandTotals.sort((a,b)=>b.brand.localeCompare(a.brand));
+
+  const thead = document.querySelector('#cross-table thead');
+  const tbody = document.querySelector('#cross-table tbody');
+  thead.innerHTML = `<tr><th>品牌</th>${shops.map(s=>`<th style="text-align:right">${esc(s)}</th>`).join('')}<th style="text-align:right">合計</th></tr>`;
+  tbody.innerHTML = brandTotals.length === 0
+    ? `<tr><td colspan="${shops.length+2}" class="empty-state">此篩選條件下沒有資料</td></tr>`
+    : brandTotals.map(bt => `
+        <tr>
+          <td style="font-weight:600">${esc(bt.brand)}</td>
+          ${shops.map(s => `<td style="text-align:right">${bt.shopMap[s] ? 'NT$ '+fmt(bt.shopMap[s]) : '<span style="color:var(--gray-300)">—</span>'}</td>`).join('')}
+          <td style="text-align:right;font-weight:700">NT$ ${fmt(bt.total)}</td>
+        </tr>`).join('');
+}
+
+// ══════════════════════════════════════════
+// Render: compare tab
+// ══════════════════════════════════════════
+function renderComparePickers() {
+  const months = allMonths();
+  const chip = (m, group) => `<span class="chip cmp-chip" data-group="${group}" data-month="${m}" onclick="toggleCmpChip(this)">${monthLabel(m)}</span>`;
+  document.getElementById('cmp-a-months').innerHTML = months.map(m => chip(m,'a')).join('');
+  document.getElementById('cmp-b-months').innerHTML = months.map(m => chip(m,'b')).join('');
+}
+function toggleCmpChip(el) { el.classList.toggle('active'); }
+function runCompare() {
+  const aMonths = [...document.querySelectorAll('.cmp-chip[data-group="a"].active')].map(e=>e.dataset.month);
+  const bMonths = [...document.querySelectorAll('.cmp-chip[data-group="b"].active')].map(e=>e.dataset.month);
+  if (!aMonths.length || !bMonths.length) { alert('請至少各勾選一個月份'); return; }
+
+  const scoped = RECORDS.filter(r => activeShops.has(r.shop));
+  const sumByBrand = (months) => {
+    const m = {};
+    scoped.filter(r => months.includes(r.month)).forEach(r => { m[r.brand] = (m[r.brand]||0) + r.revenue; });
+    return m;
+  };
+  const aData = sumByBrand(aMonths), bData = sumByBrand(bMonths);
+  const brands = [...new Set([...Object.keys(aData), ...Object.keys(bData)])];
+  const rows = brands.map(b => {
+    const av = aData[b]||0, bv = bData[b]||0;
+    const growth = av ? (bv-av)/av : (bv>0 ? null : 0);
+    return { brand:b, av, bv, growth };
+  }).sort((x,y) => (y.av+y.bv)-(x.av+x.bv));
+
+  document.getElementById('compare-tbody').innerHTML = rows.map(r => `
+    <tr>
+      <td style="font-weight:600">${esc(r.brand)}</td>
+      <td>NT$ ${fmt(r.av)}</td>
+      <td>NT$ ${fmt(r.bv)}</td>
+      <td class="${r.growth==null?'':(r.growth>=0?'growth-pos':'growth-neg')}">${r.growth==null?'新品牌':(r.growth>=0?'+':'')+(r.growth*100).toFixed(1)+'%'}</td>
+    </tr>`).join('') || `<tr><td colspan="4" class="empty-state">無資料</td></tr>`;
+}
+
+// ══════════════════════════════════════════
+// Render: data management tab
+// ══════════════════════════════════════════
+function renderDataTable() {
+  const q = (document.getElementById('data-search')?.value || '').toLowerCase();
+  const list = RECORDS.filter(r => !q || r.brand.toLowerCase().includes(q) || r.shop.toLowerCase().includes(q))
+    .sort((a,b) => b.month.localeCompare(a.month) || a.shop.localeCompare(b.shop));
+
+  document.getElementById('data-tbody').innerHTML = list.length === 0
+    ? `<tr><td colspan="6" class="empty-state">沒有符合的資料</td></tr>`
+    : list.map(r => `
+        <tr>
+          <td>${esc(r.shop)}</td>
+          <td>${monthLabel(r.month)}</td>
+          <td>${esc(r.brand)}</td>
+          <td>NT$ ${fmt(r.revenue)}</td>
+          <td><span class="source-tag ${r.source==='manual'?'manual':''}">${r.source==='manual'?'手動':'匯入'}</span></td>
+          <td>
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:12px" onclick="openEditModal(${r.id})">編輯</button>
+            <button class="btn btn-danger" style="padding:4px 8px;font-size:12px" onclick="deleteRecord(${r.id})">刪除</button>
+          </td>
+        </tr>`).join('');
+}
+function deleteRecord(id) {
+  if (!confirm('確定刪除這筆資料？')) return;
+  RECORDS = RECORDS.filter(r => r.id !== id);
+  saveRecords();
+  renderFilterBar();
+  renderAll();
+}
+
+// ══════════════════════════════════════════
+// Add / Edit modal
+// ══════════════════════════════════════════
+let editingId = null;
+function openAddModal() {
+  editingId = null;
+  document.getElementById('add-modal-title').textContent = '新增資料';
+  document.getElementById('f-shop').value = '';
+  document.getElementById('f-year').value = new Date().getFullYear();
+  document.getElementById('f-month').value = new Date().getMonth()+1;
+  document.getElementById('f-brand').value = '';
+  document.getElementById('f-revenue').value = '';
+  populateDatalists();
+  document.getElementById('add-modal').classList.add('open');
+}
+function openEditModal(id) {
+  const r = RECORDS.find(x => x.id === id);
+  if (!r) return;
+  editingId = id;
+  document.getElementById('add-modal-title').textContent = '編輯資料';
+  document.getElementById('f-shop').value = r.shop;
+  const [y,m] = r.month.split('-');
+  document.getElementById('f-year').value = y;
+  document.getElementById('f-month').value = parseInt(m);
+  document.getElementById('f-brand').value = r.brand;
+  document.getElementById('f-revenue').value = r.revenue;
+  populateDatalists();
+  document.getElementById('add-modal').classList.add('open');
+}
+function populateDatalists() {
+  document.getElementById('shop-datalist').innerHTML = allShops().map(s => `<option value="${esc(s)}">`).join('');
+  document.getElementById('brand-datalist-add').innerHTML = allBrands().map(b => `<option value="${esc(b)}">`).join('');
+}
+function closeAddModal() {
+  document.getElementById('add-modal').classList.remove('open');
+}
+function saveAddModal() {
+  const shop = document.getElementById('f-shop').value.trim();
+  const year = parseInt(document.getElementById('f-year').value);
+  const month = parseInt(document.getElementById('f-month').value);
+  const brand = document.getElementById('f-brand').value.trim();
+  const revenue = parseFloat(document.getElementById('f-revenue').value);
+  if (!shop || !year || !month || !brand || isNaN(revenue)) { alert('請完整填寫所有欄位'); return; }
+
+  const monthKey = `${year}-${String(month).padStart(2,'0')}`;
+  if (editingId !== null) {
+    const r = RECORDS.find(x => x.id === editingId);
+    if (r) { r.shop = shop; r.month = monthKey; r.brand = brand; r.revenue = revenue; }
+  } else {
+    RECORDS.push({ id: nextId++, shop, month: monthKey, brand, revenue, source: 'manual' });
+  }
+  saveRecords();
+  closeAddModal();
+  const shops = allShops(), months = allMonths();
+  if (!activeShops.has(shop)) activeShops.add(shop);
+  if (!activeMonths.has(monthKey)) activeMonths.add(monthKey);
+  renderFilterBar();
+  renderAll();
+}
+
+// ══════════════════════════════════════════
+// Export / Import
+// ══════════════════════════════════════════
+function exportBackup() {
+  const blob = new Blob([JSON.stringify(RECORDS, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const d = new Date();
+  a.href = url;
+  a.download = `品牌銷售備份_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+function handleImport(evt) {
+  const file = evt.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!Array.isArray(data)) throw new Error('格式錯誤');
+      RECORDS = data;
+      nextId = RECORDS.reduce((m,r) => Math.max(m, r.id||0), 0) + 1;
+      saveRecords();
+      activeShops = new Set(allShops());
+      activeMonths = new Set(allMonths());
+      renderFilterBar();
+      renderAll();
+      alert('匯入成功 ✅');
+    } catch(err) {
+      alert('匯入失敗，請確認是正確的備份 JSON 檔');
+    }
+  };
+  reader.readAsText(file);
+  evt.target.value = '';
+}
+
+// ══════════════════════════════════════════
+// Tabs
+// ══════════════════════════════════════════
+function switchTab(el) {
+  const tabId = el.getAttribute('data-tab');
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById(tabId).classList.add('active');
+  if (tabId === 'compare-tab') renderComparePickers();
+}
+
+// ══════════════════════════════════════════
+// Master render
+// ══════════════════════════════════════════
+function renderAll() {
+  renderCards();
+  renderRankTable();
+  renderCrossTable();
+  renderDataTable();
+}
+
+function init() {
+  loadRecords();
+  activeShops = new Set(allShops());
+  activeMonths = new Set(allMonths());
+  renderFilterBar();
+  renderAll();
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebar-overlay').classList.toggle('show');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('show');
+}
+
+init();
+</script>
+</body>
+</html>
