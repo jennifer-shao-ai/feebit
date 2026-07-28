@@ -272,15 +272,6 @@ body.pig-public .hamburger { display: none !important; }
     <a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span> 旅行規劃</a>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-section" id="sidebar-admin-section" style="display:none">
-    <div class="sidebar-label">🔗 網址管理</div>
-    <div style="padding:0 8px 8px">
-      <div style="font-size:11px;color:var(--gray-400);margin-bottom:4px">外包連結（無側邊欄 / 無設定）</div>
-      <div id="sidebar-share-url" style="font-size:10px;color:var(--gray-400);word-break:break-all;line-height:1.5;margin-bottom:6px;padding:4px 6px;background:var(--gray-50);border-radius:4px"></div>
-      <button class="btn-sm" style="width:100%" onclick="copySidebarShare(this)">複製外包連結</button>
-      <button class="btn-sm" style="width:100%;margin-top:4px" onclick="openSettings()">⚙ 設定</button>
-    </div>
-  </div>
   <div class="sidebar-footer">v2.5</div>
 </div>
 <div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.remove('open');this.classList.remove('active')"></div>
@@ -291,6 +282,8 @@ body.pig-public .hamburger { display: none !important; }
     <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open');document.getElementById('sidebar-overlay').classList.toggle('active')">&#9776;</button>
     <span class="topbar-title">新品上架作業</span>
     <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn-sm" id="btn-share" onclick="copySidebarShare(this)" style="display:none">🔗 複製外包連結</button>
+      <button class="btn-sm" id="btn-settings" onclick="openSettings()" style="display:none">⚙ 設定</button>
       <span class="topbar-badge">v2.5</span>
     </div>
   </div>
@@ -560,11 +553,10 @@ function initAdminMode() {
   }
   // 預設：管理員模式（有側邊欄就是管理員）
   window.history.replaceState({}, '', window.location.pathname)
-  const shareUrl = window.location.origin + window.location.pathname + '?share'
-  const urlEl = document.getElementById('sidebar-share-url')
-  if (urlEl) urlEl.textContent = shareUrl
-  const adminSection = document.getElementById('sidebar-admin-section')
-  if (adminSection) adminSection.style.display = ''
+  const shareBtn = document.getElementById('btn-share')
+  const settingsBtn = document.getElementById('btn-settings')
+  if (shareBtn) shareBtn.style.display = ''
+  if (settingsBtn) settingsBtn.style.display = ''
 }
 async function copySidebarShare(btn) {
   const url = window.location.origin + window.location.pathname + '?share'
