@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>通路營收分析 — 飛比特</title>
+<link rel="icon" href="favicon.svg">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+.cr-upload{border:2px dashed var(--gray-300);border-radius:var(--radius);padding:48px 24px;text-align:center;cursor:pointer;transition:all 0.2s;background:white;margin-bottom:24px}
+.cr-upload:hover,.cr-upload.drag-over{border-color:var(--primary);background:var(--primary-light)}
+.range-tabs{display:flex;gap:8px;margin-bottom:6px;flex-wrap:wrap;align-items:center}
+.range-tab{padding:6px 18px;border-radius:20px;border:1px solid var(--gray-300);background:white;cursor:pointer;font-size:13px;transition:all 0.15s}
+.range-tab.active{background:var(--primary);color:white;border-color:var(--primary)}
+.range-label{font-size:11px;color:var(--gray-500);margin-bottom:14px;min-height:16px}
+.custom-filter{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:20px;padding:10px 14px;background:white;border-radius:var(--radius);border:1px solid var(--gray-200);font-size:13px}
+.custom-filter label{color:var(--gray-600);font-size:12px;white-space:nowrap}
+.custom-filter input[type=month]{padding:5px 8px;border:1px solid var(--gray-200);border-radius:var(--radius);font-size:13px;background:white}
+.summary-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;margin-bottom:24px}
+.sc{background:white;border-radius:var(--radius);padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.sc .sc-label{font-size:12px;color:var(--gray-600);margin-bottom:6px}
+.sc .sc-value{font-size:22px;font-weight:700}
+.sc .sc-sub{font-size:11px;color:var(--gray-500);margin-top:4px}
+.card{background:white;border-radius:var(--radius);padding:20px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.card h3{font-size:14px;font-weight:600;margin-bottom:14px;color:var(--gray-700)}
+table.data-table{width:100%;border-collapse:collapse;font-size:13px}
+table.data-table th{background:var(--gray-50);padding:9px 12px;text-align:right;border-bottom:2px solid var(--gray-200);font-size:12px;font-weight:600;white-space:nowrap}
+table.data-table th:first-child{text-align:left}
+table.data-table td{padding:9px 12px;border-bottom:1px solid var(--gray-100);text-align:right}
+table.data-table td:first-child{text-align:left;font-weight:500}
+.bar-cell{position:relative}
+.bar-fill{position:absolute;left:0;top:0;bottom:0;background:var(--primary-light);z-index:0;border-radius:4px}
+.bar-text{position:relative;z-index:1}
+.compare-row{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px}
+.compare-period{display:flex;flex-direction:column;gap:4px}
+.compare-period label{font-size:11px;color:var(--gray-600)}
+.compare-period-inputs{display:flex;align-items:center;gap:6px}
+.compare-period-inputs input[type=month]{padding:5px 8px;border:1px solid var(--gray-200);border-radius:var(--radius);font-size:13px}
+.growth-pos{color:var(--success);font-weight:600}
+.growth-neg{color:var(--danger);font-weight:600}
+.chart-wrap{height:320px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius);border:none;cursor:pointer;font-size:13px;font-weight:500;transition:opacity .15s}
+.btn:hover{opacity:.88}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-outline{background:#fff;color:var(--gray-800);border:1px solid var(--gray-300)}
+.btn-ghost{background:transparent;color:var(--gray-600);border:1px solid var(--gray-200)}
+.toolbar{display:flex;gap:10px;justify-content:flex-end;margin-bottom:16px;flex-wrap:wrap}
+.months-table td.actions{white-space:nowrap}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:var(--radius);padding:24px;width:640px;max-width:92vw;max-height:86vh;overflow:auto}
+.modal h3{margin-bottom:16px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-grid label{font-size:12px;color:var(--gray-600);display:block;margin-bottom:4px}
+.form-grid input{width:100%;padding:7px 10px;border:1px solid var(--gray-200);border-radius:var(--radius);font-size:13px}
+.form-grid .full{grid-column:1/-1}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
+.empty-hint{color:var(--gray-500);font-size:13px;text-align:center;padding:24px}
+.small-note{font-size:11px;color:var(--gray-500);margin-top:6px}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div class="sidebar-logo">
+    <div class="brand">飛比特 Feebit</div>
+    <div class="sub">營運工具箱</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">總覽</div>
+    <a class="nav-item" href="index.html"><span class="icon">🏠</span> 首頁</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">財務</div>
+    <a class="nav-item" href="bank-converter.html"><span class="icon">🏦</span> 帳務轉換</a>
+    <a class="nav-item" href="accounting-ops.html"><span class="icon">📅</span> 例行帳務作業</a>
+    <a class="nav-item" href="finance-dashboard.html"><span class="icon">📊</span> 帳務分析</a>
+    <a class="nav-item" href="coupang-invoice.html"><span class="icon">🧾</span> 酷澎發票轉檔</a>
+    <a class="nav-item" href="coupang-reconcile.html"><span class="icon">🔍</span> 酷澎商城對帳</a>
+    <a class="nav-item" href="shopee-subsidy.html"><span class="icon">🚚</span> 蝦皮運費補助申請</a>
+    <a class="nav-item" href="shopee-converter.html"><span class="icon">🛒</span> 蝦皮撥款轉換</a>
+    <a class="nav-item" href="profit-calculator.html"><span class="icon">💰</span> 毛利試算機</a>
+    <a class="nav-item" href="brand-sales.html"><span class="icon">📈</span> 品牌銷售分析</a>
+    <a class="nav-item active" href="channel-revenue.html"><span class="icon">🛍️</span> 通路營收分析</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">市場分析</div>
+    <a class="nav-item" href="market-tracker.html" id="nav-market"><span class="icon">🔭</span> 品類競品分析</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">行銷</div>
+    <div class="nav-item soon"><span class="icon">📢</span> 廣告文案<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">客服</div>
+    <div class="nav-item soon"><span class="icon">💬</span> 客服回覆<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">業務</div>
+    <a class="nav-item" href="purchase-order.html"><span class="icon">📄</span> 採購單轉換</a>
+    <div class="nav-item soon"><span class="icon">🤝</span> 廠商談判<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">人事</div>
+    <a class="nav-item" href="attendance.html"><span class="icon">🗓️</span> 考勤查驗</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">庫存</div>
+    <a class="nav-item" href="stock-analysis.html"><span class="icon">📦</span> 庫存訂貨分析</a>
+    <a class="nav-item" href="slow-mover-alert.html"><span class="icon">🔴</span> 滯銷品警示</a>
+    <a class="nav-item" href="feebit-inventory-filter.html"><span class="icon">🏪</span> 商品篩選工具</a>
+    <a class="nav-item" href="reorder-suggestions.html"><span class="icon">🔄</span> 庫存訂貨建議</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">研發</div>
+    <a class="nav-item" href="research-notes.html"><span class="icon">📚</span> 研發筆記</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">法規</div>
+    <a class="nav-item" href="fda-registration.html"><span class="icon">🧪</span> 化粧品登錄</a>
+    <a class="nav-item" href="http://127.0.0.1:5050" target="_blank"><span class="icon">📋</span> PIF Builder</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">生活</div>
+    <a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span> 旅行規劃</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">系統</div>
+    <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
+  </div>
+  <div class="sidebar-footer">v1.0 · Feebit © 2026</div>
+</div>
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<!-- MAIN -->
+<div id="main">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="menu-btn" onclick="openSidebar()" style="display:none">☰</button>
+      <span class="topbar-title">🛍️ 通路營收分析</span>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost" id="btn-add-month" style="display:none" onclick="openMonthForm()">＋ 新增/編輯月份</button>
+      <button class="btn btn-ghost" id="btn-export" style="display:none" onclick="exportBackup()">匯出備份</button>
+      <button class="btn btn-ghost" id="btn-reset" style="display:none" onclick="resetAll()">重新上傳</button>
+    </div>
+  </div>
+
+  <div style="padding:24px">
+
+    <!-- UPLOAD -->
+    <div id="upload-zone" class="cr-upload" onclick="document.getElementById('file-input').click()">
+      <div style="font-size:32px;margin-bottom:8px">📤</div>
+      <div class="upload-title" style="font-size:18px;font-weight:700;margin-bottom:6px">上傳通路營收資料</div>
+      <div class="upload-sub" style="color:var(--gray-600);font-size:13px;margin-bottom:14px">支援 JSON 格式(由飛比特營收表單轉出),資料只存在妳的瀏覽器裡,不會上傳到任何伺服器</div>
+      <input type="file" id="file-input" accept=".json" style="display:none" onchange="handleFile(event)">
+      <button class="btn btn-primary">選擇 JSON 檔案</button>
+      <div class="small-note">資料儲存在本機瀏覽器 localStorage,清除瀏覽器資料會遺失,請定期用「匯出備份」保存</div>
+    </div>
+
+    <div id="dashboard" style="display:none">
+
+      <!-- RANGE SELECT -->
+      <div class="range-tabs" id="range-tabs"></div>
+      <div class="range-label" id="range-label"></div>
+      <div class="custom-filter">
+        <label>自訂區間:</label>
+        <input type="month" id="custom-from">
+        <span>至</span>
+        <input type="month" id="custom-to">
+        <button class="btn btn-outline" onclick="applyCustomRange()">套用</button>
+        <button class="btn btn-ghost" onclick="clearCustomRange()">清除</button>
+      </div>
+
+      <!-- SUMMARY -->
+      <div class="summary-cards" id="summary-cards"></div>
+
+      <!-- PLATFORM BREAKDOWN -->
+      <div class="card">
+        <h3>各通路營收排行(依選定區間)</h3>
+        <table class="data-table" id="platform-table"><thead></thead><tbody></tbody></table>
+      </div>
+
+      <!-- TREND CHART -->
+      <div class="card">
+        <h3>月營收趨勢</h3>
+        <div class="chart-wrap"><canvas id="trend-chart"></canvas></div>
+      </div>
+
+      <!-- COMPARISON -->
+      <div class="card">
+        <h3>區間對比</h3>
+        <div class="compare-row">
+          <div class="compare-period">
+            <label>期間 A</label>
+            <div class="compare-period-inputs">
+              <input type="month" id="cmp-a-from"><span>至</span><input type="month" id="cmp-a-to">
+            </div>
+          </div>
+          <div class="compare-period">
+            <label>期間 B</label>
+            <div class="compare-period-inputs">
+              <input type="month" id="cmp-b-from"><span>至</span><input type="month" id="cmp-b-to">
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="runCompare()">開始對比</button>
+        </div>
+        <table class="cmp-table data-table" id="cmp-table"><thead></thead><tbody></tbody></table>
+      </div>
+
+      <!-- MONTHS DATA MANAGEMENT -->
+      <div class="card">
+        <h3>資料管理(逐月)</h3>
+        <div class="toolbar">
+          <button class="btn btn-primary" onclick="openMonthForm()">＋ 新增/編輯月份</button>
+        </div>
+        <table class="data-table months-table" id="months-table"><thead></thead><tbody></tbody></table>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- MONTH EDIT MODAL -->
+<div class="modal-overlay" id="month-modal">
+  <div class="modal">
+    <h3 id="modal-title">新增/編輯月份資料</h3>
+    <div class="form-grid">
+      <div><label>年份</label><input type="number" id="f-year" placeholder="2026"></div>
+      <div><label>月份(1-12)</label><input type="number" id="f-month" min="1" max="12" placeholder="7"></div>
+      <div class="full" style="border-top:1px solid var(--gray-200);margin:6px 0"></div>
+      <div><label>全蝦皮</label><input type="number" id="f-全蝦皮"></div>
+      <div><label>LaLaV商城</label><input type="number" id="f-LaLaV商城"></div>
+      <div><label>LaLaV一般</label><input type="number" id="f-LaLaV一般"></div>
+      <div><label>寶媽</label><input type="number" id="f-寶媽"></div>
+      <div><label>桑爹</label><input type="number" id="f-桑爹"></div>
+      <div><label>momo</label><input type="number" id="f-momo"></div>
+      <div><label>mo店+</label><input type="number" id="f-mo店+"></div>
+      <div><label>寶雅</label><input type="number" id="f-寶雅"></div>
+      <div><label>家樂福商城</label><input type="number" id="f-家樂福商城"></div>
+      <div><label>官網</label><input type="number" id="f-官網"></div>
+      <div><label>LINE購物商城</label><input type="number" id="f-LINE購物商城"></div>
+      <div><label>酷澎(實際收款)</label><input type="number" id="f-酷澎_實際收款"></div>
+      <div><label>酷澎商城</label><input type="number" id="f-酷澎商城"></div>
+      <div><label>市集</label><input type="number" id="f-市集"></div>
+      <div><label>廠商(批發)</label><input type="number" id="f-廠商"></div>
+      <div class="full" style="border-top:1px solid var(--gray-200);margin:6px 0"></div>
+      <div><label>FB廣告費</label><input type="number" id="f-FB廣告費"></div>
+      <div><label>蝦皮站內廣告費</label><input type="number" id="f-蝦皮站內廣告費"></div>
+      <div><label>蝦皮聯盟行銷</label><input type="number" id="f-蝦皮聯盟行銷"></div>
+      <div><label>MOMO廣告費</label><input type="number" id="f-MOMO廣告費"></div>
+      <div><label>GOOGLE廣告費</label><input type="number" id="f-GOOGLE廣告費"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeMonthForm()">取消</button>
+      <button class="btn btn-primary" onclick="saveMonthForm()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'feebit_channel_revenue_v1';
+const PLATFORM_FIELDS = ['全蝦皮','LaLaV商城','LaLaV一般','寶媽','桑爹','momo','mo店+','寶雅','家樂福商城','官網','LINE購物商城','酷澎_實際收款','酷澎商城','市集','廠商'];
+const PLATFORM_LABELS = {
+  '全蝦皮':'全蝦皮','LaLaV商城':'LaLaV商城','LaLaV一般':'LaLaV一般','寶媽':'寶媽','桑爹':'桑爹','momo':'momo',
+  'mo店+':'mo店+','寶雅':'寶雅','家樂福商城':'家樂福商城','官網':'官網','LINE購物商城':'LINE購物商城',
+  '酷澎_實際收款':'酷澎(實際收款)','酷澎商城':'酷澎商城','市集':'市集','廠商':'廠商(批發)'
+};
+const AD_FIELDS = ['FB廣告費','蝦皮站內廣告費','蝦皮聯盟行銷','MOMO廣告費','GOOGLE廣告費'];
+
+let DATA = {}; // { "2026": { "1": {...}, "2": {...} } }
+let currentRange = null; // {from:'2026-01', to:'2026-06'}
+let chart = null;
+
+function loadFromStorage() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw) {
+    try { DATA = JSON.parse(raw); return true; } catch(e) { return false; }
+  }
+  return false;
+}
+function saveToStorage() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA));
+}
+
+function handleFile(evt) {
+  const file = evt.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      DATA = JSON.parse(e.target.result);
+      saveToStorage();
+      initDashboard();
+    } catch(err) {
+      alert('檔案格式錯誤,請確認是正確的 JSON 檔');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function resetAll() {
+  if (!confirm('確定要清除目前資料並重新上傳嗎?建議先匯出備份。')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  DATA = {};
+  document.getElementById('upload-zone').style.display = '';
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('btn-add-month').style.display = 'none';
+  document.getElementById('btn-export').style.display = 'none';
+  document.getElementById('btn-reset').style.display = 'none';
+}
+
+function exportBackup() {
+  const blob = new Blob([JSON.stringify(DATA, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const d = new Date();
+  a.href = url;
+  a.download = `通路營收備份_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ---------- helpers ----------
+function allMonthKeys() {
+  const keys = [];
+  Object.keys(DATA).sort().forEach(y => {
+    Object.keys(DATA[y]).map(Number).sort((a,b)=>a-b).forEach(m => {
+      keys.push(`${y}-${String(m).padStart(2,'0')}`);
+    });
+  });
+  return keys;
+}
+function monthData(key) {
+  const [y,m] = key.split('-');
+  return (DATA[y] && DATA[y][String(Number(m))]) || null;
+}
+function keysInRange(from, to) {
+  return allMonthKeys().filter(k => k >= from && k <= to);
+}
+function sumField(keys, field) {
+  return keys.reduce((s,k) => {
+    const d = monthData(k);
+    return s + (d && typeof d[field] === 'number' ? d[field] : 0);
+  }, 0);
+}
+function totalOnline(keys) { return sumField(keys, '月平台總計_不含批發實體'); }
+function totalOffline(keys) { return sumField(keys, '實體批發總計'); }
+function grandTotal(keys) { return totalOnline(keys) + totalOffline(keys); }
+function fmt(n) { return Math.round(n).toLocaleString('zh-TW'); }
+function pct(n) { return (n*100).toFixed(1) + '%'; }
+
+// ---------- range tabs ----------
+function ymKey(y,m){ return `${y}-${String(m).padStart(2,'0')}`; }
+function shiftMonth(y,m,delta){ let idx = y*12+(m-1)+delta; return [Math.floor(idx/12), idx%12+1]; }
+
+function buildRangeTabs() {
+  const keys = allMonthKeys();
+  if (!keys.length) return;
+  const lastKey = keys[keys.length-1];
+  const [ly, lm] = lastKey.split('-').map(Number);
+  const presets = [
+    {label:'本月', from: ymKey(ly,lm), to: ymKey(ly,lm)},
+    {label:'上月', ...(() => { const [y,m]=shiftMonth(ly,lm,-1); return {from:ymKey(y,m), to:ymKey(y,m)}; })()},
+    {label:'本季', ...(() => { const qStart = Math.floor((lm-1)/3)*3+1; return {from:ymKey(ly,qStart), to:ymKey(ly,lm)}; })()},
+    {label:'上半年', from: ymKey(ly,1), to: ymKey(ly, Math.min(6,lm))},
+    {label:'今年', from: ymKey(ly,1), to: ymKey(ly,lm)},
+    {label:'去年同期', from: ymKey(ly-1,1), to: ymKey(ly-1,lm)},
+    {label:'全部', from: keys[0], to: lastKey},
+  ];
+  const wrap = document.getElementById('range-tabs');
+  wrap.innerHTML = '';
+  presets.forEach((p,i) => {
+    const btn = document.createElement('button');
+    btn.className = 'range-tab' + (i===4 ? ' active' : '');
+    btn.textContent = p.label;
+    btn.onclick = () => selectRange(p.from, p.to, btn);
+    wrap.appendChild(btn);
+  });
+  // default: 今年
+  const def = presets[4];
+  selectRange(def.from, def.to, wrap.children[4]);
+}
+
+function selectRange(from, to, btnEl) {
+  currentRange = {from, to};
+  document.querySelectorAll('.range-tab').forEach(b => b.classList.remove('active'));
+  if (btnEl) btnEl.classList.add('active');
+  document.getElementById('range-label').textContent = `篩選中: ${from} ~ ${to}`;
+  document.getElementById('custom-from').value = from;
+  document.getElementById('custom-to').value = to;
+  renderAll();
+}
+function applyCustomRange() {
+  const from = document.getElementById('custom-from').value;
+  const to = document.getElementById('custom-to').value;
+  if (!from || !to) { alert('請選擇起訖月份'); return; }
+  selectRange(from, to, null);
+}
+function clearCustomRange() {
+  const keys = allMonthKeys();
+  if (keys.length) selectRange(keys[0], keys[keys.length-1], null);
+}
+
+// ---------- summary cards ----------
+function renderSummary() {
+  const keys = keysInRange(currentRange.from, currentRange.to);
+  const online = totalOnline(keys);
+  const offline = totalOffline(keys);
+  const total = online + offline;
+  const ad = sumField(keys, '各平台總計廣告費') || AD_FIELDS.reduce((s,f)=>s+sumField(keys,f),0);
+  const adRatio = total > 0 ? ad/total : 0;
+
+  const cards = [
+    {label:'總營業額(線上+線下)', value: 'NT$ ' + fmt(total)},
+    {label:'線上通路總計', value: 'NT$ ' + fmt(online), sub: total? pct(online/total)+' 占比' : ''},
+    {label:'實體/批發總計', value: 'NT$ ' + fmt(offline), sub: total? pct(offline/total)+' 占比' : ''},
+    {label:'廣告費總計', value: 'NT$ ' + fmt(ad), sub: '廣告費佔比 ' + pct(adRatio)},
+    {label:'涵蓋月份數', value: keys.length + ' 個月'},
+  ];
+  const wrap = document.getElementById('summary-cards');
+  wrap.innerHTML = cards.map(c => `
+    <div class="sc">
+      <div class="sc-label">${c.label}</div>
+      <div class="sc-value">${c.value}</div>
+      ${c.sub ? `<div class="sc-sub">${c.sub}</div>` : ''}
+    </div>`).join('');
+}
+
+// ---------- platform table ----------
+function renderPlatformTable() {
+  const keys = keysInRange(currentRange.from, currentRange.to);
+  const rows = PLATFORM_FIELDS.map(f => ({ field: f, label: PLATFORM_LABELS[f], value: sumField(keys, f) }))
+    .filter(r => r.value !== 0)
+    .sort((a,b) => b.value - a.value);
+  const total = rows.reduce((s,r)=>s+r.value, 0);
+  const max = rows.length ? rows[0].value : 1;
+
+  const thead = document.querySelector('#platform-table thead');
+  const tbody = document.querySelector('#platform-table tbody');
+  thead.innerHTML = `<tr><th>通路</th><th>營收</th><th>占比</th></tr>`;
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td>${r.label}</td>
+      <td class="bar-cell">
+        <div class="bar-fill" style="width:${(r.value/max*100).toFixed(1)}%"></div>
+        <span class="bar-text">NT$ ${fmt(r.value)}</span>
+      </td>
+      <td>${total ? pct(r.value/total) : '-'}</td>
+    </tr>`).join('') || `<tr><td colspan="3" class="empty-hint">此區間無資料</td></tr>`;
+}
+
+// ---------- trend chart ----------
+function renderTrend() {
+  const keys = keysInRange(currentRange.from, currentRange.to);
+  const labels = keys;
+  const totals = keys.map(k => {
+    const d = monthData(k) || {};
+    return (d['月平台總計_不含批發實體']||0) + (d['實體批發總計']||0);
+  });
+  const ctx = document.getElementById('trend-chart').getContext('2d');
+  if (chart) chart.destroy();
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets: [{ label: '總營業額', data: totals, borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.1)', fill: true, tension: 0.3 }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{ticks:{callback:v=>'NT$'+(v/1000).toFixed(0)+'k'}}} }
+  });
+}
+
+// ---------- comparison ----------
+function runCompare() {
+  const aFrom = document.getElementById('cmp-a-from').value, aTo = document.getElementById('cmp-a-to').value;
+  const bFrom = document.getElementById('cmp-b-from').value, bTo = document.getElementById('cmp-b-to').value;
+  if (!aFrom||!aTo||!bFrom||!bTo) { alert('請選擇兩組區間的起訖月份'); return; }
+  const aKeys = keysInRange(aFrom, aTo), bKeys = keysInRange(bFrom, bTo);
+
+  const fields = PLATFORM_FIELDS.filter(f => sumField(aKeys,f) || sumField(bKeys,f));
+  const thead = document.querySelector('#cmp-table thead');
+  const tbody = document.querySelector('#cmp-table tbody');
+  thead.innerHTML = `<tr><th>通路</th><th>期間A (${aFrom}~${aTo})</th><th>期間B (${bFrom}~${bTo})</th><th>增減</th></tr>`;
+  const rows = fields.map(f => {
+    const av = sumField(aKeys, f), bv = sumField(bKeys, f);
+    const growth = av ? (bv-av)/av : null;
+    return {label: PLATFORM_LABELS[f], av, bv, growth};
+  }).sort((x,y)=>y.bv-x.bv);
+
+  const aTotal = totalOnline(aKeys)+totalOffline(aKeys);
+  const bTotal = totalOnline(bKeys)+totalOffline(bKeys);
+  const totalGrowth = aTotal ? (bTotal-aTotal)/aTotal : null;
+  rows.unshift({label:'【總計】', av:aTotal, bv:bTotal, growth:totalGrowth, bold:true});
+
+  tbody.innerHTML = rows.map(r => `
+    <tr style="${r.bold?'font-weight:700;background:var(--gray-50)':''}">
+      <td>${r.label}</td>
+      <td>NT$ ${fmt(r.av)}</td>
+      <td>NT$ ${fmt(r.bv)}</td>
+      <td class="${r.growth==null?'':(r.growth>=0?'growth-pos':'growth-neg')}">${r.growth==null?'-':(r.growth>=0?'+':'')+pct(r.growth)}</td>
+    </tr>`).join('');
+}
+
+// ---------- months management table ----------
+function renderMonthsTable() {
+  const keys = allMonthKeys().slice().reverse();
+  const thead = document.querySelector('#months-table thead');
+  const tbody = document.querySelector('#months-table tbody');
+  thead.innerHTML = `<tr><th>年月</th><th>總營業額</th><th>操作</th></tr>`;
+  tbody.innerHTML = keys.map(k => {
+    const d = monthData(k) || {};
+    const total = (d['月平台總計_不含批發實體']||0) + (d['實體批發總計']||0);
+    return `<tr>
+      <td>${k}</td>
+      <td>NT$ ${fmt(total)}</td>
+      <td class="actions">
+        <button class="btn btn-ghost" onclick="openMonthForm('${k}')">編輯</button>
+        <button class="btn btn-ghost" onclick="deleteMonth('${k}')">刪除</button>
+      </td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="3" class="empty-hint">尚無資料</td></tr>`;
+}
+
+function deleteMonth(key) {
+  if (!confirm(`確定刪除 ${key} 的資料?`)) return;
+  const [y,m] = key.split('-');
+  delete DATA[y][String(Number(m))];
+  saveToStorage();
+  initDashboard(true);
+}
+
+let editingKey = null;
+function openMonthForm(key) {
+  editingKey = key || null;
+  document.getElementById('modal-title').textContent = key ? `編輯 ${key}` : '新增月份資料';
+  const allFields = [...PLATFORM_FIELDS, ...AD_FIELDS];
+  allFields.forEach(f => { const el = document.getElementById('f-'+f); if (el) el.value = ''; });
+  if (key) {
+    const [y,m] = key.split('-').map(Number);
+    document.getElementById('f-year').value = y;
+    document.getElementById('f-month').value = m;
+    document.getElementById('f-year').disabled = true;
+    document.getElementById('f-month').disabled = true;
+    const d = monthData(key) || {};
+    allFields.forEach(f => { const el = document.getElementById('f-'+f); if (el && d[f] !== undefined) el.value = d[f]; });
+  } else {
+    document.getElementById('f-year').disabled = false;
+    document.getElementById('f-month').disabled = false;
+    document.getElementById('f-year').value = '';
+    document.getElementById('f-month').value = '';
+  }
+  document.getElementById('month-modal').classList.add('open');
+}
+function closeMonthForm() {
+  document.getElementById('month-modal').classList.remove('open');
+}
+function saveMonthForm() {
+  const y = parseInt(document.getElementById('f-year').value);
+  const m = parseInt(document.getElementById('f-month').value);
+  if (!y || !m || m<1 || m>12) { alert('請輸入正確的年份與月份'); return; }
+  const allFields = [...PLATFORM_FIELDS, ...AD_FIELDS];
+  const rec = {};
+  allFields.forEach(f => {
+    const el = document.getElementById('f-'+f);
+    const v = el ? parseFloat(el.value) : NaN;
+    if (!isNaN(v)) rec[f] = v;
+  });
+  const online = PLATFORM_FIELDS.filter(f => !['廠商','市集'].includes(f)).reduce((s,f)=>s+(rec[f]||0),0);
+  const offline = (rec['廠商']||0) + (rec['市集']||0) + (rec['酷澎_實際收款']||0) + (rec['酷澎商城']||0);
+  // note: keep raw fields; recompute standard aggregate fields for consistency with parsed historical data
+  rec['月平台總計_不含批發實體'] = PLATFORM_FIELDS.filter(f => !['廠商','市集','酷澎_實際收款','酷澎商城'].includes(f)).reduce((s,f)=>s+(rec[f]||0),0);
+  rec['實體批發總計'] = (rec['廠商']||0) + (rec['市集']||0) + (rec['酷澎_實際收款']||0) + (rec['酷澎商城']||0);
+  rec['各平台總計廣告費'] = AD_FIELDS.reduce((s,f)=>s+(rec[f]||0),0);
+  rec['總營業額'] = rec['月平台總計_不含批發實體'] + rec['實體批發總計'];
+
+  if (!DATA[y]) DATA[y] = {};
+  DATA[y][String(m)] = rec;
+  saveToStorage();
+  closeMonthForm();
+  initDashboard(true);
+}
+
+// ---------- init ----------
+function renderAll() {
+  renderSummary();
+  renderPlatformTable();
+  renderTrend();
+  renderMonthsTable();
+}
+
+function initDashboard(keepRange) {
+  const keys = allMonthKeys();
+  if (!keys.length) {
+    document.getElementById('upload-zone').style.display = '';
+    document.getElementById('dashboard').style.display = 'none';
+    return;
+  }
+  document.getElementById('upload-zone').style.display = 'none';
+  document.getElementById('dashboard').style.display = '';
+  document.getElementById('btn-add-month').style.display = '';
+  document.getElementById('btn-export').style.display = '';
+  document.getElementById('btn-reset').style.display = '';
+  if (!keepRange || !currentRange) {
+    buildRangeTabs();
+  } else {
+    renderAll();
+  }
+}
+
+// drag & drop
+const uz = document.getElementById('upload-zone');
+uz.addEventListener('dragover', e => { e.preventDefault(); uz.classList.add('drag-over'); });
+uz.addEventListener('dragleave', () => uz.classList.remove('drag-over'));
+uz.addEventListener('drop', e => {
+  e.preventDefault(); uz.classList.remove('drag-over');
+  if (e.dataTransfer.files.length) {
+    document.getElementById('file-input').files = e.dataTransfer.files;
+    handleFile({target:{files:e.dataTransfer.files}});
+  }
+});
+
+if (loadFromStorage()) initDashboard();
+</script>
+</body>
+</html>
