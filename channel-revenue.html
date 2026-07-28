@@ -87,7 +87,6 @@ table.data-table td:first-child{text-align:left;font-weight:500}
     <a class="nav-item" href="profit-calculator.html"><span class="icon">💰</span> 毛利試算機</a>
     <a class="nav-item" href="brand-sales.html"><span class="icon">📈</span> 品牌銷售分析</a>
     <a class="nav-item active" href="channel-revenue.html"><span class="icon">🛍️</span> 通路營收分析</a>
-    <a class="nav-item" href="brand-trend.html"><span class="icon">📊</span> 品牌趨勢分析</a>
   </div>
   <div class="sidebar-section">
     <div class="sidebar-label">市場分析</div>
@@ -244,8 +243,7 @@ table.data-table td:first-child{text-align:left;font-weight:500}
     <div class="form-grid">
       <div><label>年份</label><input type="number" id="f-year" placeholder="2026"></div>
       <div><label>月份(1-12)</label><input type="number" id="f-month" min="1" max="12" placeholder="7"></div>
-      <div class="full" style="border-top:1px solid var(--gray-200);margin:6px 0"></div>
-      <div><label>全蝦皮</label><input type="number" id="f-全蝦皮"></div>
+      <div class="full" style="border-top:1px solid var(--gray-200);margin:6px 0;color:#2563eb;font-size:12px;font-weight:600">線上通路</div>
       <div><label>LaLaV商城</label><input type="number" id="f-LaLaV商城"></div>
       <div><label>LaLaV一般</label><input type="number" id="f-LaLaV一般"></div>
       <div><label>寶媽</label><input type="number" id="f-寶媽"></div>
@@ -256,10 +254,11 @@ table.data-table td:first-child{text-align:left;font-weight:500}
       <div><label>家樂福商城</label><input type="number" id="f-家樂福商城"></div>
       <div><label>官網</label><input type="number" id="f-官網"></div>
       <div><label>LINE購物商城</label><input type="number" id="f-LINE購物商城"></div>
+      <div class="full" style="border-top:1px solid var(--gray-200);margin:6px 0;color:#d97706;font-size:12px;font-weight:600">實體/批發</div>
+      <div><label>廠商(批發)</label><input type="number" id="f-廠商"></div>
       <div><label>酷澎(實際收款)</label><input type="number" id="f-酷澎_實際收款"></div>
       <div><label>酷澎商城</label><input type="number" id="f-酷澎商城"></div>
       <div><label>市集</label><input type="number" id="f-市集"></div>
-      <div><label>廠商(批發)</label><input type="number" id="f-廠商"></div>
       <div class="full" style="border-top:1px solid var(--gray-200);margin:6px 0"></div>
       <div><label>FB廣告費</label><input type="number" id="f-FB廣告費"></div>
       <div><label>蝦皮站內廣告費</label><input type="number" id="f-蝦皮站內廣告費"></div>
@@ -276,11 +275,19 @@ table.data-table td:first-child{text-align:left;font-weight:500}
 
 <script>
 const STORAGE_KEY = 'feebit_channel_revenue_v1';
-const PLATFORM_FIELDS = ['全蝦皮','LaLaV商城','LaLaV一般','寶媽','桑爹','momo','mo店+','寶雅','家樂福商城','官網','LINE購物商城','酷澎_實際收款','酷澎商城','市集','廠商'];
+// 順序照 Jennifer 原始表單的欄位順序(2026分頁最新版本)排列
+// 注意:「全蝦皮」= LaLaV商城+LaLaV一般+桑爹 的小計,不是獨立通路,故不列入排行/加總,避免重複計算
+const PLATFORM_FIELDS = ['LaLaV商城','LaLaV一般','寶媽','桑爹','momo','mo店+','寶雅','家樂福商城','官網','LINE購物商城','廠商','酷澎_實際收款','酷澎商城','市集'];
 const PLATFORM_LABELS = {
-  '全蝦皮':'全蝦皮','LaLaV商城':'LaLaV商城','LaLaV一般':'LaLaV一般','寶媽':'寶媽','桑爹':'桑爹','momo':'momo',
+  '全蝦皮':'全蝦皮(=LaLaV商城+LaLaV一般+桑爹小計)','LaLaV商城':'LaLaV商城','LaLaV一般':'LaLaV一般','寶媽':'寶媽','桑爹':'桑爹','momo':'momo',
   'mo店+':'mo店+','寶雅':'寶雅','家樂福商城':'家樂福商城','官網':'官網','LINE購物商城':'LINE購物商城',
   '酷澎_實際收款':'酷澎(實際收款)','酷澎商城':'酷澎商城','市集':'市集','廠商':'廠商(批發)'
+};
+// 通路分類:線上(計入月平台總計) vs 實體/批發(計入實體批發總計),照 Jennifer 原始表單的分類方式
+const PLATFORM_CATEGORY = {
+  'LaLaV商城':'online','LaLaV一般':'online','寶媽':'online','桑爹':'online','momo':'online','mo店+':'online',
+  '寶雅':'online','家樂福商城':'online','官網':'online','LINE購物商城':'online',
+  '廠商':'offline','酷澎_實際收款':'offline','酷澎商城':'offline','市集':'offline'
 };
 const AD_FIELDS = ['FB廣告費','蝦皮站內廣告費','蝦皮聯盟行銷','MOMO廣告費','GOOGLE廣告費'];
 const BRAND_CAPABLE = ['LaLaV商城','LaLaV一般','寶媽','桑爹','momo','mo店+','寶雅','家樂福商城','官網'];
@@ -480,26 +487,35 @@ function renderSummary() {
 }
 
 // ---------- platform table ----------
+const CATEGORY_STYLE = {
+  online:  {color:'#2563eb', bg:'#dbeafe', label:'線上'},
+  offline: {color:'#d97706', bg:'#fef3c7', label:'實體/批發'},
+};
+
 function renderPlatformTable() {
   const keys = keysInRange(currentRange.from, currentRange.to);
-  const rows = PLATFORM_FIELDS.map(f => ({ field: f, label: PLATFORM_LABELS[f], value: sumField(keys, f) }))
-    .filter(r => r.value !== 0)
-    .sort((a,b) => b.value - a.value);
+  // 照 Jennifer 原始表單的欄位順序顯示(不依金額排序)
+  const rows = PLATFORM_FIELDS.map(f => ({ field: f, label: PLATFORM_LABELS[f], value: sumField(keys, f), cat: PLATFORM_CATEGORY[f] }))
+    .filter(r => r.value !== 0);
   const total = rows.reduce((s,r)=>s+r.value, 0);
-  const max = rows.length ? rows[0].value : 1;
+  const max = rows.length ? Math.max(...rows.map(r=>r.value)) : 1;
 
   const thead = document.querySelector('#platform-table thead');
   const tbody = document.querySelector('#platform-table tbody');
-  thead.innerHTML = `<tr><th>通路</th><th>營收</th><th>占比</th></tr>`;
-  tbody.innerHTML = rows.map(r => `
+  thead.innerHTML = `<tr><th>類別</th><th>通路</th><th>營收</th><th>占比</th></tr>`;
+  tbody.innerHTML = rows.map(r => {
+    const cs = CATEGORY_STYLE[r.cat] || {color:'#9ca3af', bg:'#f3f4f6', label:'-'};
+    return `
     <tr>
+      <td><span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;color:${cs.color};background:${cs.bg}">${cs.label}</span></td>
       <td>${r.label}</td>
       <td class="bar-cell">
-        <div class="bar-fill" style="width:${(r.value/max*100).toFixed(1)}%"></div>
+        <div class="bar-fill" style="width:${(r.value/max*100).toFixed(1)}%;background:${cs.bg}"></div>
         <span class="bar-text">NT$ ${fmt(r.value)}</span>
       </td>
       <td>${total ? pct(r.value/total) : '-'}</td>
-    </tr>`).join('') || `<tr><td colspan="3" class="empty-hint">此區間無資料</td></tr>`;
+    </tr>`;
+  }).join('') || `<tr><td colspan="4" class="empty-hint">此區間無資料</td></tr>`;
 }
 
 // ---------- trend chart ----------
@@ -534,17 +550,25 @@ function aggregateBrands(keys, platform) {
   });
   return Object.entries(totals).map(([name,value]) => ({name,value})).sort((a,b)=>b.value-a.value).slice(0,5);
 }
+function datasetHasAnyBrandData() {
+  return Object.values(DATA).some(yd => Object.values(yd).some(md => md && md.brands && Object.keys(md.brands).length));
+}
 function renderBrandTop5() {
   const keys = keysInRange(currentRange.from, currentRange.to);
   const platform = document.getElementById('brand-platform-select').value;
   const top5 = aggregateBrands(keys, platform);
-  const total = top5.reduce((s,r)=>s+r.value,0);
   const thead = document.querySelector('#brand-table thead');
   const tbody = document.querySelector('#brand-table tbody');
   thead.innerHTML = `<tr><th>排名</th><th>品牌</th><th>銷售額</th></tr>`;
-  tbody.innerHTML = top5.map((r,i) => `
-    <tr><td>${i+1}</td><td>${r.name}</td><td>NT$ ${fmt(r.value)}</td></tr>
-  `).join('') || `<tr><td colspan="3" class="empty-hint">此區間 / 此通路無品牌資料</td></tr>`;
+  if (top5.length) {
+    tbody.innerHTML = top5.map((r,i) => `
+      <tr><td>${i+1}</td><td>${r.name}</td><td>NT$ ${fmt(r.value)}</td></tr>
+    `).join('');
+  } else if (!datasetHasAnyBrandData()) {
+    tbody.innerHTML = `<tr><td colspan="3" class="empty-hint">目前瀏覽器裡的資料是舊版、沒有品牌明細。請按右上角「重新上傳」,匯入最新的 通路營收資料_2023-2026.json</td></tr>`;
+  } else {
+    tbody.innerHTML = `<tr><td colspan="3" class="empty-hint">此區間 / 此通路無品牌資料</td></tr>`;
+  }
 }
 
 // ---------- comparison ----------
@@ -567,7 +591,7 @@ function runCompare() {
     const av = sumField(earlierKeys, f), bv = sumField(laterKeys, f);
     const growth = av ? (bv-av)/av : null;
     return {label: PLATFORM_LABELS[f], av, bv, growth};
-  }).sort((x,y)=>y.bv-x.bv);
+  }); // 照原始表單欄位順序,不依金額排序
 
   const aTotal = totalOnline(earlierKeys)+totalOffline(earlierKeys);
   const bTotal = totalOnline(laterKeys)+totalOffline(laterKeys);
@@ -647,11 +671,9 @@ function saveMonthForm() {
     const v = el ? parseFloat(el.value) : NaN;
     if (!isNaN(v)) rec[f] = v;
   });
-  const online = PLATFORM_FIELDS.filter(f => !['廠商','市集'].includes(f)).reduce((s,f)=>s+(rec[f]||0),0);
-  const offline = (rec['廠商']||0) + (rec['市集']||0) + (rec['酷澎_實際收款']||0) + (rec['酷澎商城']||0);
-  // note: keep raw fields; recompute standard aggregate fields for consistency with parsed historical data
-  rec['月平台總計_不含批發實體'] = PLATFORM_FIELDS.filter(f => !['廠商','市集','酷澎_實際收款','酷澎商城'].includes(f)).reduce((s,f)=>s+(rec[f]||0),0);
-  rec['實體批發總計'] = (rec['廠商']||0) + (rec['市集']||0) + (rec['酷澎_實際收款']||0) + (rec['酷澎商城']||0);
+  // 依 PLATFORM_CATEGORY 分類重新計算總計,跟解析歷史資料的邏輯一致(全蝦皮不計入,避免與LaLaV商城/一般/桑爹重複)
+  rec['月平台總計_不含批發實體'] = PLATFORM_FIELDS.filter(f => PLATFORM_CATEGORY[f] === 'online').reduce((s,f)=>s+(rec[f]||0),0);
+  rec['實體批發總計'] = PLATFORM_FIELDS.filter(f => PLATFORM_CATEGORY[f] === 'offline').reduce((s,f)=>s+(rec[f]||0),0);
   rec['各平台總計廣告費'] = AD_FIELDS.reduce((s,f)=>s+(rec[f]||0),0);
   rec['總營業額'] = rec['月平台總計_不含批發實體'] + rec['實體批發總計'];
 
