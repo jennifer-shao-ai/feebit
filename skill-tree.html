@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>技能樹 · 飛比特營運工具箱</title>
+<link rel="icon" href="favicon.svg">
+<script>if(location.search.includes("share"))document.documentElement.classList.add("standalone");</script>
+<link rel="stylesheet" href="style.css">
+<style>
+.st-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.st-stat-card {
+  background: white;
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+}
+.st-stat-label {
+  font-size: 11px;
+  color: var(--gray-500);
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+.st-stat-value {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--primary);
+  line-height: 1.1;
+}
+.st-stat-sub { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+
+.st-search-bar {
+  background: white;
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.st-search-input {
+  flex: 1;
+  min-width: 160px;
+  border: 1px solid var(--gray-200);
+  border-radius: 6px;
+  padding: 7px 12px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.st-search-input:focus { border-color: var(--primary); }
+.st-filter-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.st-chip {
+  padding: 5px 11px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: all 0.15s;
+  background: var(--gray-100);
+  color: var(--gray-600);
+}
+.st-chip:hover { border-color: var(--gray-400); }
+.st-chip.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+.st-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gray-500);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin: 20px 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.st-section-title::after { content: ''; flex: 1; height: 1px; background: var(--gray-200); }
+.st-section-count { font-size: 10px; font-weight: 500; color: var(--gray-400); text-transform: none; letter-spacing: 0; }
+
+.st-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.skill-card {
+  background: white;
+  border-radius: var(--radius);
+  padding: 14px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+  border: 1.5px solid transparent;
+  transition: all 0.15s;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.skill-card:hover { border-color: var(--primary); box-shadow: 0 4px 12px rgba(37,99,235,0.1); transform: translateY(-1px); }
+.skill-card.no-link:hover { transform: none; border-color: var(--gray-200); box-shadow: 0 1px 3px rgba(0,0,0,0.07); }
+.skill-card.clickable:hover { border-color: #7c3aed; box-shadow: 0 4px 12px rgba(124,58,237,0.12); transform: translateY(-1px); }
+
+.skill-card-top { display: flex; align-items: flex-start; justify-content: space-between; }
+.skill-card-icon {
+  width: 36px; height: 36px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.skill-card-version {
+  font-size: 10px; color: var(--gray-400); font-weight: 500;
+  background: var(--gray-100); padding: 2px 6px; border-radius: 4px; white-space: nowrap;
+}
+.skill-card-name { font-size: 13px; font-weight: 700; color: var(--gray-800); line-height: 1.3; }
+.skill-card-tag {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px; border-radius: 10px;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.3px; width: fit-content;
+}
+.skill-card-desc { font-size: 11px; color: var(--gray-600); line-height: 1.5; flex: 1; }
+.skill-card-action { font-size: 10px; font-weight: 600; display: flex; align-items: center; gap: 3px; margin-top: 2px; }
+
+/* Tag & icon colours */
+.tag-財務帳務 { background:#dbeafe; color:#1d4ed8; }
+.tag-庫存管理 { background:#dcfce7; color:#15803d; }
+.tag-電商銷售 { background:#fef9c3; color:#a16207; }
+.tag-研發法規 { background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; }
+.tag-人事行政 { background:#fef3c7; color:#b45309; }
+.tag-AI-Skill  { background:#ede9fe; color:#6d28d9; }
+.tag-自動化   { background:#cffafe; color:#0e7490; }
+.tag-系統     { background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; }
+.tag-生活     { background:#fce7f3; color:#9d174d; }
+
+.icon-財務帳務 { background:#dbeafe; }
+.icon-庫存管理 { background:#dcfce7; }
+.icon-電商銷售 { background:#fef9c3; }
+.icon-研發法規 { background:#f0fdf4; }
+.icon-人事行政 { background:#fef3c7; }
+.icon-AI-Skill  { background:#ede9fe; }
+.icon-自動化   { background:#cffafe; }
+.icon-系統     { background:#f1f5f9; }
+.icon-生活     { background:#fce7f3; }
+
+.action-go   { color: var(--primary); }
+.action-cmd  { color: #7c3aed; }
+.action-info { color: var(--gray-400); }
+
+.st-empty { text-align:center; padding:60px 20px; color:var(--gray-400); }
+.st-empty-icon { font-size:40px; margin-bottom:12px; }
+.st-empty-text { font-size:14px; }
+
+/* Modal */
+.st-modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.35); z-index: 200;
+  align-items: center; justify-content: center;
+}
+.st-modal-overlay.show { display: flex; }
+.st-modal {
+  background: white; border-radius: 12px; padding: 24px; width: 340px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+.st-modal-icon { font-size: 36px; margin-bottom: 8px; }
+.st-modal-name { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+.st-modal-tag  { margin-bottom: 12px; }
+.st-modal-desc { font-size: 13px; color: var(--gray-600); margin-bottom: 16px; line-height: 1.6; }
+.st-modal-cmd {
+  background: var(--gray-800); color: #a5f3fc;
+  font-family: monospace; font-size: 16px;
+  padding: 12px 16px; border-radius: 8px; margin-bottom: 12px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.st-copy-btn {
+  background: transparent; border: none; cursor: pointer;
+  font-size: 14px; color: var(--gray-400); padding: 4px;
+}
+.st-copy-btn:hover { color: white; }
+.st-modal-close {
+  width: 100%; padding: 9px;
+  border: 1px solid var(--gray-200); border-radius: 6px;
+  background: white; font-size: 13px; cursor: pointer;
+  color: var(--gray-600); font-weight: 500;
+}
+.st-modal-close:hover { background: var(--gray-100); }
+
+@media (max-width: 640px) {
+  .st-stats { grid-template-columns: repeat(3,1fr); gap: 8px; }
+  .st-stat-value { font-size: 20px; }
+  .st-grid { grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); }
+}
+</style>
+</head>
+<body>
+<div id="sidebar">
+  <div class="sidebar-logo"><div class="brand">飛比特 Feebit</div><div class="sub">營運工具箱</div></div>
+  <div class="sidebar-section"><div class="sidebar-label">總覽</div><a class="nav-item" href="index.html"><span class="icon">🏠</span> 首頁</a></div>
+  <div class="sidebar-section"><div class="sidebar-label">財務</div>
+    <a class="nav-item" href="bank-converter.html"><span class="icon">🏦</span> 帳務轉換</a>
+    <a class="nav-item" href="accounting-ops.html"><span class="icon">📅</span> 例行帳務作業</a>
+    <a class="nav-item" href="finance-dashboard.html"><span class="icon">📊</span> 帳務分析</a>
+    <a class="nav-item" href="coupang-invoice.html"><span class="icon">🧾</span> 酷澎發票轉檔</a>
+    <a class="nav-item" href="coupang-reconcile.html"><span class="icon">🔍</span> 酷澎商城對帳</a>
+    <a class="nav-item" href="shopee-subsidy.html"><span class="icon">🚚</span> 蝦皮運費補助申請</a>
+    <a class="nav-item" href="shopee-converter.html"><span class="icon">🛒</span> 蝦皮撥款轉換</a>
+    <a class="nav-item" href="profit-calculator.html"><span class="icon">💰</span> 毛利試算機</a>
+    <a class="nav-item" href="brand-sales.html"><span class="icon">📈</span> 品牌銷售分析</a>
+    <a class="nav-item" href="channel-revenue.html"><span class="icon">🛍️</span> 通路營收分析</a>
+  </div>
+  <div class="sidebar-section"><div class="sidebar-label">市場分析</div><a class="nav-item" href="market-tracker.html"><span class="icon">🔭</span> 品類競品分析</a></div>
+  <div class="sidebar-section"><div class="sidebar-label">行銷</div><div class="nav-item soon"><span class="icon">📢</span> 廣告文案<span class="soon-tag">即將推出</span></div></div>
+  <div class="sidebar-section"><div class="sidebar-label">客服</div><div class="nav-item soon"><span class="icon">💬</span> 客服回覆<span class="soon-tag">即將推出</span></div></div>
+  <div class="sidebar-section"><div class="sidebar-label">業務</div>
+    <a class="nav-item" href="purchase-order.html"><span class="icon">📄</span> 採購單轉換</a>
+    <div class="nav-item soon"><span class="icon">🤝</span> 廠商談判<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sidebar-section"><div class="sidebar-label">人事</div><a class="nav-item" href="attendance.html"><span class="icon">🗓️</span> 考勤查驗</a></div>
+  <div class="sidebar-section"><div class="sidebar-label">庫存</div>
+    <a class="nav-item" href="stock-analysis.html"><span class="icon">📦</span> 庫存訂貨分析</a>
+    <a class="nav-item" href="slow-mover-alert.html"><span class="icon">🔴</span> 滯銷品警示</a>
+    <a class="nav-item" href="feebit-inventory-filter.html"><span class="icon">🏪</span> 商品篩選工具</a>
+    <a class="nav-item" href="reorder-suggestions.html"><span class="icon">🔄</span> 庫存訂貨建議</a>
+  </div>
+  <div class="sidebar-section"><div class="sidebar-label">研發</div><a class="nav-item" href="research-notes.html"><span class="icon">📚</span> 研發筆記</a></div>
+  <div class="sidebar-section"><div class="sidebar-label">法規</div>
+    <a class="nav-item" href="fda-registration.html"><span class="icon">🧪</span> 化粧品登錄</a>
+    <a class="nav-item" href="http://127.0.0.1:5050" target="_blank"><span class="icon">📋</span> PIF Builder</a>
+  </div>
+  <div class="sidebar-section"><div class="sidebar-label">生活</div><a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span> 旅行規劃</a></div>
+  <div class="sidebar-section"><div class="sidebar-label">系統</div>
+    <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
+    <a class="nav-item active" href="skill-tree.html"><span class="icon">🌳</span> 技能樹</a>
+  </div>
+  <div class="sidebar-footer">v1.0 · Feebit © 2026</div>
+</div>
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<div id="main">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="btn-hamburger" onclick="openSidebar()">☰</button>
+      <span class="topbar-title">技能樹</span>
+      <span class="topbar-badge">工具總覽</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:4px">v1.0</span>
+    </div>
+  </div>
+  <div class="page">
+    <div class="st-stats" id="st-stats"></div>
+    <div class="st-search-bar">
+      <input class="st-search-input" id="st-search" type="text" placeholder="🔍  搜尋工具名稱或說明…" oninput="render()">
+      <div class="st-filter-chips" id="st-chips"></div>
+    </div>
+    <div id="st-content"></div>
+    <div class="st-empty" id="st-empty" style="display:none">
+      <div class="st-empty-icon">🔍</div>
+      <div class="st-empty-text">找不到符合的工具</div>
+    </div>
+  </div>
+</div>
+
+<!-- Claude Skill Modal -->
+<div class="st-modal-overlay" id="st-modal" onclick="closeModal(event)">
+  <div class="st-modal">
+    <div class="st-modal-icon" id="modal-icon"></div>
+    <div class="st-modal-name" id="modal-name"></div>
+    <div class="st-modal-tag"  id="modal-tag"></div>
+    <div class="st-modal-desc" id="modal-desc"></div>
+    <div class="st-modal-cmd">
+      <span id="modal-cmd"></span>
+      <button class="st-copy-btn" onclick="copyCmd()" title="複製指令">📋</button>
+    </div>
+    <button class="st-modal-close" onclick="document.getElementById('st-modal').classList.remove('show')">關閉</button>
+  </div>
+</div>
+
+<script>
+const SKILLS = [
+  // ── 財務帳務 ──
+  { icon:'🏦', name:'帳務轉換',         cat:'財務帳務', ver:'v2.4', desc:'彰化銀行交易明細轉 Ragic 格式，支援拆帳與手動分類', url:'bank-converter.html' },
+  { icon:'📅', name:'例行帳務作業',     cat:'財務帳務', ver:'v3.3', desc:'日常帳務處理流程，定期對帳與結帳作業', url:'accounting-ops.html' },
+  { icon:'📊', name:'帳務分析',         cat:'財務帳務', ver:'v2.3', desc:'財務報表視覺化，月收支趨勢與年度淨利圖表', url:'finance-dashboard.html' },
+  { icon:'💰', name:'毛利試算機',       cat:'財務帳務', ver:'v1.8', desc:'輸入成本與售價，即時計算毛利率與建議定價', url:'profit-calculator.html' },
+  { icon:'📄', name:'採購單轉換',       cat:'財務帳務', ver:'v1.0', desc:'採購單格式轉換，快速匯出供廠商確認', url:'purchase-order.html' },
+  { icon:'🧾', name:'酷澎發票轉檔',     cat:'財務帳務', ver:'v1.0', desc:'酷澎發票 Excel 解析與重新整理匯出', url:'coupang-invoice.html' },
+  { icon:'🔍', name:'酷澎商城對帳',     cat:'財務帳務', ver:'v1.0', desc:'酷澎帳款明細核對，快速找出差異', url:'coupang-reconcile.html' },
+  { icon:'🛒', name:'蝦皮撥款轉換',     cat:'財務帳務', ver:'v1.0', desc:'蝦皮撥款明細格式轉換，對應 Ragic 帳務分類', url:'shopee-converter.html' },
+  { icon:'🚚', name:'蝦皮運費補助申請', cat:'財務帳務', ver:'v1.1', desc:'蝦皮補助申請自動整理，減少手動填表時間', url:'shopee-subsidy.html' },
+  // ── 庫存管理 ──
+  { icon:'📦', name:'庫存訂貨分析',     cat:'庫存管理', ver:'v2.5', desc:'庫存週轉率分析、訂貨建議與安全庫存計算', url:'stock-analysis.html' },
+  { icon:'🔴', name:'滯銷品警示',       cat:'庫存管理', ver:'v1.0', desc:'自動偵測超過預設天數未售出的商品並產生警示', url:'slow-mover-alert.html' },
+  { icon:'🏪', name:'商品篩選工具',     cat:'庫存管理', ver:'v2.0', desc:'多條件篩選商品清單，快速定位特定商品', url:'feebit-inventory-filter.html' },
+  { icon:'🔄', name:'庫存訂貨建議',     cat:'庫存管理', ver:'—',    desc:'依銷售速度與現有庫存自動產生訂貨建議清單', url:'reorder-suggestions.html' },
+  { icon:'🤖', name:'庫存自動核對',     cat:'庫存管理', ver:'GAS',  desc:'每日 17:00 自動同步 Ragic 效期批次，發送 HTML 日報', url:null, info:'Google Apps Script · 綁定 Sheet: 庫存核對' },
+  // ── 電商銷售 ──
+  { icon:'📈', name:'品牌銷售分析', cat:'電商銷售', ver:'—',   desc:'各品牌銷售數字彙整與走勢分析', url:'brand-sales.html' },
+  { icon:'🔭', name:'品類競品分析', cat:'電商銷售', ver:'—',   desc:'追蹤蝦皮競品動態，分析市場定位與價格帶', url:'market-tracker.html' },
+  // ── 研發法規 ──
+  { icon:'📚', name:'研發筆記',   cat:'研發法規', ver:'v2.4', desc:'YouTube 字幕擷取、OCR 圖片辨識轉筆記，後端 Supabase', url:'research-notes.html' },
+  { icon:'🧪', name:'化粧品登錄', cat:'研發法規', ver:'—',    desc:'化粧品衛福部登錄作業管理', url:'fda-registration.html' },
+  { icon:'📋', name:'PIF Builder', cat:'研發法規', ver:'—',   desc:'化粧品 PIF 產品資訊檔案建置，本機 5050 port 運行', url:'http://127.0.0.1:5050', ext:true },
+  // ── 人事行政 ──
+  { icon:'🗓️', name:'考勤查驗', cat:'人事行政', ver:'v2.6', desc:'員工出勤記錄查驗與異常標記', url:'attendance.html' },
+  // ── AI Skill ──
+  { icon:'💬', name:'/cs-reply',      cat:'AI Skill', ver:'skill', desc:'客服回覆產生器，依情境產出溫和但不退讓的回覆草稿', cmd:'/cs-reply' },
+  { icon:'📋', name:'/daily-review',  cat:'AI Skill', ver:'skill', desc:'每日營運狀況整理，串接行事曆與 Asana 待辦', cmd:'/daily-review' },
+  { icon:'⚖️', name:'/law-review',    cat:'AI Skill', ver:'skill', desc:'台灣美妝食品法規審核，逐條比對違規疑慮', cmd:'/law-review' },
+  { icon:'📂', name:'/pif-builder',   cat:'AI Skill', ver:'skill', desc:'化粧品 PIF 產品資訊檔案建置，自動產出符合格式的文件', cmd:'/pif-builder' },
+  { icon:'🚀', name:'/github-tool',   cat:'AI Skill', ver:'skill', desc:'部署工具到飛比特儀表板，確認結構後推送 GitHub', cmd:'/github-tool' },
+  { icon:'🔎', name:'/github-review', cat:'AI Skill', ver:'skill', desc:'GitHub 頁面審查，部署前確認頁面正確性', cmd:'/github-review' },
+  { icon:'💾', name:'/tool-save',     cat:'AI Skill', ver:'skill', desc:'儲存新工具記錄到 TOOLS.md 工具目錄', cmd:'/tool-save' },
+  { icon:'🔧', name:'/tool',          cat:'AI Skill', ver:'skill', desc:'查找並載入工具詳細資料，開始工具相關任務', cmd:'/tool' },
+  // ── 自動化 ──
+  { icon:'🟢', name:'供應商建檔 LINE Bot',    cat:'自動化', ver:'Worker', desc:'展場掃名片 → Claude 辨識 → 自動建 Ragic 供應商記錄', url:null, info:'Cloudflare Worker · feebit-line-bot.esuse-adobe.workers.dev' },
+  { icon:'🛍️', name:'淘寶訂單匯出外掛',      cat:'自動化', ver:'外掛',   desc:'Chrome 外掛一鍵抓取淘寶訂單，自動翻頁並送至 Apps Script', url:null, info:'Chrome Extension · ~/Desktop/淘寶訂單匯出/' },
+  { icon:'📊', name:'淘寶訂單 Apps Script',   cat:'自動化', ver:'GAS',    desc:'接收 Chrome 外掛資料，自動建 Google Sheet（含商品縮圖）', url:null, info:'Google Apps Script · Deploy: AKfycbx0…' },
+  { icon:'⏰', name:'Supabase 保活排程',      cat:'自動化', ver:'排程',   desc:'每 6 天自動呼叫 Supabase API，避免 free tier 7 天暫停', url:null, info:'Cloud Routine · Trigger: trig_014e4GNd…' },
+  // ── 系統 ──
+  { icon:'🏠', name:'首頁',     cat:'系統', ver:'v3.0', desc:'飛比特營運工具箱入口，所有工具快速導覽', url:'index.html' },
+  { icon:'🔧', name:'使用工具', cat:'系統', ver:'v1.1', desc:'外部平台與後台連結總覽，點擊前往各系統', url:'tools.html' },
+  { icon:'🌳', name:'技能樹',   cat:'系統', ver:'v1.0', desc:'飛比特所有工具與技能可視化總覽，含版本與說明', url:'skill-tree.html' },
+  // ── 生活 ──
+  { icon:'✈️', name:'旅行規劃', cat:'生活', ver:'v4.4', desc:'旅行行程協作規劃，Firebase 即時同步，多瀏覽器共用', url:'travel-planner.html' },
+];
+
+const CATS = ['全部', ...new Set(SKILLS.map(s => s.cat))];
+let activeFilter = '全部';
+
+function ck(cat) { return cat.replace(/\s/g, '-'); }
+
+// Build filter chips
+const chipsEl = document.getElementById('st-chips');
+CATS.forEach(c => {
+  const el = document.createElement('span');
+  el.className = 'st-chip' + (c === '全部' ? ' active' : '');
+  el.textContent = c;
+  el.onclick = () => {
+    activeFilter = c;
+    document.querySelectorAll('.st-chip').forEach(ch => ch.classList.remove('active'));
+    el.classList.add('active');
+    render();
+  };
+  chipsEl.appendChild(el);
+});
+
+function renderStats(data) {
+  const cats = new Set(data.map(s => s.cat)).size;
+  const verCount = data.filter(s => s.ver && s.ver.startsWith('v')).length;
+  document.getElementById('st-stats').innerHTML = `
+    <div class="st-stat-card">
+      <div class="st-stat-label">🗂️ 工具總數</div>
+      <div class="st-stat-value">${data.length}</div>
+      <div class="st-stat-sub">飛比特全部工具</div>
+    </div>
+    <div class="st-stat-card">
+      <div class="st-stat-label">📁 工具分類</div>
+      <div class="st-stat-value">${cats}</div>
+      <div class="st-stat-sub">業務功能分類</div>
+    </div>
+    <div class="st-stat-card">
+      <div class="st-stat-label">🏷️ 有版號工具</div>
+      <div class="st-stat-value">${verCount}</div>
+      <div class="st-stat-sub">儀表板 HTML 工具</div>
+    </div>
+  `;
+}
+
+function render() {
+  const q = document.getElementById('st-search').value.trim().toLowerCase();
+  let data = SKILLS;
+  if (activeFilter !== '全部') data = data.filter(s => s.cat === activeFilter);
+  if (q) data = data.filter(s =>
+    s.name.toLowerCase().includes(q) ||
+    s.desc.toLowerCase().includes(q) ||
+    s.cat.toLowerCase().includes(q)
+  );
+
+  renderStats(data);
+
+  const content = document.getElementById('st-content');
+  const empty   = document.getElementById('st-empty');
+  if (data.length === 0) { content.innerHTML = ''; empty.style.display = ''; return; }
+  empty.style.display = 'none';
+
+  const groups = {};
+  data.forEach(s => { if (!groups[s.cat]) groups[s.cat] = []; groups[s.cat].push(s); });
+
+  let html = '';
+  Object.entries(groups).forEach(([cat, skills]) => {
+    html += `<div class="st-section-title">${cat} <span class="st-section-count">${skills.length} 項</span></div><div class="st-grid">`;
+    skills.forEach(s => {
+      const key = ck(s.cat);
+      if (s.cmd) {
+        const idx = SKILLS.indexOf(s);
+        html += `<div class="skill-card clickable" onclick="openModal(${idx})">`;
+      } else if (s.url) {
+        const tgt = s.ext ? ' target="_blank" rel="noopener"' : '';
+        html += `<a class="skill-card" href="${s.url}"${tgt}>`;
+      } else {
+        html += `<div class="skill-card no-link">`;
+      }
+      html += `
+        <div class="skill-card-top">
+          <div class="skill-card-icon icon-${key}">${s.icon}</div>
+          <span class="skill-card-version">${s.ver}</span>
+        </div>
+        <div class="skill-card-name">${s.name}</div>
+        <span class="skill-card-tag tag-${key}">${s.cat}</span>
+        <div class="skill-card-desc">${s.desc}</div>
+      `;
+      if (s.cmd)       html += `<div class="skill-card-action action-cmd">⌨️ 點擊查看指令</div>`;
+      else if (s.url)  html += `<div class="skill-card-action action-go">前往 →</div>`;
+      else if (s.info) html += `<div class="skill-card-action action-info">ℹ️ 外部服務</div>`;
+      html += s.url ? `</a>` : `</div>`;
+    });
+    html += `</div>`;
+  });
+  content.innerHTML = html;
+}
+
+function openModal(idx) {
+  const s = SKILLS[idx];
+  const key = ck(s.cat);
+  document.getElementById('modal-icon').textContent = s.icon;
+  document.getElementById('modal-name').textContent = s.name;
+  document.getElementById('modal-tag').innerHTML = `<span class="skill-card-tag tag-${key}">${s.cat}</span>`;
+  document.getElementById('modal-desc').textContent = s.desc;
+  document.getElementById('modal-cmd').textContent = s.cmd;
+  document.getElementById('st-modal').classList.add('show');
+}
+function closeModal(e) {
+  if (e.target === document.getElementById('st-modal'))
+    document.getElementById('st-modal').classList.remove('show');
+}
+function copyCmd() {
+  navigator.clipboard.writeText(document.getElementById('modal-cmd').textContent).then(() => {
+    const btn = document.querySelector('.st-copy-btn');
+    btn.textContent = '✅';
+    setTimeout(() => btn.textContent = '📋', 1500);
+  });
+}
+
+render();
+</script>
+<script>
+function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-overlay').classList.add('show'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('show'); }
+</script>
+</body>
+</html>
