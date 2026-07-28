@@ -333,10 +333,13 @@ function getYMPicker(containerId) {
 function initAllPickers() {
   const keys = allMonthKeys();
   const now = new Date();
+  const latestDataKey = keys.length ? keys[keys.length-1] : ymKey(now.getFullYear(), now.getMonth()+1);
   const dataMinYear = keys.length ? parseInt(keys[0].split('-')[0]) : now.getFullYear() - 2;
   const dataMaxYear = Math.max(now.getFullYear() + 1, keys.length ? parseInt(keys[keys.length-1].split('-')[0]) : now.getFullYear());
+  // 下拉選單一律先預設在「資料裡最新的年月」，而不是瀏覽器預設的第一個選項(最早年份)
   ['custom-from-picker','custom-to-picker','cmp-a-from-picker','cmp-a-to-picker','cmp-b-from-picker','cmp-b-to-picker'].forEach(id => {
     buildYMPicker(id, dataMinYear, dataMaxYear);
+    setYMPicker(id, latestDataKey);
   });
 }
 
