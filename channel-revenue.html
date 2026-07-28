@@ -59,6 +59,8 @@ table.data-table td:first-child{text-align:left;font-weight:500}
 .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
 .empty-hint{color:var(--gray-500);font-size:13px;text-align:center;padding:24px}
 .small-note{font-size:11px;color:var(--gray-500);margin-top:6px}
+.ym-picker{display:inline-flex;gap:4px}
+.ym-picker select{padding:6px 8px;border:1px solid var(--gray-200);border-radius:var(--radius);font-size:13px;background:white}
 </style>
 </head>
 <body>
@@ -168,9 +170,9 @@ table.data-table td:first-child{text-align:left;font-weight:500}
       <div class="range-label" id="range-label"></div>
       <div class="custom-filter">
         <label>自訂區間:</label>
-        <input type="month" id="custom-from">
+        <span class="ym-picker" id="custom-from-picker"></span>
         <span>至</span>
-        <input type="month" id="custom-to">
+        <span class="ym-picker" id="custom-to-picker"></span>
         <button class="btn btn-outline" onclick="applyCustomRange()">套用</button>
         <button class="btn btn-ghost" onclick="clearCustomRange()">清除</button>
       </div>
@@ -184,6 +186,15 @@ table.data-table td:first-child{text-align:left;font-weight:500}
         <table class="data-table" id="platform-table"><thead></thead><tbody></tbody></table>
       </div>
 
+      <!-- BRAND TOP5 -->
+      <div class="card">
+        <div class="chart-header">
+          <h3>品牌Top5(依選定區間彙總)</h3>
+          <select id="brand-platform-select" onchange="renderBrandTop5()" style="padding:6px 10px;border:1px solid var(--gray-200);border-radius:var(--radius);font-size:13px"></select>
+        </div>
+        <table class="data-table" id="brand-table"><thead></thead><tbody></tbody></table>
+      </div>
+
       <!-- TREND CHART -->
       <div class="card">
         <h3>月營收趨勢</h3>
@@ -193,17 +204,18 @@ table.data-table td:first-child{text-align:left;font-weight:500}
       <!-- COMPARISON -->
       <div class="card">
         <h3>區間對比</h3>
+        <div class="small-note" style="margin-bottom:10px">不用管填在哪一格,系統會自動用較早的期間當基準計算成長率</div>
         <div class="compare-row">
           <div class="compare-period">
-            <label>期間 A</label>
+            <label>期間 1</label>
             <div class="compare-period-inputs">
-              <input type="month" id="cmp-a-from"><span>至</span><input type="month" id="cmp-a-to">
+              <span class="ym-picker" id="cmp-a-from-picker"></span><span>至</span><span class="ym-picker" id="cmp-a-to-picker"></span>
             </div>
           </div>
           <div class="compare-period">
-            <label>期間 B</label>
+            <label>期間 2</label>
             <div class="compare-period-inputs">
-              <input type="month" id="cmp-b-from"><span>至</span><input type="month" id="cmp-b-to">
+              <span class="ym-picker" id="cmp-b-from-picker"></span><span>至</span><span class="ym-picker" id="cmp-b-to-picker"></span>
             </div>
           </div>
           <button class="btn btn-primary" onclick="runCompare()">開始對比</button>
@@ -270,10 +282,42 @@ const PLATFORM_LABELS = {
   '酷澎_實際收款':'酷澎(實際收款)','酷澎商城':'酷澎商城','市集':'市集','廠商':'廠商(批發)'
 };
 const AD_FIELDS = ['FB廣告費','蝦皮站內廣告費','蝦皮聯盟行銷','MOMO廣告費','GOOGLE廣告費'];
+const BRAND_CAPABLE = ['LaLaV商城','LaLaV一般','寶媽','桑爹','momo','mo店+','寶雅','家樂福商城','官網'];
 
 let DATA = {}; // { "2026": { "1": {...}, "2": {...} } }
 let currentRange = null; // {from:'2026-01', to:'2026-06'}
 let chart = null;
+
+// ---------- year/month picker (replaces native <input type=month>, which is clunky) ----------
+function buildYMPicker(containerId, minYear, maxYear) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = `<select class="ym-y"></select><select class="ym-m"></select>`;
+  const ySel = el.querySelector('.ym-y'), mSel = el.querySelector('.ym-m');
+  for (let y = minYear; y <= maxYear; y++) ySel.innerHTML += `<option value="${y}">${y}年</option>`;
+  for (let m = 1; m <= 12; m++) mSel.innerHTML += `<option value="${m}">${m}月</option>`;
+  return el;
+}
+function setYMPicker(containerId, ymKey) {
+  const [y, m] = ymKey.split('-').map(Number);
+  const el = document.getElementById(containerId);
+  el.querySelector('.ym-y').value = y;
+  el.querySelector('.ym-m').value = m;
+}
+function getYMPicker(containerId) {
+  const el = document.getElementById(containerId);
+  const y = el.querySelector('.ym-y').value;
+  const m = el.querySelector('.ym-m').value;
+  return `${y}-${String(m).padStart(2,'0')}`;
+}
+function initAllPickers() {
+  const keys = allMonthKeys();
+  const now = new Date();
+  const dataMinYear = keys.length ? parseInt(keys[0].split('-')[0]) : now.getFullYear() - 2;
+  const dataMaxYear = Math.max(now.getFullYear() + 1, keys.length ? parseInt(keys[keys.length-1].split('-')[0]) : now.getFullYear());
+  ['custom-from-picker','custom-to-picker','cmp-a-from-picker','cmp-a-to-picker','cmp-b-from-picker','cmp-b-to-picker'].forEach(id => {
+    buildYMPicker(id, dataMinYear, dataMaxYear);
+  });
+}
 
 function loadFromStorage() {
   const raw = localStorage.getItem(STORAGE_KEY);
@@ -360,29 +404,33 @@ function shiftMonth(y,m,delta){ let idx = y*12+(m-1)+delta; return [Math.floor(i
 function buildRangeTabs() {
   const keys = allMonthKeys();
   if (!keys.length) return;
+  // "本月/上月/本季/今年/去年同期" 一律用今天的實際日期計算,不是資料裡最後一筆月份
+  const now = new Date();
+  const ty = now.getFullYear(), tm = now.getMonth() + 1;
   const lastKey = keys[keys.length-1];
-  const [ly, lm] = lastKey.split('-').map(Number);
   const presets = [
-    {label:'本月', from: ymKey(ly,lm), to: ymKey(ly,lm)},
-    {label:'上月', ...(() => { const [y,m]=shiftMonth(ly,lm,-1); return {from:ymKey(y,m), to:ymKey(y,m)}; })()},
-    {label:'本季', ...(() => { const qStart = Math.floor((lm-1)/3)*3+1; return {from:ymKey(ly,qStart), to:ymKey(ly,lm)}; })()},
-    {label:'上半年', from: ymKey(ly,1), to: ymKey(ly, Math.min(6,lm))},
-    {label:'今年', from: ymKey(ly,1), to: ymKey(ly,lm)},
-    {label:'去年同期', from: ymKey(ly-1,1), to: ymKey(ly-1,lm)},
+    {label:'本月', from: ymKey(ty,tm), to: ymKey(ty,tm)},
+    {label:'上月', ...(() => { const [y,m]=shiftMonth(ty,tm,-1); return {from:ymKey(y,m), to:ymKey(y,m)}; })()},
+    {label:'本季', ...(() => { const qStart = Math.floor((tm-1)/3)*3+1; return {from:ymKey(ty,qStart), to:ymKey(ty,tm)}; })()},
+    {label:'上半年', from: ymKey(ty,1), to: ymKey(ty, Math.min(6,tm))},
+    {label:'今年', from: ymKey(ty,1), to: ymKey(ty,tm)},
+    {label:'去年同期', from: ymKey(ty-1,1), to: ymKey(ty-1,tm)},
     {label:'全部', from: keys[0], to: lastKey},
   ];
   const wrap = document.getElementById('range-tabs');
   wrap.innerHTML = '';
   presets.forEach((p,i) => {
     const btn = document.createElement('button');
-    btn.className = 'range-tab' + (i===4 ? ' active' : '');
+    btn.className = 'range-tab';
     btn.textContent = p.label;
     btn.onclick = () => selectRange(p.from, p.to, btn);
     wrap.appendChild(btn);
   });
-  // default: 今年
-  const def = presets[4];
-  selectRange(def.from, def.to, wrap.children[4]);
+  // default: 有資料的話優先顯示「本月」,若本月完全沒資料則退回「全部」
+  const hasThisMonth = keys.includes(ymKey(ty,tm));
+  const defIdx = hasThisMonth ? 0 : 6;
+  const def = presets[defIdx];
+  selectRange(def.from, def.to, wrap.children[defIdx]);
 }
 
 function selectRange(from, to, btnEl) {
@@ -390,14 +438,14 @@ function selectRange(from, to, btnEl) {
   document.querySelectorAll('.range-tab').forEach(b => b.classList.remove('active'));
   if (btnEl) btnEl.classList.add('active');
   document.getElementById('range-label').textContent = `篩選中: ${from} ~ ${to}`;
-  document.getElementById('custom-from').value = from;
-  document.getElementById('custom-to').value = to;
+  setYMPicker('custom-from-picker', from);
+  setYMPicker('custom-to-picker', to);
   renderAll();
 }
 function applyCustomRange() {
-  const from = document.getElementById('custom-from').value;
-  const to = document.getElementById('custom-to').value;
-  if (!from || !to) { alert('請選擇起訖月份'); return; }
+  const from = getYMPicker('custom-from-picker');
+  const to = getYMPicker('custom-to-picker');
+  if (from > to) { alert('起始月份不能晚於結束月份'); return; }
   selectRange(from, to, null);
 }
 function clearCustomRange() {
@@ -470,25 +518,58 @@ function renderTrend() {
   });
 }
 
+// ---------- brand top5 ----------
+function initBrandPlatformSelect() {
+  const sel = document.getElementById('brand-platform-select');
+  sel.innerHTML = BRAND_CAPABLE.map(f => `<option value="${f}">${PLATFORM_LABELS[f]}</option>`).join('');
+}
+function aggregateBrands(keys, platform) {
+  const totals = {};
+  keys.forEach(k => {
+    const d = monthData(k);
+    const list = d && d.brands && d.brands[platform];
+    if (!list) return;
+    list.forEach(item => { totals[item.name] = (totals[item.name]||0) + item.value; });
+  });
+  return Object.entries(totals).map(([name,value]) => ({name,value})).sort((a,b)=>b.value-a.value).slice(0,5);
+}
+function renderBrandTop5() {
+  const keys = keysInRange(currentRange.from, currentRange.to);
+  const platform = document.getElementById('brand-platform-select').value;
+  const top5 = aggregateBrands(keys, platform);
+  const total = top5.reduce((s,r)=>s+r.value,0);
+  const thead = document.querySelector('#brand-table thead');
+  const tbody = document.querySelector('#brand-table tbody');
+  thead.innerHTML = `<tr><th>排名</th><th>品牌</th><th>銷售額</th></tr>`;
+  tbody.innerHTML = top5.map((r,i) => `
+    <tr><td>${i+1}</td><td>${r.name}</td><td>NT$ ${fmt(r.value)}</td></tr>
+  `).join('') || `<tr><td colspan="3" class="empty-hint">此區間 / 此通路無品牌資料</td></tr>`;
+}
+
 // ---------- comparison ----------
 function runCompare() {
-  const aFrom = document.getElementById('cmp-a-from').value, aTo = document.getElementById('cmp-a-to').value;
-  const bFrom = document.getElementById('cmp-b-from').value, bTo = document.getElementById('cmp-b-to').value;
-  if (!aFrom||!aTo||!bFrom||!bTo) { alert('請選擇兩組區間的起訖月份'); return; }
-  const aKeys = keysInRange(aFrom, aTo), bKeys = keysInRange(bFrom, bTo);
+  const aFrom = getYMPicker('cmp-a-from-picker'), aTo = getYMPicker('cmp-a-to-picker');
+  const bFrom = getYMPicker('cmp-b-from-picker'), bTo = getYMPicker('cmp-b-to-picker');
+  if (aFrom > aTo || bFrom > bTo) { alert('每組區間的起始月份不能晚於結束月份'); return; }
 
-  const fields = PLATFORM_FIELDS.filter(f => sumField(aKeys,f) || sumField(bKeys,f));
+  // 不管使用者填在「期間1」還是「期間2」，一律以起始月份較早的那組當基準，避免增減正負號因填法而反轉
+  let earlier = {from:aFrom, to:aTo}, later = {from:bFrom, to:bTo};
+  if (earlier.from > later.from) { [earlier, later] = [later, earlier]; }
+  const earlierKeys = keysInRange(earlier.from, earlier.to);
+  const laterKeys = keysInRange(later.from, later.to);
+
+  const fields = PLATFORM_FIELDS.filter(f => sumField(earlierKeys,f) || sumField(laterKeys,f));
   const thead = document.querySelector('#cmp-table thead');
   const tbody = document.querySelector('#cmp-table tbody');
-  thead.innerHTML = `<tr><th>通路</th><th>期間A (${aFrom}~${aTo})</th><th>期間B (${bFrom}~${bTo})</th><th>增減</th></tr>`;
+  thead.innerHTML = `<tr><th>通路</th><th>較早:${earlier.from}~${earlier.to}</th><th>較晚:${later.from}~${later.to}</th><th>增減</th></tr>`;
   const rows = fields.map(f => {
-    const av = sumField(aKeys, f), bv = sumField(bKeys, f);
+    const av = sumField(earlierKeys, f), bv = sumField(laterKeys, f);
     const growth = av ? (bv-av)/av : null;
     return {label: PLATFORM_LABELS[f], av, bv, growth};
   }).sort((x,y)=>y.bv-x.bv);
 
-  const aTotal = totalOnline(aKeys)+totalOffline(aKeys);
-  const bTotal = totalOnline(bKeys)+totalOffline(bKeys);
+  const aTotal = totalOnline(earlierKeys)+totalOffline(earlierKeys);
+  const bTotal = totalOnline(laterKeys)+totalOffline(laterKeys);
   const totalGrowth = aTotal ? (bTotal-aTotal)/aTotal : null;
   rows.unshift({label:'【總計】', av:aTotal, bv:bTotal, growth:totalGrowth, bold:true});
 
@@ -584,6 +665,7 @@ function saveMonthForm() {
 function renderAll() {
   renderSummary();
   renderPlatformTable();
+  renderBrandTop5();
   renderTrend();
   renderMonthsTable();
 }
@@ -600,6 +682,8 @@ function initDashboard(keepRange) {
   document.getElementById('btn-add-month').style.display = '';
   document.getElementById('btn-export').style.display = '';
   document.getElementById('btn-reset').style.display = '';
+  initAllPickers();
+  initBrandPlatformSelect();
   if (!keepRange || !currentRange) {
     buildRangeTabs();
   } else {
