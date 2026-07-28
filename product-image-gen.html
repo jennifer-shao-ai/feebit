@@ -237,7 +237,7 @@
     <a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span> 旅行規劃</a>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v2.1</div>
+  <div class="sidebar-footer">v2.2</div>
 </div>
 <div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.remove('open');this.classList.remove('active')"></div>
 
@@ -248,12 +248,21 @@
     <span class="topbar-title">新品上架作業</span>
     <div style="display:flex;gap:8px;align-items:center">
       <button class="btn-sm" onclick="openSettings()">⚙ 設定</button>
-      <span class="topbar-badge">v2.1</span>
+      <span class="topbar-badge">v2.2</span>
     </div>
   </div>
 
   <div class="page">
     <div class="pig-layout">
+
+      <!-- ── 作業說明 ── -->
+      <div style="background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border:1px solid #bae6fd;border-radius:12px;padding:14px 18px;margin-bottom:4px">
+        <div style="font-size:14px;font-weight:700;color:#0369a1;margin-bottom:4px">飛比特 — 新品上架作業流程</div>
+        <div style="font-size:12px;color:#0c4a6e;line-height:1.7">
+          依序完成 9 個步驟，即可完成一件新商品上架所需的圖片與文案。<br>
+          每個步驟點「開啟 GPT →」後，在 ChatGPT 貼上商品名稱或圖片，按步驟說明操作即可。
+        </div>
+      </div>
 
       <!-- ── Step 1: 抓取商品圖片 ── -->
       <div class="pig-card" id="card-input">
@@ -635,6 +644,7 @@ async function downloadSelectedZipForGpt() {
 }
 function checkKeyBanner() {
   const banner = document.getElementById('key-banner')
+  if (!banner) return
   if (getApiKey()) {
     banner.textContent = '✓ OpenAI API Key 已設定'
     banner.className = 'key-banner ok'
@@ -673,7 +683,7 @@ async function loadImageUrls() {
 // ── Load images from bookmarklet (postMessage or URL params) ──
 function loadBookmarkletImages(urls, title) {
   if (!urls || !urls.length) return
-  if (title) document.getElementById('product-name').value = title
+  if (title) { const el = document.getElementById('product-name'); if (el) el.value = title }
   images = urls.map((src, i) => ({ src, dataUrl: null, name: `商品圖${i + 1}` }))
   selectedIdx = new Set(images.map((_, i) => i))
   renderImageGrid()
@@ -773,7 +783,7 @@ async function fetchTaobaoImages() {
     if (data.error) throw new Error(data.error)
     if (!data.images?.length) throw new Error('找不到商品圖片，請改用手動上傳')
 
-    if (data.title) document.getElementById('product-name').value = data.title
+    if (data.title) { const el = document.getElementById('product-name'); if (el) el.value = data.title }
 
     images = data.images.map((src, i) => ({ src, dataUrl: null, name: `商品圖${i+1}` }))
     selectedIdx = new Set([0])  // auto-select first
