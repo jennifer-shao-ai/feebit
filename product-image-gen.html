@@ -161,10 +161,12 @@
 .spinner { width: 16px; height: 16px; border: 2px solid var(--gray-200); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; flex-shrink: 0; }
 
 /* ── Modal ── */
-.modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: center; justify-content: center; }
+.modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: flex-start; justify-content: center; overflow-y: auto; padding: 32px 16px; }
 .modal-backdrop.open { display: flex; }
-.modal-box { background: white; border-radius: 12px; padding: 24px; width: 420px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
-.modal-box h2 { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+.modal-box { background: white; border-radius: 12px; padding: 24px; width: 480px; max-width: 96vw; box-shadow: 0 20px 60px rgba(0,0,0,0.2); position: relative; margin: auto; flex-shrink: 0; }
+.modal-close { position: absolute; top: 14px; right: 14px; background: none; border: none; font-size: 20px; color: var(--gray-400); cursor: pointer; line-height: 1; padding: 2px 6px; border-radius: 4px; }
+.modal-close:hover { background: var(--gray-100); color: var(--gray-700); }
+.modal-box h2 { font-size: 16px; font-weight: 700; margin-bottom: 16px; padding-right: 28px; }
 .modal-field { margin-bottom: 14px; }
 .modal-field label { font-size: 12px; font-weight: 600; color: var(--gray-600); display: block; margin-bottom: 5px; }
 .modal-field input { width: 100%; padding: 9px 12px; border: 1px solid var(--gray-200); border-radius: var(--radius); font-size: 14px; outline: none; box-sizing: border-box; }
@@ -237,7 +239,7 @@
     <a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span> 旅行規劃</a>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v2.2</div>
+  <div class="sidebar-footer">v2.3</div>
 </div>
 <div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.remove('open');this.classList.remove('active')"></div>
 
@@ -247,8 +249,9 @@
     <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open');document.getElementById('sidebar-overlay').classList.toggle('active')">&#9776;</button>
     <span class="topbar-title">新品上架作業</span>
     <div style="display:flex;gap:8px;align-items:center">
-      <button class="btn-sm" onclick="openSettings()">⚙ 設定</button>
-      <span class="topbar-badge">v2.2</span>
+      <button class="btn-sm hidden" id="btn-share" onclick="copyShareLink(this)">🔗 複製分享連結</button>
+      <button class="btn-sm hidden" id="btn-settings" onclick="openSettings()">⚙ 設定</button>
+      <span class="topbar-badge">v2.3</span>
     </div>
   </div>
 
@@ -403,8 +406,9 @@
 </div>
 
 <!-- ── Settings Modal ── -->
-<div class="modal-backdrop" id="settings-modal">
+<div class="modal-backdrop" id="settings-modal" onclick="if(event.target===this)closeSettings()">
   <div class="modal-box" style="max-width:540px">
+    <button class="modal-close" onclick="closeSettings()">✕</button>
     <h2>⚙ 設定</h2>
 
     <div style="font-size:13px;font-weight:700;color:var(--gray-700);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--gray-200)">API 模式設定</div>
@@ -436,6 +440,27 @@ let selectedIdx = new Set()
 let generatedImages = { xiangjing: [], detail: [] }
 let generatedWencai = ''
 let abortController = null
+
+// ── Admin mode ──
+function isAdmin() { return localStorage.getItem('pig_admin') === '1' }
+function initAdminMode() {
+  const params = new URLSearchParams(window.location.search)
+  if (params.has('admin')) {
+    localStorage.setItem('pig_admin', '1')
+    // clean URL
+    window.history.replaceState({}, '', window.location.pathname)
+  }
+  if (isAdmin()) {
+    document.getElementById('btn-settings').classList.remove('hidden')
+    document.getElementById('btn-share').classList.remove('hidden')
+  }
+}
+async function copyShareLink(btn) {
+  const url = window.location.origin + window.location.pathname
+  await navigator.clipboard.writeText(url)
+  btn.textContent = '✓ 已複製！'
+  setTimeout(() => { btn.textContent = '🔗 複製分享連結' }, 2000)
+}
 
 // ── GPT tool definitions ──
 const GPT_TOOLS = [
@@ -1522,6 +1547,7 @@ function dataUrlToBlob(dataUrl) {
 }
 
 // ── Init ──
+initAdminMode()
 checkKeyBanner()
 initBookmarklet()
 loadFromUrlParams()
