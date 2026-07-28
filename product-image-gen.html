@@ -125,6 +125,34 @@
 .results-actions { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
 .results-actions .label { font-size: 12px; color: var(--gray-500); margin-left: auto; }
 
+/* ── Text generation output ── */
+.gen-section-label { font-size: 11px; font-weight: 700; color: var(--gray-500); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+.gen-status { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-bottom: 12px; }
+.gen-status.waiting { background: var(--gray-100); color: var(--gray-400); }
+.gen-status.loading { background: #eff6ff; color: #2563eb; }
+.gen-status.done { background: #d1fae5; color: #065f46; }
+.gen-status.error { background: #fee2e2; color: #991b1b; }
+
+.naming-list { display: flex; flex-direction: column; gap: 7px; }
+.naming-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border: 1.5px solid var(--gray-200); border-radius: 8px; cursor: pointer; transition: all .12s; }
+.naming-item:hover, .naming-item.selected { border-color: var(--primary); background: var(--primary-light); }
+.naming-item-name { font-weight: 700; font-size: 14px; color: var(--gray-800); min-width: 120px; }
+.naming-item-desc { font-size: 12px; color: var(--gray-500); flex: 1; }
+
+.title-tabs { display: flex; gap: 4px; margin-bottom: 12px; }
+.title-tab { padding: 5px 14px; border-radius: 6px; border: 1px solid var(--gray-200); background: var(--gray-50); font-size: 12px; cursor: pointer; color: var(--gray-600); font-weight: 600; }
+.title-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+.title-version { display: none; }
+.title-version.active { display: block; }
+.title-row { display: flex; align-items: flex-start; gap: 8px; padding: 9px 0; border-bottom: 1px solid var(--gray-100); }
+.title-row:last-child { border-bottom: none; }
+.title-row-label { width: 60px; flex-shrink: 0; font-size: 11px; font-weight: 700; color: var(--gray-400); padding-top: 2px; }
+.title-row-value { flex: 1; font-size: 13px; color: var(--gray-800); line-height: 1.6; word-break: break-all; }
+.title-row-count { font-size: 10px; color: var(--gray-400); flex-shrink: 0; padding-top: 4px; }
+
+.seo-block { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 8px; padding: 10px 12px; font-size: 12px; color: var(--gray-700); line-height: 1.7; word-break: break-all; margin: 6px 0 8px; }
+.url-block { font-family: monospace; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 8px 12px; font-size: 13px; color: #166534; margin: 6px 0 8px; }
+
 /* ── Workflow grid (Steps 2-9) ── */
 .workflow-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .workflow-wide { grid-column: 1 / -1; }
@@ -239,7 +267,7 @@
     <a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span> 旅行規劃</a>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v2.3</div>
+  <div class="sidebar-footer">v2.4</div>
 </div>
 <div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.remove('open');this.classList.remove('active')"></div>
 
@@ -251,7 +279,7 @@
     <div style="display:flex;gap:8px;align-items:center">
       <button class="btn-sm hidden" id="btn-share" onclick="copyShareLink(this)">🔗 複製分享連結</button>
       <button class="btn-sm hidden" id="btn-settings" onclick="openSettings()">⚙ 設定</button>
-      <span class="topbar-badge">v2.3</span>
+      <span class="topbar-badge">v2.4</span>
     </div>
   </div>
 
@@ -318,6 +346,33 @@
         </div>
       </div>
 
+      <!-- ── 商品資訊 & 一鍵產出 ── -->
+      <div class="pig-card" id="card-text-gen">
+        <h2>📝 商品資訊 — 一鍵產出文字內容</h2>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="field-row" style="grid-column:1/-1">
+            <label>商品關鍵字 / 外文名稱 <span style="font-weight:400;color:var(--gray-400)">（必填）</span></label>
+            <input type="text" id="gen-keyword" placeholder="例：Lotus Silicone Trivet / 蓮花矽膠隔熱墊">
+          </div>
+          <div class="field-row" style="grid-column:1/-1">
+            <label>商品描述 <span style="font-weight:400;color:var(--gray-400)">（選填：材質、顏色、特色、用途）</span></label>
+            <textarea id="gen-desc" rows="2" placeholder="例：矽膠材質，直徑18cm，10片花瓣設計，防滑防燙，可折疊收納" style="width:100%;padding:9px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:13px;outline:none;resize:vertical;box-sizing:border-box;font-family:inherit"></textarea>
+          </div>
+          <div class="field-row">
+            <label>品牌 <span style="font-weight:400;color:var(--gray-400)">（選填）</span></label>
+            <input type="text" id="gen-brand" placeholder="留空則標題不含品牌">
+          </div>
+          <div class="field-row">
+            <label>產地</label>
+            <input type="text" id="gen-origin" value="台灣">
+          </div>
+        </div>
+        <div style="margin-top:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <button class="btn-primary" onclick="generateAllText(this)">⚡ 一鍵產出文字內容</button>
+          <span id="gen-text-status" style="font-size:12px;color:var(--gray-500)"></span>
+        </div>
+      </div>
+
       <!-- ── 作業流程 Steps 2-9 ── -->
       <div class="workflow-grid">
 
@@ -334,16 +389,20 @@
           </div>
         </div>
 
-        <!-- Step 3: 產品名稱命名 -->
+        <!-- Step 3: 產品名稱命名（API 產出） -->
         <div class="pig-card">
           <h2><span class="step-num">3</span> 產品名稱命名</h2>
-          <div class="step-hint">直接丟入商品圖，或輸入商品名稱大方向即可</div>
-          <div class="step-actions">
-            <button class="btn-primary" onclick="openGptWindow('naming')">開啟 GPT →</button>
+          <div class="gen-status waiting" id="status-naming">待產出</div>
+          <div id="output-naming" style="display:none">
+            <div class="naming-list" id="naming-list"></div>
+            <div style="margin-top:10px;display:flex;gap:6px">
+              <button class="btn-sm" onclick="copySelectedName(this)">複製選取名稱</button>
+              <button class="btn-sm" onclick="regenNaming()">重新生成</button>
+            </div>
           </div>
         </div>
 
-        <!-- Step 4: 商品文案 & 禮品包裝（全寬） -->
+        <!-- Step 4: 商品文案 & 禮品包裝（全寬，GPT） -->
         <div class="pig-card workflow-wide">
           <h2><span class="step-num">4</span> 商品文案 &amp; 禮品包裝特色</h2>
           <div class="step-hint">直接丟入商品名稱或商品圖</div>
@@ -354,30 +413,41 @@
           </div>
         </div>
 
-        <!-- Step 5: SEO 關鍵字 -->
-        <div class="pig-card">
-          <h2><span class="step-num">5</span> 官網 SEO 關鍵字</h2>
-          <div class="step-hint">直接丟入商品名稱</div>
-          <div class="step-actions">
-            <button class="btn-primary" onclick="openGptWindow('seo')">開啟 GPT →</button>
+        <!-- Steps 5+6: SEO + URL（API 產出，合併全寬） -->
+        <div class="pig-card workflow-wide">
+          <h2><span class="step-num">5</span> 官網 SEO 關鍵字 &amp; <span class="step-num">6</span> 商品 URL</h2>
+          <div class="gen-status waiting" id="status-seo">待產出</div>
+          <div id="output-seo" style="display:none">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+              <div>
+                <div class="gen-section-label">官網商品 URL</div>
+                <div class="url-block" id="gen-url-value">—</div>
+                <button class="btn-sm" onclick="copyEl('gen-url-value',this)">複製 URL</button>
+              </div>
+              <div>
+                <div class="gen-section-label">SEO 關鍵字（160字）</div>
+                <div class="seo-block" id="gen-seo-value">—</div>
+                <button class="btn-sm" onclick="copyEl('gen-seo-value',this)">複製 SEO</button>
+              </div>
+            </div>
+            <div style="margin-top:10px"><button class="btn-sm" onclick="regenSeo()">重新生成</button></div>
           </div>
         </div>
 
-        <!-- Step 6: 官網 URL -->
-        <div class="pig-card">
-          <h2><span class="step-num">6</span> 官網商品 URL</h2>
-          <div class="step-hint">直接丟入商品名稱</div>
-          <div class="step-actions">
-            <button class="btn-primary" onclick="openGptWindow('weburl')">開啟 GPT →</button>
-          </div>
-        </div>
-
-        <!-- Step 7: 蝦皮主圖標題 -->
-        <div class="pig-card">
+        <!-- Step 7: 蝦皮主圖標題（API 產出，全寬） -->
+        <div class="pig-card workflow-wide">
           <h2><span class="step-num">7</span> 蝦皮主圖標題</h2>
-          <div class="step-hint">直接丟入商品名稱</div>
-          <div class="step-actions">
-            <button class="btn-primary" onclick="openGptWindow('title')">開啟 GPT →</button>
+          <div class="gen-status waiting" id="status-title">待產出</div>
+          <div id="output-title" style="display:none">
+            <div class="title-tabs">
+              <button class="title-tab active" onclick="switchTitleTab(1,this)">版本一</button>
+              <button class="title-tab" onclick="switchTitleTab(2,this)">版本二</button>
+              <button class="title-tab" onclick="switchTitleTab(3,this)">版本三</button>
+            </div>
+            <div class="title-version active" id="title-v1"></div>
+            <div class="title-version" id="title-v2"></div>
+            <div class="title-version" id="title-v3"></div>
+            <div style="margin-top:10px"><button class="btn-sm" onclick="regenTitle()">重新生成</button></div>
           </div>
         </div>
 
@@ -1544,6 +1614,279 @@ function dataUrlToBlob(dataUrl) {
   const arr = new Uint8Array(bin.length)
   for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i)
   return new Blob([arr], { type: mime })
+}
+
+// ════════════════════════════════════════════
+// TEXT GENERATION (命名 / 標題 / SEO+URL)
+// ════════════════════════════════════════════
+
+async function callTextAPI(messages, apiKey) {
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: 'gpt-4o', messages, temperature: 0.75 })
+  })
+  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error?.message || `HTTP ${res.status}`) }
+  const d = await res.json()
+  return d.choices[0].message.content.trim()
+}
+
+function getGenInputs() {
+  return {
+    keyword: document.getElementById('gen-keyword').value.trim(),
+    desc:    document.getElementById('gen-desc').value.trim(),
+    brand:   document.getElementById('gen-brand').value.trim(),
+    origin:  document.getElementById('gen-origin').value.trim() || '台灣'
+  }
+}
+
+function buildProductBlock(inputs) {
+  return [
+    `商品關鍵字／名稱：${inputs.keyword}`,
+    inputs.desc   ? `商品描述：${inputs.desc}`   : '',
+    inputs.brand  ? `品牌：${inputs.brand}`       : '',
+    `產地：${inputs.origin}`
+  ].filter(Boolean).join('\n')
+}
+
+// ── Naming ──
+function buildNamingMessages(inputs) {
+  return [
+    { role: 'system', content: `你是台灣電商行銷命名專家，專精蝦皮平台商品命名。依據以下行銷原則提供命名建議：
+
+【行銷命名核心原則】
+• 一詞佔領心智：命名傳達一個清晰差異化概念，讓消費者立刻聯想到核心價值
+• 名字即定位：10字以內、獨特、好唸、具暗示性
+• SEO友善：植入品類關鍵字＋差異化屬性
+• 具體優於模糊：材質/功能/使用情境優於形容詞
+• 外文在地化：轉化為台灣消費者熟悉且會搜尋的用語
+• 目標族群：20-40歲台灣女性，蝦皮電商平台
+
+【輸出格式（只輸出清單，不要其他說明）】
+1. [名稱（10字以內）] — [說明（20字以內，說明行銷優勢）]
+2. ... （共5個）` },
+    { role: 'user', content: `請為以下商品提供5個中文命名建議：\n\n${buildProductBlock(inputs)}` }
+  ]
+}
+
+function displayNaming(text) {
+  const lines = text.split('\n').filter(l => /^\d+\./.test(l.trim()))
+  const items = lines.map(l => {
+    const m = l.match(/^\d+\.\s*(.+?)\s*[—\-–]\s*(.+)/)
+    return m ? { name: m[1].trim(), desc: m[2].trim() } : null
+  }).filter(Boolean)
+
+  const list = document.getElementById('naming-list')
+  list.innerHTML = items.map((it, i) => `
+    <div class="naming-item" data-name="${it.name.replace(/"/g,'&quot;')}" onclick="selectNaming(this)">
+      <div class="naming-item-name">${it.name}</div>
+      <div class="naming-item-desc">${it.desc}</div>
+    </div>`).join('')
+
+  setStatus('naming', 'done', `${items.length} 個建議`)
+  document.getElementById('output-naming').style.display = ''
+}
+
+function selectNaming(el) {
+  document.querySelectorAll('.naming-item').forEach(e => e.classList.remove('selected'))
+  el.classList.add('selected')
+}
+
+async function copySelectedName(btn) {
+  const sel = document.querySelector('.naming-item.selected')
+  if (!sel) { alert('請先點選一個名稱'); return }
+  await navigator.clipboard.writeText(sel.dataset.name)
+  btn.textContent = '✓ 已複製'; setTimeout(() => { btn.textContent = '複製選取名稱' }, 1500)
+}
+
+// ── Title ──
+function buildTitleMessages(inputs) {
+  return [
+    { role: 'system', content: `你是擁有20年經驗的電商行銷專家，專為蝦皮商品撰寫吸睛標題。族群：20~40歲女性。
+
+【行銷標題原則】
+• 標題唯一任務是讓人點擊：利益前置、好奇心缺口、情感共鳴
+• 把消費者最在乎的結果放在最前段
+• 顧客從情感下決定，用邏輯合理化
+• 具體數字增強可信度
+
+【嚴格輸出格式】請按照以下格式輸出3個版本，標籤不得更改：
+
+=== 版本一 ===
+賣場標題: [60字以內，產地+品牌+品名+規格+關鍵字，空格分隔，無任何標點符號]
+紅框上: [12字以內；若無特別內容請填「無」]
+紅框內: [5-10字，可用空格分1-2段，強調得獎/成分/關鍵優點]
+大標題: [精確11字，可用空格分2-3段，主要特點功能]
+小標題: [精確16-17字含｜符號，用｜分2-3段，次要賣點]
+其他: [10字以內；若無請填「無」]
+
+=== 版本二 ===
+[同版本一格式，文案完全不同]
+
+=== 版本三 ===
+賣場標題: [60字以內，簡易，產地+品牌+品名+規格]
+大標題: [精確11字，同上規則]
+小標題一: [簡易特色，一看就懂]
+小標題二: [簡易特色]
+小標題三: [簡易特色]
+
+【嚴守規則】
+• 各區塊字詞不重複（除非是商品核心特性）
+• 文字內不含品牌名稱
+• 嚴守每區塊字數，大標題必須精確11字，小標題必須精確16-17字
+• 版本一與版本二文案完全不同` },
+    { role: 'user', content: `請為以下商品撰寫3組標題：\n\n${buildProductBlock(inputs)}` }
+  ]
+}
+
+function parseTitleOutput(text) {
+  const versions = []
+  const parts = text.split(/={3,}\s*版本[一二三123]\s*={3,}/g).slice(1)
+  parts.forEach((part, idx) => {
+    const v = {}
+    part.trim().split('\n').filter(l => l.trim()).forEach(line => {
+      const m = line.match(/^([^:：]+)[：:]\s*(.*)/)
+      if (m) v[m[1].trim()] = m[2].trim()
+    })
+    versions.push(v)
+  })
+  return versions
+}
+
+function renderTitleVersion(data, versionIdx) {
+  const isV3 = versionIdx === 2
+  const fields = isV3
+    ? ['賣場標題','大標題','小標題一','小標題二','小標題三']
+    : ['賣場標題','紅框上','紅框內','大標題','小標題','其他']
+
+  return fields.map(f => {
+    const val = data[f] || '—'
+    if (val === '無' || val === '—') return ''
+    const cnt = [...val.replace(/\s/g,'').replace(/｜/g,'')].length
+    const cntHtml = `<span class="title-row-count">${cnt}字</span>`
+    return `<div class="title-row">
+      <div class="title-row-label">${f}</div>
+      <div class="title-row-value">${val}</div>
+      ${cntHtml}
+      <button class="btn-sm" style="flex-shrink:0" onclick="copyText('${val.replace(/'/g,"\\'")}',this)">複製</button>
+    </div>`
+  }).join('')
+}
+
+function displayTitle(text) {
+  const versions = parseTitleOutput(text)
+  versions.forEach((v, i) => {
+    const el = document.getElementById(`title-v${i+1}`)
+    if (el) el.innerHTML = renderTitleVersion(v, i)
+  })
+  setStatus('title', 'done', '3 個版本')
+  document.getElementById('output-title').style.display = ''
+}
+
+function switchTitleTab(n, btn) {
+  document.querySelectorAll('.title-tab').forEach(t => t.classList.remove('active'))
+  document.querySelectorAll('.title-version').forEach(t => t.classList.remove('active'))
+  btn.classList.add('active')
+  document.getElementById('title-v' + n).classList.add('active')
+}
+
+// ── SEO + URL ──
+function buildSeoMessages(inputs) {
+  return [
+    { role: 'system', content: `你是電商SEO專家。根據商品資訊輸出以下兩項，嚴格遵守格式，只輸出這兩行：
+
+URL: [商品名稱翻英文URL格式，全小寫，單字間用-連接，不含品牌名稱]
+SEO: [約160字SEO關鍵字，每個用,隔開，中間不空格，涵蓋商品名/材質/功能/使用場景/目標族群]` },
+    { role: 'user', content: buildProductBlock(inputs) }
+  ]
+}
+
+function displaySeo(text) {
+  const urlM = text.match(/URL:\s*(.+)/i)
+  const seoM = text.match(/SEO:\s*([\s\S]+)/i)
+  document.getElementById('gen-url-value').textContent = urlM ? urlM[1].trim() : '—'
+  document.getElementById('gen-seo-value').textContent = seoM ? seoM[1].trim() : '—'
+  setStatus('seo', 'done', '已完成')
+  document.getElementById('output-seo').style.display = ''
+}
+
+// ── Status helpers ──
+function setStatus(task, state, msg) {
+  const el = document.getElementById('status-' + task)
+  if (!el) return
+  el.className = 'gen-status ' + state
+  const icons = { waiting:'⏸', loading:'⏳', done:'✅', error:'❌' }
+  el.textContent = (icons[state]||'') + ' ' + msg
+}
+
+// ── Copy helpers ──
+async function copyText(text, btn) {
+  await navigator.clipboard.writeText(text)
+  if (btn) { const orig = btn.textContent; btn.textContent = '✓'; setTimeout(() => { btn.textContent = orig }, 1200) }
+}
+async function copyEl(id, btn) {
+  const el = document.getElementById(id)
+  if (!el) return
+  await navigator.clipboard.writeText(el.textContent)
+  if (btn) { const orig = btn.textContent; btn.textContent = '✓ 已複製'; setTimeout(() => { btn.textContent = orig }, 1500) }
+}
+
+// ── Main generate ──
+async function generateAllText(btn) {
+  const inputs = getGenInputs()
+  if (!inputs.keyword) { alert('請先填入商品關鍵字或名稱'); return }
+  const apiKey = getApiKey()
+  if (!apiKey) { alert('請先在設定中填入 OpenAI API Key'); openSettings(); return }
+
+  if (btn) { btn.disabled = true; btn.textContent = '生成中...' }
+  document.getElementById('gen-text-status').textContent = '命名 / 標題 / SEO 同時生成中...'
+
+  setStatus('naming', 'loading', '生成中...')
+  setStatus('title',  'loading', '生成中...')
+  setStatus('seo',    'loading', '生成中...')
+
+  const [namingRes, titleRes, seoRes] = await Promise.allSettled([
+    callTextAPI(buildNamingMessages(inputs), apiKey),
+    callTextAPI(buildTitleMessages(inputs), apiKey),
+    callTextAPI(buildSeoMessages(inputs), apiKey),
+  ])
+
+  if (namingRes.status === 'fulfilled') displayNaming(namingRes.value)
+  else setStatus('naming', 'error', namingRes.reason?.message || '失敗')
+
+  if (titleRes.status === 'fulfilled') displayTitle(titleRes.value)
+  else setStatus('title', 'error', titleRes.reason?.message || '失敗')
+
+  if (seoRes.status === 'fulfilled') displaySeo(seoRes.value)
+  else setStatus('seo', 'error', seoRes.reason?.message || '失敗')
+
+  if (btn) { btn.disabled = false; btn.textContent = '⚡ 一鍵產出文字內容' }
+  document.getElementById('gen-text-status').textContent = '完成'
+}
+
+async function regenNaming() {
+  const inputs = getGenInputs(); const apiKey = getApiKey()
+  if (!inputs.keyword || !apiKey) return
+  setStatus('naming','loading','重新生成...')
+  document.getElementById('output-naming').style.display = 'none'
+  try { displayNaming(await callTextAPI(buildNamingMessages(inputs), apiKey)) }
+  catch(e) { setStatus('naming','error',e.message) }
+}
+async function regenTitle() {
+  const inputs = getGenInputs(); const apiKey = getApiKey()
+  if (!inputs.keyword || !apiKey) return
+  setStatus('title','loading','重新生成...')
+  document.getElementById('output-title').style.display = 'none'
+  try { displayTitle(await callTextAPI(buildTitleMessages(inputs), apiKey)) }
+  catch(e) { setStatus('title','error',e.message) }
+}
+async function regenSeo() {
+  const inputs = getGenInputs(); const apiKey = getApiKey()
+  if (!inputs.keyword || !apiKey) return
+  setStatus('seo','loading','重新生成...')
+  document.getElementById('output-seo').style.display = 'none'
+  try { displaySeo(await callTextAPI(buildSeoMessages(inputs), apiKey)) }
+  catch(e) { setStatus('seo','error',e.message) }
 }
 
 // ── Init ──
