@@ -12,6 +12,7 @@
   const qs   = location.search;
   if (path.includes('login.html')) return;
   if (path.includes('travel-planner.html') && (qs.includes('share') || qs.includes('collab'))) return;
+  if (path.includes('product-image-gen.html') && qs.includes('share')) return;
 
   document.documentElement.style.visibility = 'hidden';
 
