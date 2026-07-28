@@ -25,11 +25,22 @@
 .sc .sc-sub{font-size:11px;color:var(--gray-500);margin-top:4px}
 .card{background:white;border-radius:var(--radius);padding:20px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .card h3{font-size:14px;font-weight:600;margin-bottom:14px;color:var(--gray-700)}
-table.data-table{width:100%;border-collapse:collapse;font-size:13px}
+table.data-table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
 table.data-table th{background:var(--gray-50);padding:9px 12px;text-align:right;border-bottom:2px solid var(--gray-200);font-size:12px;font-weight:600;white-space:nowrap}
 table.data-table th:first-child{text-align:left}
-table.data-table td{padding:9px 12px;border-bottom:1px solid var(--gray-100);text-align:right}
+table.data-table td{padding:9px 12px;border-bottom:1px solid var(--gray-100);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 table.data-table td:first-child{text-align:left;font-weight:500}
+/* 欄位少的表格(品牌Top5/資料管理)不要被撐滿整張卡片寬度,不然文字會散得很開很難讀 */
+#brand-table,#months-table{max-width:560px}
+#brand-table th:nth-child(1),#brand-table td:nth-child(1){width:56px}
+#months-table th:nth-child(1),#months-table td:nth-child(1){width:110px}
+#months-table th:nth-child(3),#months-table td:nth-child(3){width:150px}
+/* 通路排行表:類別/占比欄位固定寬度,把空間留給通路名稱跟金額 */
+#platform-table th:nth-child(1),#platform-table td:nth-child(1){width:90px}
+#platform-table th:nth-child(2),#platform-table td:nth-child(2){width:160px}
+#platform-table th:nth-child(4),#platform-table td:nth-child(4){width:80px}
+/* 對比表欄位偏多且內容長,不用 fixed 排版,讓內容自然撐開 */
+#cmp-table{table-layout:auto}
 .bar-cell{position:relative}
 .bar-fill{position:absolute;left:0;top:0;bottom:0;background:var(--primary-light);z-index:0;border-radius:4px}
 .bar-text{position:relative;z-index:1}
@@ -151,7 +162,7 @@ table.data-table td:first-child{text-align:left;font-weight:500}
     </div>
   </div>
 
-  <div style="padding:24px">
+  <div style="padding:24px;max-width:1240px">
 
     <!-- UPLOAD -->
     <div id="upload-zone" class="cr-upload" onclick="document.getElementById('file-input').click()">
@@ -221,6 +232,7 @@ table.data-table td:first-child{text-align:left;font-weight:500}
           <button class="btn btn-primary" onclick="runCompare()">開始對比</button>
         </div>
         <table class="cmp-table data-table" id="cmp-table"><thead></thead><tbody></tbody></table>
+        <div class="chart-wrap" id="cmp-chart-wrap" style="display:none;margin-top:20px"><canvas id="cmp-chart"></canvas></div>
       </div>
 
       <!-- MONTHS DATA MANAGEMENT -->
@@ -295,6 +307,7 @@ const BRAND_CAPABLE = ['LaLaV商城','LaLaV一般','寶媽','桑爹','momo','mo�
 let DATA = {}; // { "2026": { "1": {...}, "2": {...} } }
 let currentRange = null; // {from:'2026-01', to:'2026-06'}
 let chart = null;
+let cmpChart = null;
 
 // ---------- year/month picker (replaces native <input type=month>, which is clunky) ----------
 function buildYMPicker(containerId, minYear, maxYear) {
@@ -435,8 +448,9 @@ function buildRangeTabs() {
     wrap.appendChild(btn);
   });
   // default: 有資料的話優先顯示「本月」,若本月完全沒資料則退回「全部」
+  // 預設優先顯示「本月」；本月還沒資料就退回「今年」(index 4),而不是直接跳到「全部」歷年資料
   const hasThisMonth = keys.includes(ymKey(ty,tm));
-  const defIdx = hasThisMonth ? 0 : 6;
+  const defIdx = hasThisMonth ? 0 : 4;
   const def = presets[defIdx];
   selectRange(def.from, def.to, wrap.children[defIdx]);
 }
@@ -605,6 +619,33 @@ function runCompare() {
       <td>NT$ ${fmt(r.bv)}</td>
       <td class="${r.growth==null?'':(r.growth>=0?'growth-pos':'growth-neg')}">${r.growth==null?'-':(r.growth>=0?'+':'')+pct(r.growth)}</td>
     </tr>`).join('');
+
+  renderCompareChart(earlier, later, earlierKeys, laterKeys);
+}
+
+// 月份用「第N月」對齊比較,不是用日曆月份對齊,因為兩個期間通常是不同年份
+function renderCompareChart(earlier, later, earlierKeys, laterKeys) {
+  const wrap = document.getElementById('cmp-chart-wrap');
+  wrap.style.display = '';
+  const len = Math.max(earlierKeys.length, laterKeys.length);
+  const labels = Array.from({length: len}, (_, i) => `第${i+1}月`);
+  const monthTotal = k => { const d = monthData(k) || {}; return (d['月平台總計_不含批發實體']||0) + (d['實體批發總計']||0); };
+  const earlierData = earlierKeys.map(monthTotal);
+  const laterData = laterKeys.map(monthTotal);
+
+  const ctx = document.getElementById('cmp-chart').getContext('2d');
+  if (cmpChart) cmpChart.destroy();
+  cmpChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: `較早 (${earlier.from}~${earlier.to})`, data: earlierData, borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.08)', tension: 0.3 },
+        { label: `較晚 (${later.from}~${later.to})`, data: laterData, borderColor: '#d97706', backgroundColor: 'rgba(217,119,6,0.08)', tension: 0.3 },
+      ]
+    },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:true, position:'top'}}, scales:{y:{ticks:{callback:v=>'NT$'+(v/1000).toFixed(0)+'k'}}} }
+  });
 }
 
 // ---------- months management table ----------
