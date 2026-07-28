@@ -372,9 +372,9 @@ body.pig-public .hamburger { display: none !important; }
             <input type="text" id="gen-origin" value="台灣">
           </div>
         </div>
-        <div id="share-api-key-row" style="display:none;margin-top:12px">
+        <div id="share-api-key-row" style="margin-top:12px">
           <label style="font-size:12px;font-weight:600;color:var(--gray-600);display:block;margin-bottom:5px">OpenAI API Key <span style="font-weight:400;color:var(--gray-400)">（有填才能自動產出，沒有請直接用下方 GPT 備用連結）</span></label>
-          <input type="password" id="share-api-key-input" placeholder="sk-..." style="width:100%;padding:8px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:13px;outline:none;box-sizing:border-box" oninput="onShareKeyInput()">
+          <input type="password" id="share-api-key-input" placeholder="sk-..." style="width:100%;padding:8px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:13px;outline:none;box-sizing:border-box">
         </div>
         <div style="margin-top:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
           <button class="btn-primary" id="btn-gen-naming" onclick="generateNaming(this)">第一步：產出品名建議</button>
@@ -402,7 +402,7 @@ body.pig-public .hamburger { display: none !important; }
         <div class="pig-card">
           <h2><span class="step-num">3</span> 產品名稱命名</h2>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <div class="gen-status waiting" id="status-naming">待產出</div>
+            <div class="gen-status waiting" id="status-naming">待產出（無API請直接使用GPT生成）</div>
             <button class="btn-sm" onclick="openGptWindow('naming')" title="直接開啟 GPT 命名對話">GPT 備用 →</button>
           </div>
           <div id="output-naming" style="display:none">
@@ -437,7 +437,7 @@ body.pig-public .hamburger { display: none !important; }
         <div class="pig-card workflow-wide">
           <h2><span class="step-num">5</span> 官網 SEO 關鍵字 &amp; <span class="step-num">6</span> 商品 URL</h2>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <div class="gen-status waiting" id="status-seo">待產出（需先完成第二步）</div>
+            <div class="gen-status waiting" id="status-seo">待產出（無API請直接使用GPT生成）</div>
             <button class="btn-sm" onclick="openGptWindow('seo')" title="GPT SEO">SEO GPT →</button>
             <button class="btn-sm" onclick="openGptWindow('weburl')" title="GPT URL">URL GPT →</button>
           </div>
@@ -466,7 +466,7 @@ body.pig-public .hamburger { display: none !important; }
         <div class="pig-card workflow-wide">
           <h2><span class="step-num">7</span> 蝦皮主圖標題</h2>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <div class="gen-status waiting" id="status-title">待產出（需先完成第二步）</div>
+            <div class="gen-status waiting" id="status-title">待產出（無API請直接使用GPT生成）</div>
             <button class="btn-sm" onclick="openGptWindow('title')" title="GPT 標題">GPT 備用 →</button>
           </div>
           <div id="output-title" style="display:none">
@@ -553,16 +553,15 @@ function initAdminMode() {
     // 外包/公開模式
     document.body.classList.add('pig-public')
     window.history.replaceState({}, '', window.location.pathname + '?share')
-    const keyRow = document.getElementById('share-api-key-row')
-    if (keyRow) keyRow.style.display = ''
     return
   }
-  // 預設：管理員模式（有側邊欄就是管理員）
+  // 預設：管理員模式
   window.history.replaceState({}, '', window.location.pathname)
   const shareBtn = document.getElementById('btn-share')
   const settingsBtn = document.getElementById('btn-settings')
   if (shareBtn) shareBtn.style.display = ''
   if (settingsBtn) settingsBtn.style.display = ''
+  syncApiKeyToInline()
 }
 async function copySidebarShare(btn) {
   const url = window.location.origin + window.location.pathname + '?share'
@@ -589,17 +588,14 @@ const GPT_TOOLS = [
 
 // ── Settings ──
 function getApiKey() {
-  if (!isAdmin()) {
-    const shareInput = document.getElementById('share-api-key-input')
-    if (shareInput && shareInput.value.trim()) return shareInput.value.trim()
-    return ''
-  }
+  const inlineInput = document.getElementById('share-api-key-input')
+  if (inlineInput && inlineInput.value.trim()) return inlineInput.value.trim()
   return localStorage.getItem('pig_openai_key') || ''
 }
-function onShareKeyInput() {
-  const key = document.getElementById('share-api-key-input')?.value.trim()
-  const btn = document.getElementById('btn-gen-naming')
-  if (btn) btn.textContent = key ? '第一步：產出品名建議' : '第一步：產出品名建議'
+function syncApiKeyToInline() {
+  const stored = localStorage.getItem('pig_openai_key') || ''
+  const el = document.getElementById('share-api-key-input')
+  if (el && stored && !el.value) el.value = stored
 }
 function getGptUrl(key) {
   const stored = localStorage.getItem('pig_gpt_' + key)
