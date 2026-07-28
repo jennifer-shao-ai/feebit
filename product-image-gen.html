@@ -267,7 +267,7 @@
     <a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span> 旅行規劃</a>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v2.4</div>
+  <div class="sidebar-footer">v2.5</div>
 </div>
 <div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.remove('open');this.classList.remove('active')"></div>
 
@@ -279,7 +279,7 @@
     <div style="display:flex;gap:8px;align-items:center">
       <button class="btn-sm hidden" id="btn-share" onclick="copyShareLink(this)">🔗 複製分享連結</button>
       <button class="btn-sm hidden" id="btn-settings" onclick="openSettings()">⚙ 設定</button>
-      <span class="topbar-badge">v2.4</span>
+      <span class="topbar-badge">v2.5</span>
     </div>
   </div>
 
@@ -368,7 +368,7 @@
           </div>
         </div>
         <div style="margin-top:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <button class="btn-primary" onclick="generateAllText(this)">⚡ 一鍵產出文字內容</button>
+          <button class="btn-primary" id="btn-gen-naming" onclick="generateNaming(this)">第一步：產出品名建議</button>
           <span id="gen-text-status" style="font-size:12px;color:var(--gray-500)"></span>
         </div>
       </div>
@@ -392,13 +392,24 @@
         <!-- Step 3: 產品名稱命名（API 產出） -->
         <div class="pig-card">
           <h2><span class="step-num">3</span> 產品名稱命名</h2>
-          <div class="gen-status waiting" id="status-naming">待產出</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <div class="gen-status waiting" id="status-naming">待產出</div>
+            <button class="btn-sm" onclick="openGptWindow('naming')" title="直接開啟 GPT 命名對話">GPT 備用 →</button>
+          </div>
           <div id="output-naming" style="display:none">
             <div class="naming-list" id="naming-list"></div>
-            <div style="margin-top:10px;display:flex;gap:6px">
+            <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
               <button class="btn-sm" onclick="copySelectedName(this)">複製選取名稱</button>
               <button class="btn-sm" onclick="regenNaming()">重新生成</button>
+              <button class="btn-sm" onclick="openGptWindow('naming')">GPT 備用 →</button>
             </div>
+          </div>
+          <div id="confirmed-name-section" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--gray-100)">
+            <div class="gen-section-label" style="margin-bottom:6px">確認品名（確認後再產出標題 & SEO）</div>
+            <input type="text" id="confirmed-name-input"
+              style="width:100%;padding:8px 12px;border:1.5px solid var(--primary);border-radius:8px;font-size:14px;box-sizing:border-box;margin-bottom:10px;outline:none"
+              placeholder="點選上方建議或手動輸入品名">
+            <button class="btn-primary" id="btn-gen-phase2" onclick="generateTitleAndSeo(this)">第二步：產出標題 &amp; SEO →</button>
           </div>
         </div>
 
@@ -416,7 +427,11 @@
         <!-- Steps 5+6: SEO + URL（API 產出，合併全寬） -->
         <div class="pig-card workflow-wide">
           <h2><span class="step-num">5</span> 官網 SEO 關鍵字 &amp; <span class="step-num">6</span> 商品 URL</h2>
-          <div class="gen-status waiting" id="status-seo">待產出</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <div class="gen-status waiting" id="status-seo">待產出（需先完成第二步）</div>
+            <button class="btn-sm" onclick="openGptWindow('seo')" title="GPT SEO">SEO GPT →</button>
+            <button class="btn-sm" onclick="openGptWindow('weburl')" title="GPT URL">URL GPT →</button>
+          </div>
           <div id="output-seo" style="display:none">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
               <div>
@@ -430,14 +445,21 @@
                 <button class="btn-sm" onclick="copyEl('gen-seo-value',this)">複製 SEO</button>
               </div>
             </div>
-            <div style="margin-top:10px"><button class="btn-sm" onclick="regenSeo()">重新生成</button></div>
+            <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
+              <button class="btn-sm" onclick="regenSeo()">重新生成</button>
+              <button class="btn-sm" onclick="openGptWindow('seo')">SEO GPT →</button>
+              <button class="btn-sm" onclick="openGptWindow('weburl')">URL GPT →</button>
+            </div>
           </div>
         </div>
 
         <!-- Step 7: 蝦皮主圖標題（API 產出，全寬） -->
         <div class="pig-card workflow-wide">
           <h2><span class="step-num">7</span> 蝦皮主圖標題</h2>
-          <div class="gen-status waiting" id="status-title">待產出</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <div class="gen-status waiting" id="status-title">待產出（需先完成第二步）</div>
+            <button class="btn-sm" onclick="openGptWindow('title')" title="GPT 標題">GPT 備用 →</button>
+          </div>
           <div id="output-title" style="display:none">
             <div class="title-tabs">
               <button class="title-tab active" onclick="switchTitleTab(1,this)">版本一</button>
@@ -447,7 +469,10 @@
             <div class="title-version active" id="title-v1"></div>
             <div class="title-version" id="title-v2"></div>
             <div class="title-version" id="title-v3"></div>
-            <div style="margin-top:10px"><button class="btn-sm" onclick="regenTitle()">重新生成</button></div>
+            <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
+              <button class="btn-sm" onclick="regenTitle()">重新生成</button>
+              <button class="btn-sm" onclick="openGptWindow('title')">GPT 備用 →</button>
+            </div>
           </div>
         </div>
 
@@ -1690,6 +1715,16 @@ function displayNaming(text) {
 function selectNaming(el) {
   document.querySelectorAll('.naming-item').forEach(e => e.classList.remove('selected'))
   el.classList.add('selected')
+  const name = el.dataset.name
+  const input = document.getElementById('confirmed-name-input')
+  if (input) input.value = name
+  const section = document.getElementById('confirmed-name-section')
+  if (section) section.style.display = ''
+}
+
+function getConfirmedName() {
+  const el = document.getElementById('confirmed-name-input')
+  return el ? el.value.trim() : ''
 }
 
 async function copySelectedName(btn) {
@@ -1735,7 +1770,7 @@ function buildTitleMessages(inputs) {
 • 文字內不含品牌名稱
 • 嚴守每區塊字數，大標題必須精確11字，小標題必須精確16-17字
 • 版本一與版本二文案完全不同` },
-    { role: 'user', content: `請為以下商品撰寫3組標題：\n\n${buildProductBlock(inputs)}` }
+    { role: 'user', content: `請為以下商品撰寫3組標題：\n\n${getConfirmedName() ? `【確認品名】${getConfirmedName()}\n\n` : ''}${buildProductBlock(inputs)}` }
   ]
 }
 
@@ -1797,7 +1832,7 @@ function buildSeoMessages(inputs) {
 
 URL: [商品名稱翻英文URL格式，全小寫，單字間用-連接，不含品牌名稱]
 SEO: [約160字SEO關鍵字，每個用,隔開，中間不空格，涵蓋商品名/材質/功能/使用場景/目標族群]` },
-    { role: 'user', content: buildProductBlock(inputs) }
+    { role: 'user', content: `${getConfirmedName() ? `【確認品名】${getConfirmedName()}\n\n` : ''}${buildProductBlock(inputs)}` }
   ]
 }
 
@@ -1831,28 +1866,43 @@ async function copyEl(id, btn) {
   if (btn) { const orig = btn.textContent; btn.textContent = '✓ 已複製'; setTimeout(() => { btn.textContent = orig }, 1500) }
 }
 
-// ── Main generate ──
-async function generateAllText(btn) {
+// ── Phase 1：產出命名建議 ──
+async function generateNaming(btn) {
   const inputs = getGenInputs()
   if (!inputs.keyword) { alert('請先填入商品關鍵字或名稱'); return }
   const apiKey = getApiKey()
   if (!apiKey) { alert('請先在設定中填入 OpenAI API Key'); openSettings(); return }
 
-  if (btn) { btn.disabled = true; btn.textContent = '生成中...' }
-  document.getElementById('gen-text-status').textContent = '命名 / 標題 / SEO 同時生成中...'
-
+  if (btn) { btn.disabled = true; btn.textContent = '品名生成中...' }
+  document.getElementById('gen-text-status').textContent = '命名生成中...'
   setStatus('naming', 'loading', '生成中...')
-  setStatus('title',  'loading', '生成中...')
-  setStatus('seo',    'loading', '生成中...')
 
-  const [namingRes, titleRes, seoRes] = await Promise.allSettled([
-    callTextAPI(buildNamingMessages(inputs), apiKey),
+  try {
+    displayNaming(await callTextAPI(buildNamingMessages(inputs), apiKey))
+    document.getElementById('gen-text-status').textContent = '品名完成，請選取後繼續第二步'
+  } catch(e) {
+    setStatus('naming', 'error', e.message)
+    document.getElementById('gen-text-status').textContent = '失敗'
+  }
+  if (btn) { btn.disabled = false; btn.textContent = '第一步：產出品名建議' }
+}
+
+// ── Phase 2：用確認品名產出標題 & SEO ──
+async function generateTitleAndSeo(btn) {
+  const confirmedName = getConfirmedName()
+  if (!confirmedName) { alert('請先選取或輸入確認品名'); return }
+  const inputs = getGenInputs()
+  const apiKey = getApiKey()
+  if (!apiKey) { alert('請先在設定中填入 OpenAI API Key'); openSettings(); return }
+
+  if (btn) { btn.disabled = true; btn.textContent = '標題 & SEO 生成中...' }
+  setStatus('title', 'loading', '生成中...')
+  setStatus('seo',   'loading', '生成中...')
+
+  const [titleRes, seoRes] = await Promise.allSettled([
     callTextAPI(buildTitleMessages(inputs), apiKey),
     callTextAPI(buildSeoMessages(inputs), apiKey),
   ])
-
-  if (namingRes.status === 'fulfilled') displayNaming(namingRes.value)
-  else setStatus('naming', 'error', namingRes.reason?.message || '失敗')
 
   if (titleRes.status === 'fulfilled') displayTitle(titleRes.value)
   else setStatus('title', 'error', titleRes.reason?.message || '失敗')
@@ -1860,8 +1910,7 @@ async function generateAllText(btn) {
   if (seoRes.status === 'fulfilled') displaySeo(seoRes.value)
   else setStatus('seo', 'error', seoRes.reason?.message || '失敗')
 
-  if (btn) { btn.disabled = false; btn.textContent = '⚡ 一鍵產出文字內容' }
-  document.getElementById('gen-text-status').textContent = '完成'
+  if (btn) { btn.disabled = false; btn.textContent = '第二步：產出標題 & SEO →' }
 }
 
 async function regenNaming() {
