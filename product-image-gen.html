@@ -2068,8 +2068,9 @@ async function saveToSheet(btn) {
     })
     const result = await resp.json()
     if (result.ok) {
-      if (statusEl) statusEl.textContent = '✅ 已儲存'
-      btn.textContent = '✓ 已儲存'
+      const msg = result.updated ? '✅ 已覆蓋更新' : '✅ 已儲存'
+      if (statusEl) statusEl.textContent = msg
+      btn.textContent = result.updated ? '✓ 已更新' : '✓ 已儲存'
     } else {
       if (statusEl) statusEl.textContent = '❌ ' + (result.error || '失敗')
       btn.textContent = orig
