@@ -414,7 +414,7 @@ body.pig-public .hamburger { display: none !important; }
               <button class="btn-sm" onclick="openGptWindow('naming')">GPT 備用 →</button>
             </div>
           </div>
-          <div id="confirmed-name-section" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--gray-100)">
+          <div id="confirmed-name-section" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--gray-100)">
             <div class="gen-section-label" style="margin-bottom:6px">確認品名（確認後再產出標題 & SEO）</div>
             <input type="text" id="confirmed-name-input"
               style="width:100%;padding:8px 12px;border:1.5px solid var(--primary);border-radius:8px;font-size:14px;box-sizing:border-box;margin-bottom:10px;outline:none"
@@ -1876,7 +1876,7 @@ function buildSeoMessages(inputs) {
   return [
     { role: 'system', content: `你是電商SEO專家。根據商品資訊輸出以下兩項，嚴格遵守格式，只輸出這兩行：
 
-URL: [商品名稱翻英文URL格式，全小寫，單字間用-連接，不含品牌名稱]
+URL: [將商品中文名稱的「意思」翻譯成英文單字，再轉URL格式（全小寫，-連接），絕對禁止使用拼音，必須是有意義的英文單字，不含品牌名稱]
 SEO: [約160字SEO關鍵字，每個用,隔開，中間不空格，涵蓋商品名/材質/功能/使用場景/目標族群]` },
     { role: 'user', content: `${getConfirmedName() ? `【確認品名】${getConfirmedName()}\n\n` : ''}${buildProductBlock(inputs)}` }
   ]
