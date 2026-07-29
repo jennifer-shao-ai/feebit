@@ -1723,7 +1723,8 @@ function buildProductBlock(inputs) {
 // ── Naming ──
 function buildNamingMessages(inputs) {
   return [
-    { role: 'system', content: `你是台灣電商行銷命名專家，專精蝦皮平台商品命名。依據以下行銷原則提供命名建議：
+    { role: 'system', content: `你是台灣電商行銷命名專家，專精蝦皮平台商品命名。依據以下行銷原則提供命名建議。
+【重要】所有輸出必須使用繁體中文，嚴禁使用簡體字。
 
 【行銷命名核心原則】
 • 一詞佔領心智：命名傳達一個清晰差異化概念，讓消費者立刻聯想到核心價值
@@ -1784,6 +1785,7 @@ async function copySelectedName(btn) {
 function buildTitleMessages(inputs) {
   return [
     { role: 'system', content: `你是擁有20年經驗的電商行銷專家，專為蝦皮商品撰寫吸睛標題。族群：20~40歲女性。
+【重要】所有輸出必須使用繁體中文，嚴禁使用簡體字。
 
 【行銷標題原則】
 • 標題唯一任務是讓人點擊：利益前置、好奇心缺口、情感共鳴
@@ -1874,10 +1876,11 @@ function switchTitleTab(n, btn) {
 // ── SEO + URL ──
 function buildSeoMessages(inputs) {
   return [
-    { role: 'system', content: `你是電商SEO專家。根據商品資訊輸出以下兩項，嚴格遵守格式，只輸出這兩行：
+    { role: 'system', content: `你是電商SEO專家。根據商品資訊輸出以下兩項，嚴格遵守格式，只輸出這兩行。
+【重要】SEO關鍵字必須使用繁體中文，嚴禁使用簡體字。
 
 URL: [將商品中文名稱的「意思」翻譯成英文單字，再轉URL格式（全小寫，-連接），絕對禁止使用拼音，必須是有意義的英文單字，不含品牌名稱]
-SEO: [約160字SEO關鍵字，每個用,隔開，中間不空格，涵蓋商品名/材質/功能/使用場景/目標族群]` },
+SEO: [約160字繁體中文SEO關鍵字，每個用,隔開，中間不空格，涵蓋商品名/材質/功能/使用場景/目標族群]` },
     { role: 'user', content: `${getConfirmedName() ? `【確認品名】${getConfirmedName()}\n\n` : ''}${buildProductBlock(inputs)}` }
   ]
 }
