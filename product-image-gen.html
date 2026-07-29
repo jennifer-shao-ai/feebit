@@ -282,6 +282,7 @@ body.pig-public .hamburger { display: none !important; }
     <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open');document.getElementById('sidebar-overlay').classList.toggle('active')">&#9776;</button>
     <span class="topbar-title">新品上架作業</span>
     <div style="display:flex;gap:8px;align-items:center">
+      <a class="btn-sm" href="https://docs.google.com/spreadsheets/d/10EtdzY7FQO1FviLQQiNepbDIGnVcV5qYp8NFoK8q9k8/edit" target="_blank">📊 Sheet</a>
       <button class="btn-sm" id="btn-share" onclick="copySidebarShare(this)" style="display:none">🔗 複製外包連結</button>
       <button class="btn-sm" id="btn-settings" onclick="openSettings()" style="display:none">⚙ 設定</button>
       <span class="topbar-badge">v2.5</span>
@@ -418,6 +419,14 @@ body.pig-public .hamburger { display: none !important; }
             <input type="text" id="confirmed-name-input"
               style="width:100%;padding:8px 12px;border:1.5px solid var(--primary);border-radius:8px;font-size:14px;box-sizing:border-box;margin-bottom:10px;outline:none"
               placeholder="點選上方建議或手動輸入品名">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+              <button class="btn-sm" onclick="createProductFolder(this)">📁 建立品名資料夾</button>
+              <a id="folder-url-link" href="#" target="_blank" style="display:none;font-size:12px;color:var(--primary)">📂 開啟資料夾 →</a>
+            </div>
+            <input type="text" id="folder-url-input"
+              style="width:100%;padding:7px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:12px;box-sizing:border-box;margin-bottom:10px;color:var(--gray-600);outline:none"
+              placeholder="圖片資料夾網址（建立後自動填入，或手動貼入）"
+              oninput="syncFolderLink()">
             <button class="btn-primary" id="btn-gen-phase2" onclick="generateTitleAndSeo(this)">第二步：產出標題 &amp; SEO →</button>
           </div>
         </div>
@@ -504,6 +513,20 @@ body.pig-public .hamburger { display: none !important; }
         </div>
 
       </div><!-- end workflow-grid -->
+
+      <!-- 儲存到 Google Sheet -->
+      <div class="pig-card" style="border:2px solid var(--primary)">
+        <h2>💾 儲存新品資料到 Google Sheet</h2>
+        <div class="field-row" style="margin-bottom:12px">
+          <label>備註 <span style="font-weight:400;color:var(--gray-400)">（選填：外包姓名、選用版本…）</span></label>
+          <input type="text" id="save-note" placeholder="例：外包-小明，選用標題V2">
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <button class="btn-primary" onclick="saveToSheet(this)">💾 儲存到 Sheet</button>
+          <a class="btn-sm" href="https://docs.google.com/spreadsheets/d/10EtdzY7FQO1FviLQQiNepbDIGnVcV5qYp8NFoK8q9k8/edit" target="_blank">📊 開啟 Sheet 查看</a>
+          <span id="save-status" style="font-size:12px;color:var(--gray-500)"></span>
+        </div>
+      </div>
 
     </div><!-- end pig-layout -->
   </div>
@@ -1967,6 +1990,96 @@ async function regenSeo() {
   document.getElementById('output-seo').style.display = 'none'
   try { displaySeo(await callTextAPI(buildSeoMessages(inputs), apiKey)) }
   catch(e) { setStatus('seo','error',e.message) }
+}
+
+// ── Google Sheet & Drive 整合 ──
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxFGIu1-G0TMdz4ZllMKMPDjbVpMfgP3TpmHbQUX3qdMAKL-K38pzZbjLU8qOl832Fu/exec'
+
+function syncFolderLink() {
+  const url = document.getElementById('folder-url-input')?.value.trim()
+  const link = document.getElementById('folder-url-link')
+  if (!link) return
+  if (url) { link.href = url; link.style.display = 'inline' }
+  else { link.style.display = 'none' }
+}
+
+async function createProductFolder(btn) {
+  const name = getConfirmedName()
+  if (!name) { alert('請先在上方確認品名'); return }
+  const orig = btn.textContent
+  btn.disabled = true; btn.textContent = '建立中...'
+  try {
+    const resp = await fetch(SCRIPT_URL + '?action=create_folder&name=' + encodeURIComponent(name))
+    const result = await resp.json()
+    if (result.ok) {
+      const input = document.getElementById('folder-url-input')
+      if (input) { input.value = result.url; syncFolderLink() }
+      btn.textContent = result.existed ? '✓ 資料夾已存在' : '✓ 資料夾已建立'
+    } else {
+      btn.textContent = '失敗：' + (result.error || '未知')
+    }
+  } catch(e) {
+    btn.textContent = '連線失敗，請手動貼入資料夾網址'
+  }
+  setTimeout(() => { btn.disabled = false; btn.textContent = orig }, 3000)
+}
+
+function collectSheetData() {
+  const inputs = getGenInputs()
+  const getField = (vEl, label) => {
+    if (!vEl) return ''
+    for (const row of vEl.querySelectorAll('.title-row')) {
+      if (row.querySelector('.title-row-label')?.textContent.trim() === label)
+        return row.querySelector('.title-row-value')?.textContent.trim() || ''
+    }
+    return ''
+  }
+  const v1 = document.getElementById('title-v1')
+  const v2 = document.getElementById('title-v2')
+  const v3 = document.getElementById('title-v3')
+  return {
+    action:   'save',
+    keyword:  inputs.keyword,
+    name:     getConfirmedName(),
+    brand:    inputs.brand,
+    origin:   inputs.origin,
+    folderUrl: document.getElementById('folder-url-input')?.value.trim() || '',
+    url:      document.getElementById('gen-url-value')?.textContent.trim().replace('—','') || '',
+    seo:      document.getElementById('gen-seo-value')?.textContent.trim().replace('—','') || '',
+    t1market: getField(v1,'賣場標題'), t1big: getField(v1,'大標題'), t1small: getField(v1,'小標題'),
+    t2market: getField(v2,'賣場標題'), t2big: getField(v2,'大標題'), t2small: getField(v2,'小標題'),
+    t3market: getField(v3,'賣場標題'),
+    note:     document.getElementById('save-note')?.value.trim() || ''
+  }
+}
+
+async function saveToSheet(btn) {
+  const data = collectSheetData()
+  if (!data.name) { alert('請先確認品名'); return }
+  const orig = btn.textContent
+  btn.disabled = true; btn.textContent = '儲存中...'
+  const statusEl = document.getElementById('save-status')
+  if (statusEl) statusEl.textContent = ''
+  try {
+    const resp = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(data)
+    })
+    const result = await resp.json()
+    if (result.ok) {
+      if (statusEl) statusEl.textContent = '✅ 已儲存'
+      btn.textContent = '✓ 已儲存'
+    } else {
+      if (statusEl) statusEl.textContent = '❌ ' + (result.error || '失敗')
+      btn.textContent = orig
+    }
+  } catch(e) {
+    if (statusEl) statusEl.textContent = '❌ 連線失敗'
+    btn.textContent = orig
+  }
+  btn.disabled = false
+  setTimeout(() => { btn.textContent = orig; if (statusEl) statusEl.textContent = '' }, 4000)
 }
 
 // ── Init ──
