@@ -171,6 +171,7 @@ tbody tr:hover .edit-btn{opacity:1}
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <button class="btn btn-primary" onclick="openAddModal()">＋ 新增資料</button>
+      <button class="btn btn-ghost" onclick="syncLatestSeedData()">同步最新資料</button>
       <button class="btn btn-ghost" onclick="exportBackup()">匯出備份</button>
       <button class="btn btn-ghost" onclick="document.getElementById('import-input').click()">匯入</button>
       <input type="file" id="import-input" accept=".json" style="display:none" onchange="handleImport(event)">
@@ -354,6 +355,26 @@ function loadRecords() {
 }
 function saveRecords() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(RECORDS));
+}
+
+// 只新增「你瀏覽器裡還沒有」的內建資料（用 賣場+年月+品牌 比對），
+// 絕不刪除或覆蓋你已經手動新增/編輯過的任何一筆
+function syncLatestSeedData() {
+  const existingKeys = new Set(RECORDS.map(r => `${r.shop}${r.month}${r.brand}`));
+  const toAdd = SEED_RECORDS.filter(r => !existingKeys.has(`${r.shop}${r.month}${r.brand}`));
+  if (toAdd.length === 0) {
+    alert('目前資料已經是最新的，沒有新增任何一筆。');
+    return;
+  }
+  for (const r of toAdd) {
+    RECORDS.push({ ...r, id: nextId++ });
+  }
+  saveRecords();
+  activeShops = new Set(allShops());
+  activeMonths = new Set(allMonths());
+  renderFilterBar();
+  renderAll();
+  alert(`已新增 ${toAdd.length} 筆內建資料（不影響你自己新增/編輯過的資料）。`);
 }
 
 // ══════════════════════════════════════════
