@@ -156,7 +156,7 @@ table.data-table td:first-child{text-align:left;font-weight:500}
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v2.1 · Feebit © 2026</div>
+  <div class="sidebar-footer">v3.0 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -168,6 +168,7 @@ table.data-table td:first-child{text-align:left;font-weight:500}
       <span class="topbar-title">🛍️ 通路營收分析</span>
     </div>
     <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" id="btn-sync-cloud" style="display:none" onclick="syncToSupabase()">☁️ 拋轉到雲端</button>
       <button class="btn btn-ghost" id="btn-add-month" style="display:none" onclick="openMonthForm()">＋ 新增/編輯月份</button>
       <button class="btn btn-ghost" id="btn-export" style="display:none" onclick="exportBackup()">匯出備份</button>
       <button class="btn btn-ghost" id="btn-reset" style="display:none" onclick="resetAll()">重新上傳</button>
@@ -183,8 +184,10 @@ table.data-table td:first-child{text-align:left;font-weight:500}
       <div class="upload-sub" style="color:var(--gray-600);font-size:13px;margin-bottom:14px">支援 JSON 格式(由飛比特營收表單轉出),資料只存在妳的瀏覽器裡,不會上傳到任何伺服器</div>
       <input type="file" id="file-input" accept=".json" style="display:none" onchange="handleFile(event)">
       <button class="btn btn-primary">選擇 JSON 檔案</button>
-      <div class="small-note">資料儲存在本機瀏覽器 localStorage,清除瀏覽器資料會遺失,請定期用「匯出備份」保存</div>
+      <div class="small-note">上傳後資料先存在本機瀏覽器,請再按右上角「☁️ 拋轉到雲端」同步到資料庫,之後任何裝置登入都能看到最新資料</div>
     </div>
+
+    <div id="viewer-empty" class="empty-hint" style="display:none;padding:60px 24px">管理員尚未上傳通路營收資料</div>
 
     <div id="dashboard" style="display:none">
 
@@ -254,7 +257,7 @@ table.data-table td:first-child{text-align:left;font-weight:500}
           <span class="collapse-chevron" id="months-chevron">▶</span>
         </div>
         <div class="collapsible-body" id="months-panel">
-          <div class="toolbar">
+          <div class="toolbar" id="months-toolbar">
             <button class="btn btn-primary" onclick="openMonthForm()">＋ 新增/編輯月份</button>
           </div>
           <table class="data-table months-table" id="months-table"><thead></thead><tbody></tbody></table>
@@ -325,6 +328,62 @@ let DATA = {}; // { "2026": { "1": {...}, "2": {...} } }
 let currentRange = null; // {from:'2026-01', to:'2026-06'}
 let chart = null;
 let cmpChart = null;
+
+// ---------- cloud sync (Supabase) ----------
+// 讀取:任何登入帳號(非 finance_viewer)皆可；寫入/刪除:只認 ADMIN_EMAIL,規則實際鎖在資料庫 RLS,不是只靠前端隱藏按鈕
+const CLOUD_URL = 'https://tokhhoyzztaynppcatci.supabase.co';
+const CLOUD_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRva2hob3l6enRheW5wcGNhdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMDAyODMsImV4cCI6MjA5MDg3NjI4M30.PQB4lJGF3OMatv5wIedCu3zIWq0urrFbniBRYTbNtUU';
+const ADMIN_EMAIL = 'esuse.adobe@gmail.com';
+let cloudClient = null;
+let isAdmin = false;
+let cloudSynced = false; // 雲端資料庫是否已經有資料(拋轉過至少一次),true 之後單筆新增/編輯/刪除會直接寫回雲端
+
+function waitForSupabaseSDK() {
+  return new Promise(resolve => {
+    if (window.supabase) return resolve();
+    const t = setInterval(() => { if (window.supabase) { clearInterval(t); resolve(); } }, 50);
+  });
+}
+async function initCloud() {
+  await waitForSupabaseSDK();
+  cloudClient = window.supabase.createClient(CLOUD_URL, CLOUD_ANON_KEY);
+  const { data: { session } } = await cloudClient.auth.getSession();
+  isAdmin = (session?.user?.email || '') === ADMIN_EMAIL;
+}
+async function loadFromSupabase() {
+  if (!cloudClient) return false;
+  const { data, error } = await cloudClient.from('channel_revenue_months').select('year,month,data');
+  if (error) { console.error('[channel-revenue] 雲端讀取失敗', error); return false; }
+  if (!data || !data.length) return false;
+  DATA = {};
+  data.forEach(row => {
+    const y = String(row.year), m = String(row.month);
+    if (!DATA[y]) DATA[y] = {};
+    DATA[y][m] = row.data;
+  });
+  return true;
+}
+async function syncToSupabase() {
+  if (!isAdmin || !cloudClient) return;
+  const rows = [];
+  Object.keys(DATA).forEach(y => {
+    Object.keys(DATA[y]).forEach(m => rows.push({ year: Number(y), month: Number(m), data: DATA[y][m] }));
+  });
+  if (!rows.length) { alert('目前沒有資料可以拋轉'); return; }
+  const btn = document.getElementById('btn-sync-cloud');
+  if (btn) { btn.disabled = true; btn.textContent = '拋轉中…'; }
+  const { error } = await cloudClient.from('channel_revenue_months').upsert(rows, { onConflict: 'year,month' });
+  if (btn) { btn.disabled = false; btn.textContent = '☁️ 拋轉到雲端'; }
+  if (error) { alert('拋轉失敗:' + error.message); return; }
+  cloudSynced = true;
+  alert(`已將 ${rows.length} 個月份的資料拋轉到雲端資料庫,之後任何裝置登入都會自動讀取最新資料。`);
+}
+function applyAdminUI() {
+  ['btn-add-month','btn-export','btn-reset','btn-sync-cloud','months-toolbar'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = isAdmin ? '' : 'none';
+  });
+}
 
 // ---------- year/month picker (replaces native <input type=month>, which is clunky) ----------
 function buildYMPicker(containerId, minYear, maxYear) {
@@ -730,19 +789,19 @@ function renderMonthsTable() {
   const keys = allMonthKeys().slice().reverse();
   const thead = document.querySelector('#months-table thead');
   const tbody = document.querySelector('#months-table tbody');
-  thead.innerHTML = `<tr><th>年月</th><th>總營業額</th><th>操作</th></tr>`;
+  thead.innerHTML = `<tr><th>年月</th><th>總營業額</th>${isAdmin ? '<th>操作</th>' : ''}</tr>`;
   tbody.innerHTML = keys.map(k => {
     const d = monthData(k) || {};
     const total = (d['月平台總計_不含批發實體']||0) + (d['實體批發總計']||0);
     return `<tr>
       <td>${k}</td>
       <td>NT$ ${fmt(total)}</td>
-      <td class="actions">
+      ${isAdmin ? `<td class="actions">
         <button class="btn btn-ghost" onclick="openMonthForm('${k}')">編輯</button>
         <button class="btn btn-ghost" onclick="deleteMonth('${k}')">刪除</button>
-      </td>
+      </td>` : ''}
     </tr>`;
-  }).join('') || `<tr><td colspan="3" class="empty-hint">尚無資料</td></tr>`;
+  }).join('') || `<tr><td colspan="${isAdmin?3:2}" class="empty-hint">尚無資料</td></tr>`;
 }
 
 function toggleMonthsPanel() {
@@ -750,11 +809,15 @@ function toggleMonthsPanel() {
   document.getElementById('months-chevron').classList.toggle('open');
 }
 
-function deleteMonth(key) {
+async function deleteMonth(key) {
   if (!confirm(`確定刪除 ${key} 的資料?`)) return;
   const [y,m] = key.split('-');
   delete DATA[y][String(Number(m))];
   saveToStorage();
+  if (cloudSynced && cloudClient) {
+    const { error } = await cloudClient.from('channel_revenue_months').delete().eq('year', Number(y)).eq('month', Number(m));
+    if (error) alert('本機已刪除,但雲端同步失敗:' + error.message);
+  }
   initDashboard(true);
 }
 
@@ -783,7 +846,7 @@ function openMonthForm(key) {
 function closeMonthForm() {
   document.getElementById('month-modal').classList.remove('open');
 }
-function saveMonthForm() {
+async function saveMonthForm() {
   const y = parseInt(document.getElementById('f-year').value);
   const m = parseInt(document.getElementById('f-month').value);
   if (!y || !m || m<1 || m>12) { alert('請輸入正確的年份與月份'); return; }
@@ -803,6 +866,10 @@ function saveMonthForm() {
   if (!DATA[y]) DATA[y] = {};
   DATA[y][String(m)] = rec;
   saveToStorage();
+  if (cloudSynced && cloudClient) {
+    const { error } = await cloudClient.from('channel_revenue_months').upsert({ year: y, month: m, data: rec }, { onConflict: 'year,month' });
+    if (error) alert('已存到本機,但雲端同步失敗,請稍後點「☁️ 拋轉到雲端」重新整批同步:' + error.message);
+  }
   closeMonthForm();
   initDashboard(true);
 }
@@ -819,15 +886,15 @@ function renderAll() {
 function initDashboard(keepRange) {
   const keys = allMonthKeys();
   if (!keys.length) {
-    document.getElementById('upload-zone').style.display = '';
+    document.getElementById('upload-zone').style.display = isAdmin ? '' : 'none';
+    document.getElementById('viewer-empty').style.display = isAdmin ? 'none' : '';
     document.getElementById('dashboard').style.display = 'none';
     return;
   }
   document.getElementById('upload-zone').style.display = 'none';
+  document.getElementById('viewer-empty').style.display = 'none';
   document.getElementById('dashboard').style.display = '';
-  document.getElementById('btn-add-month').style.display = '';
-  document.getElementById('btn-export').style.display = '';
-  document.getElementById('btn-reset').style.display = '';
+  applyAdminUI();
   initAllPickers();
   initBrandPlatformSelect();
   if (!keepRange || !currentRange) {
@@ -849,7 +916,21 @@ uz.addEventListener('drop', e => {
   }
 });
 
-if (loadFromStorage()) initDashboard();
+async function boot() {
+  await initCloud();
+  const cloudHasData = await loadFromSupabase();
+  cloudSynced = cloudHasData;
+  if (cloudHasData) {
+    saveToStorage(); // 雲端資料同時備份一份到本機,離線也能看上次讀到的版本
+    initDashboard();
+  } else if (isAdmin && loadFromStorage()) {
+    // 雲端還沒有資料,但本機有舊資料(尚未拋轉) → 照常顯示,讓管理員可以按「拋轉到雲端」
+    initDashboard();
+  } else {
+    initDashboard(); // keys 為空,會走 upload-zone / viewer-empty 分支
+  }
+}
+boot();
 </script>
 </body>
 </html>
