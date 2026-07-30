@@ -183,6 +183,10 @@
           if (syncBtn) syncBtn.style.display = 'none';
           const balBtn = document.getElementById('balance-refresh-btn');
           if (balBtn) balBtn.style.display = 'none';
+          const noteBtn = document.getElementById('note-save-btn');
+          if (noteBtn) noteBtn.style.display = 'none';
+          const noteTa = document.getElementById('account-note-text');
+          if (noteTa) noteTa.readOnly = true;
         };
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', restrict);
         else restrict();

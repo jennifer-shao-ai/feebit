@@ -22,7 +22,11 @@
 .custom-filter input[type=month]{padding:5px 8px;border:1px solid var(--gray-200);border-radius:var(--radius);font-size:13px;background:white}
 .custom-filter.active-filter{border-color:var(--primary);background:var(--primary-light)}
 /* ── account balance ── */
-.balance-strip{background:white;border-radius:var(--radius);padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:24px}
+.balance-strip{background:white;border-radius:var(--radius);padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:24px;display:flex;gap:20px;align-items:stretch}
+.balance-strip-main{flex:1;min-width:0}
+.balance-note{width:200px;flex-shrink:0;border-left:1px solid var(--gray-100);padding-left:16px;display:flex;flex-direction:column}
+.balance-note textarea{width:100%;flex:1;min-height:60px;margin-top:8px;padding:8px;font-size:12px;line-height:1.5;border:1px solid var(--gray-200);border-radius:var(--radius);resize:vertical;box-sizing:border-box;font-family:inherit}
+.balance-note textarea:focus{outline:none;border-color:var(--primary)}
 .balance-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-top:12px}
 .balance-card{background:var(--gray-50);border-radius:var(--radius);padding:12px 16px;position:relative}
 .balance-row-label{grid-column:1/-1}
@@ -108,6 +112,8 @@ tr.total-row td:first-child{background:var(--gray-100)!important}
   .summary-cards{grid-template-columns:1fr 1fr}
   .charts-grid{grid-template-columns:1fr}
   .chart-card.full{grid-column:1}
+  .balance-strip{flex-direction:column}
+  .balance-note{width:100%;border-left:none;border-top:1px solid var(--gray-100);padding-left:0;padding-top:16px;margin-top:16px}
 }
 </style>
 </head>
@@ -251,15 +257,27 @@ tr.total-row td:first-child{background:var(--gray-100)!important}
 
       <!-- account balance -->
       <div class="balance-strip">
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <div style="font-size:14px;font-weight:600">💳 帳戶餘額快照</div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span id="balance-updated-at" style="font-size:11px;color:var(--gray-500)"></span>
-            <button id="balance-refresh-btn" class="btn btn-outline" onclick="fetchAccountBalances()" style="font-size:12px;padding:3px 10px">↻ 更新餘額</button>
+        <div class="balance-strip-main">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="font-size:14px;font-weight:600">💳 帳戶餘額快照</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span id="balance-updated-at" style="font-size:11px;color:var(--gray-500)"></span>
+              <button id="balance-refresh-btn" class="btn btn-outline" onclick="fetchAccountBalances()" style="font-size:12px;padding:3px 10px">↻ 更新餘額</button>
+            </div>
+          </div>
+          <div id="account-balance-list" class="balance-cards" style="margin-top:12px">
+            <p style="color:var(--gray-500);font-size:12px;margin:0">點「更新餘額」從 Ragic 抓取最新帳戶餘額</p>
           </div>
         </div>
-        <div id="account-balance-list" class="balance-cards" style="margin-top:12px">
-          <p style="color:var(--gray-500);font-size:12px;margin:0">點「更新餘額」從 Ragic 抓取最新帳戶餘額</p>
+        <div class="balance-note">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="font-size:13px;font-weight:600">📝 備注</div>
+            <span id="note-saved-at" style="font-size:10px;color:var(--gray-500)"></span>
+          </div>
+          <textarea id="account-note-text" placeholder="輸入備注，其他登入帳號也會看到…"></textarea>
+          <div style="display:flex;justify-content:flex-end;margin-top:6px">
+            <button id="note-save-btn" class="btn btn-primary" onclick="saveAccountNote()" style="font-size:11px;padding:3px 10px">存檔</button>
+          </div>
         </div>
       </div>
 
@@ -1067,6 +1085,36 @@ async function loadBalanceSnapshot(){
   }catch(e){console.warn('[balance_snapshots] load failed',e);}
 }
 
+async function loadAccountNote(){
+  try{
+    const {data,error}=await db.from('account_notes').select('content,updated_by,updated_at').eq('id',1).maybeSingle();
+    if(error) throw error;
+    document.getElementById('account-note-text').value=data?.content||'';
+    renderNoteMeta(data?.updated_by,data?.updated_at);
+  }catch(e){console.warn('[account_notes] load failed',e);}
+}
+
+function renderNoteMeta(by,at){
+  const el=document.getElementById('note-saved-at');
+  if(!at){el.textContent='';return;}
+  const d=new Date(at);
+  const name=(by||'').split('@')[0];
+  el.textContent=`${name} 更新於 ${d.toLocaleDateString('zh-TW')} ${d.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'})}`;
+}
+
+async function saveAccountNote(){
+  const btn=document.getElementById('note-save-btn');
+  const content=document.getElementById('account-note-text').value;
+  const {data:{session}}=await db.auth.getSession();
+  const email=session?.user?.email||'';
+  const now=new Date().toISOString();
+  btn.disabled=true;btn.textContent='儲存中…';
+  const {error}=await db.from('account_notes').upsert({id:1,content,updated_by:email,updated_at:now},{onConflict:'id'});
+  btn.disabled=false;btn.textContent='存檔';
+  if(error){alert('儲存失敗：'+error.message);return;}
+  renderNoteMeta(email,now);
+}
+
 async function fetchAccountBalances(){
   const cfg=loadRagicCfg();
   const el=document.getElementById('account-balance-list');
@@ -1295,6 +1343,31 @@ DO $$ BEGIN
   ) THEN
     CREATE POLICY "allow_all" ON finance_transactions FOR ALL USING (true) WITH CHECK (true);
   END IF;
+END $$;
+
+-- 帳戶餘額快照旁的共用備注（僅 finance_viewer 唯讀，其他登入帳號可編輯）
+CREATE TABLE IF NOT EXISTS account_notes (
+  id int PRIMARY KEY DEFAULT 1,
+  content text DEFAULT '',
+  updated_by text,
+  updated_at timestamptz DEFAULT now(),
+  CONSTRAINT account_notes_singleton CHECK (id = 1)
+);
+INSERT INTO account_notes (id, content) VALUES (1, '') ON CONFLICT (id) DO NOTHING;
+ALTER TABLE account_notes ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename='account_notes' AND policyname='select_authenticated'
+  ) THEN
+    CREATE POLICY "select_authenticated" ON account_notes FOR SELECT TO authenticated USING (true);
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename='account_notes' AND policyname='write_non_viewer'
+  ) THEN
+    CREATE POLICY "write_non_viewer" ON account_notes FOR ALL TO authenticated
+      USING (NOT EXISTS (SELECT 1 FROM user_roles ur WHERE ur.email = auth.jwt()->>'email' AND ur.role = 'finance_viewer'))
+      WITH CHECK (NOT EXISTS (SELECT 1 FROM user_roles ur WHERE ur.email = auth.jwt()->>'email' AND ur.role = 'finance_viewer'));
+  END IF;
 END $$;`;
 
 function openDbModal(){document.getElementById('db-modal').classList.add('open');}
@@ -1492,6 +1565,7 @@ function closeSidebar(){document.getElementById('sidebar').classList.remove('ope
 updateRangeLabel(curRange);
 loadData();
 loadBalanceSnapshot();
+loadAccountNote();
 </script>
 </body>
 </html>
