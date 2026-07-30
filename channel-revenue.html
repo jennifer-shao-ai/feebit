@@ -23,13 +23,27 @@
 .sc .sc-label{font-size:12px;color:var(--gray-600);margin-bottom:6px}
 .sc .sc-value{font-size:22px;font-weight:700}
 .sc .sc-sub{font-size:11px;color:var(--gray-500);margin-top:4px}
+.sc .sc-yoy{font-size:12px;font-weight:600;margin-top:8px;padding-top:8px;border-top:1px solid var(--gray-100)}
+.sc .sc-yoy .yoy-muted{color:var(--gray-400);font-weight:400}
 .card{background:white;border-radius:var(--radius);padding:20px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .card h3{font-size:14px;font-weight:600;margin-bottom:14px;color:var(--gray-700)}
-table.data-table{width:100%;border-collapse:collapse;font-size:13px}
+table.data-table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
 table.data-table th{background:var(--gray-50);padding:9px 12px;text-align:right;border-bottom:2px solid var(--gray-200);font-size:12px;font-weight:600;white-space:nowrap}
 table.data-table th:first-child{text-align:left}
-table.data-table td{padding:9px 12px;border-bottom:1px solid var(--gray-100);text-align:right}
+table.data-table td{padding:9px 12px;border-bottom:1px solid var(--gray-100);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 table.data-table td:first-child{text-align:left;font-weight:500}
+/* 欄位少的表格(品牌Top5/資料管理)不要被撐滿整張卡片寬度,不然文字會散得很開很難讀 */
+#brand-table,#months-table{max-width:560px}
+#brand-table th:nth-child(1),#brand-table td:nth-child(1){width:56px}
+#months-table th:nth-child(1),#months-table td:nth-child(1){width:110px}
+#months-table th:nth-child(3),#months-table td:nth-child(3){width:150px}
+/* 通路排行表:類別/占比/YoY欄位固定寬度,把空間留給通路名稱跟金額 */
+#platform-table th:nth-child(1),#platform-table td:nth-child(1){width:90px}
+#platform-table th:nth-child(2),#platform-table td:nth-child(2){width:160px}
+#platform-table th:nth-child(4),#platform-table td:nth-child(4){width:80px}
+#platform-table th:nth-child(5),#platform-table td:nth-child(5){width:110px}
+/* 對比表欄位偏多且內容長,不用 fixed 排版,讓內容自然撐開 */
+#cmp-table{table-layout:auto}
 .bar-cell{position:relative}
 .bar-fill{position:absolute;left:0;top:0;bottom:0;background:var(--primary-light);z-index:0;border-radius:4px}
 .bar-text{position:relative;z-index:1}
@@ -134,7 +148,7 @@ table.data-table td:first-child{text-align:left;font-weight:500}
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v1.0 · Feebit © 2026</div>
+  <div class="sidebar-footer">v2.0 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -152,7 +166,7 @@ table.data-table td:first-child{text-align:left;font-weight:500}
     </div>
   </div>
 
-  <div style="padding:24px">
+  <div style="padding:24px;max-width:1240px">
 
     <!-- UPLOAD -->
     <div id="upload-zone" class="cr-upload" onclick="document.getElementById('file-input').click()">
@@ -222,6 +236,7 @@ table.data-table td:first-child{text-align:left;font-weight:500}
           <button class="btn btn-primary" onclick="runCompare()">開始對比</button>
         </div>
         <table class="cmp-table data-table" id="cmp-table"><thead></thead><tbody></tbody></table>
+        <div class="chart-wrap" id="cmp-chart-wrap" style="display:none;margin-top:20px"><canvas id="cmp-chart"></canvas></div>
       </div>
 
       <!-- MONTHS DATA MANAGEMENT -->
@@ -244,8 +259,7 @@ table.data-table td:first-child{text-align:left;font-weight:500}
     <div class="form-grid">
       <div><label>年份</label><input type="number" id="f-year" placeholder="2026"></div>
       <div><label>月份(1-12)</label><input type="number" id="f-month" min="1" max="12" placeholder="7"></div>
-      <div class="full" style="border-top:1px solid var(--gray-200);margin:6px 0"></div>
-      <div><label>全蝦皮</label><input type="number" id="f-全蝦皮"></div>
+      <div class="full" style="border-top:1px solid var(--gray-200);margin:6px 0;color:#2563eb;font-size:12px;font-weight:600">線上通路</div>
       <div><label>LaLaV商城</label><input type="number" id="f-LaLaV商城"></div>
       <div><label>LaLaV一般</label><input type="number" id="f-LaLaV一般"></div>
       <div><label>寶媽</label><input type="number" id="f-寶媽"></div>
@@ -256,10 +270,11 @@ table.data-table td:first-child{text-align:left;font-weight:500}
       <div><label>家樂福商城</label><input type="number" id="f-家樂福商城"></div>
       <div><label>官網</label><input type="number" id="f-官網"></div>
       <div><label>LINE購物商城</label><input type="number" id="f-LINE購物商城"></div>
+      <div class="full" style="border-top:1px solid var(--gray-200);margin:6px 0;color:#d97706;font-size:12px;font-weight:600">實體/批發</div>
+      <div><label>廠商(批發)</label><input type="number" id="f-廠商"></div>
       <div><label>酷澎(實際收款)</label><input type="number" id="f-酷澎_實際收款"></div>
       <div><label>酷澎商城</label><input type="number" id="f-酷澎商城"></div>
       <div><label>市集</label><input type="number" id="f-市集"></div>
-      <div><label>廠商(批發)</label><input type="number" id="f-廠商"></div>
       <div class="full" style="border-top:1px solid var(--gray-200);margin:6px 0"></div>
       <div><label>FB廣告費</label><input type="number" id="f-FB廣告費"></div>
       <div><label>蝦皮站內廣告費</label><input type="number" id="f-蝦皮站內廣告費"></div>
@@ -276,11 +291,19 @@ table.data-table td:first-child{text-align:left;font-weight:500}
 
 <script>
 const STORAGE_KEY = 'feebit_channel_revenue_v1';
-const PLATFORM_FIELDS = ['全蝦皮','LaLaV商城','LaLaV一般','寶媽','桑爹','momo','mo店+','寶雅','家樂福商城','官網','LINE購物商城','酷澎_實際收款','酷澎商城','市集','廠商'];
+// 順序照 Jennifer 原始表單的欄位順序(2026分頁最新版本)排列
+// 注意:「全蝦皮」= LaLaV商城+LaLaV一般+桑爹 的小計,不是獨立通路,故不列入排行/加總,避免重複計算
+const PLATFORM_FIELDS = ['LaLaV商城','LaLaV一般','寶媽','桑爹','momo','mo店+','寶雅','家樂福商城','官網','LINE購物商城','廠商','酷澎_實際收款','酷澎商城','市集'];
 const PLATFORM_LABELS = {
-  '全蝦皮':'全蝦皮','LaLaV商城':'LaLaV商城','LaLaV一般':'LaLaV一般','寶媽':'寶媽','桑爹':'桑爹','momo':'momo',
+  '全蝦皮':'全蝦皮(=LaLaV商城+LaLaV一般+桑爹小計)','LaLaV商城':'LaLaV商城','LaLaV一般':'LaLaV一般','寶媽':'寶媽','桑爹':'桑爹','momo':'momo',
   'mo店+':'mo店+','寶雅':'寶雅','家樂福商城':'家樂福商城','官網':'官網','LINE購物商城':'LINE購物商城',
   '酷澎_實際收款':'酷澎(實際收款)','酷澎商城':'酷澎商城','市集':'市集','廠商':'廠商(批發)'
+};
+// 通路分類:線上(計入月平台總計) vs 實體/批發(計入實體批發總計),照 Jennifer 原始表單的分類方式
+const PLATFORM_CATEGORY = {
+  'LaLaV商城':'online','LaLaV一般':'online','寶媽':'online','桑爹':'online','momo':'online','mo店+':'online',
+  '寶雅':'online','家樂福商城':'online','官網':'online','LINE購物商城':'online',
+  '廠商':'offline','酷澎_實際收款':'offline','酷澎商城':'offline','市集':'offline'
 };
 const AD_FIELDS = ['FB廣告費','蝦皮站內廣告費','蝦皮聯盟行銷','MOMO廣告費','GOOGLE廣告費'];
 const BRAND_CAPABLE = ['LaLaV商城','LaLaV一般','寶媽','桑爹','momo','mo店+','寶雅','家樂福商城','官網'];
@@ -288,6 +311,7 @@ const BRAND_CAPABLE = ['LaLaV商城','LaLaV一般','寶媽','桑爹','momo','mo�
 let DATA = {}; // { "2026": { "1": {...}, "2": {...} } }
 let currentRange = null; // {from:'2026-01', to:'2026-06'}
 let chart = null;
+let cmpChart = null;
 
 // ---------- year/month picker (replaces native <input type=month>, which is clunky) ----------
 function buildYMPicker(containerId, minYear, maxYear) {
@@ -313,10 +337,13 @@ function getYMPicker(containerId) {
 function initAllPickers() {
   const keys = allMonthKeys();
   const now = new Date();
+  const latestDataKey = keys.length ? keys[keys.length-1] : ymKey(now.getFullYear(), now.getMonth()+1);
   const dataMinYear = keys.length ? parseInt(keys[0].split('-')[0]) : now.getFullYear() - 2;
   const dataMaxYear = Math.max(now.getFullYear() + 1, keys.length ? parseInt(keys[keys.length-1].split('-')[0]) : now.getFullYear());
+  // 下拉選單一律先預設在「資料裡最新的年月」，而不是瀏覽器預設的第一個選項(最早年份)
   ['custom-from-picker','custom-to-picker','cmp-a-from-picker','cmp-a-to-picker','cmp-b-from-picker','cmp-b-to-picker'].forEach(id => {
     buildYMPicker(id, dataMinYear, dataMaxYear);
+    setYMPicker(id, latestDataKey);
   });
 }
 
@@ -398,6 +425,31 @@ function grandTotal(keys) { return totalOnline(keys) + totalOffline(keys); }
 function fmt(n) { return Math.round(n).toLocaleString('zh-TW'); }
 function pct(n) { return (n*100).toFixed(1) + '%'; }
 
+// ---------- YoY (較去年同期) helpers ----------
+// 區間跨超過12個月時(例如「全部」選項橫跨好幾年),往前推一年沒有意義,故不顯示同期比較
+function monthSpan(range) {
+  const [fy,fm] = range.from.split('-').map(Number);
+  const [ty,tm] = range.to.split('-').map(Number);
+  return (ty*12+tm) - (fy*12+fm) + 1;
+}
+function yoyRangeOf(range) {
+  const [fy,fm] = range.from.split('-').map(Number);
+  const [ty,tm] = range.to.split('-').map(Number);
+  return { from: ymKey(fy-1, fm), to: ymKey(ty-1, tm) };
+}
+function getYoyKeysForRange(range) {
+  if (monthSpan(range) > 12) return [];
+  const yr = yoyRangeOf(range);
+  return keysInRange(yr.from, yr.to);
+}
+function growthPct(cur, prev) { return prev ? (cur-prev)/prev : null; }
+function growthHtml(g) {
+  if (g == null) return '<span class="yoy-muted">-</span>';
+  const cls = g >= 0 ? 'growth-pos' : 'growth-neg';
+  const arrow = g >= 0 ? '▲' : '▼';
+  return `<span class="${cls}">${arrow} ${g>=0?'+':''}${pct(g)}</span>`;
+}
+
 // ---------- range tabs ----------
 function ymKey(y,m){ return `${y}-${String(m).padStart(2,'0')}`; }
 function shiftMonth(y,m,delta){ let idx = y*12+(m-1)+delta; return [Math.floor(idx/12), idx%12+1]; }
@@ -428,8 +480,9 @@ function buildRangeTabs() {
     wrap.appendChild(btn);
   });
   // default: 有資料的話優先顯示「本月」,若本月完全沒資料則退回「全部」
+  // 預設優先顯示「本月」；本月還沒資料就退回「今年」(index 4),而不是直接跳到「全部」歷年資料
   const hasThisMonth = keys.includes(ymKey(ty,tm));
-  const defIdx = hasThisMonth ? 0 : 6;
+  const defIdx = hasThisMonth ? 0 : 4;
   const def = presets[defIdx];
   selectRange(def.from, def.to, wrap.children[defIdx]);
 }
@@ -463,11 +516,26 @@ function renderSummary() {
   const ad = sumField(keys, '各平台總計廣告費') || AD_FIELDS.reduce((s,f)=>s+sumField(keys,f),0);
   const adRatio = total > 0 ? ad/total : 0;
 
+  const yoyKeys = getYoyKeysForRange(currentRange);
+  const yoyApplicable = monthSpan(currentRange) <= 12;
+  let yoyHtml = () => '';
+  if (yoyApplicable && yoyKeys.length) {
+    const yoyOnline = totalOnline(yoyKeys);
+    const yoyOffline = totalOffline(yoyKeys);
+    const yoyTotal = yoyOnline + yoyOffline;
+    const yoyAd = AD_FIELDS.reduce((s,f)=>s+sumField(yoyKeys,f),0);
+    const yr = yoyRangeOf(currentRange);
+    const map = {total:[total,yoyTotal], online:[online,yoyOnline], offline:[offline,yoyOffline], ad:[ad,yoyAd]};
+    yoyHtml = (key) => `<div class="sc-yoy">${growthHtml(growthPct(...map[key]))} 較去年同期(${yr.from}~${yr.to})</div>`;
+  } else if (yoyApplicable) {
+    yoyHtml = () => `<div class="sc-yoy yoy-muted">去年同期無資料</div>`;
+  }
+
   const cards = [
-    {label:'總營業額(線上+線下)', value: 'NT$ ' + fmt(total)},
-    {label:'線上通路總計', value: 'NT$ ' + fmt(online), sub: total? pct(online/total)+' 占比' : ''},
-    {label:'實體/批發總計', value: 'NT$ ' + fmt(offline), sub: total? pct(offline/total)+' 占比' : ''},
-    {label:'廣告費總計', value: 'NT$ ' + fmt(ad), sub: '廣告費佔比 ' + pct(adRatio)},
+    {label:'總營業額(線上+線下)', value: 'NT$ ' + fmt(total), yoy: yoyHtml('total')},
+    {label:'線上通路總計', value: 'NT$ ' + fmt(online), sub: total? pct(online/total)+' 占比' : '', yoy: yoyHtml('online')},
+    {label:'實體/批發總計', value: 'NT$ ' + fmt(offline), sub: total? pct(offline/total)+' 占比' : '', yoy: yoyHtml('offline')},
+    {label:'廣告費總計', value: 'NT$ ' + fmt(ad), sub: '廣告費佔比 ' + pct(adRatio), yoy: yoyHtml('ad')},
     {label:'涵蓋月份數', value: keys.length + ' 個月'},
   ];
   const wrap = document.getElementById('summary-cards');
@@ -476,46 +544,73 @@ function renderSummary() {
       <div class="sc-label">${c.label}</div>
       <div class="sc-value">${c.value}</div>
       ${c.sub ? `<div class="sc-sub">${c.sub}</div>` : ''}
+      ${c.yoy || ''}
     </div>`).join('');
 }
 
 // ---------- platform table ----------
+const CATEGORY_STYLE = {
+  online:  {color:'#2563eb', bg:'#dbeafe', label:'線上'},
+  offline: {color:'#d97706', bg:'#fef3c7', label:'實體/批發'},
+};
+
 function renderPlatformTable() {
   const keys = keysInRange(currentRange.from, currentRange.to);
-  const rows = PLATFORM_FIELDS.map(f => ({ field: f, label: PLATFORM_LABELS[f], value: sumField(keys, f) }))
-    .filter(r => r.value !== 0)
-    .sort((a,b) => b.value - a.value);
+  const yoyKeys = getYoyKeysForRange(currentRange);
+  const showYoyCol = yoyKeys.length > 0;
+  // 照 Jennifer 原始表單的欄位順序顯示(不依金額排序)
+  const rows = PLATFORM_FIELDS.map(f => ({
+    field: f, label: PLATFORM_LABELS[f], value: sumField(keys, f), cat: PLATFORM_CATEGORY[f],
+    yoyValue: showYoyCol ? sumField(yoyKeys, f) : null,
+  })).filter(r => r.value !== 0);
   const total = rows.reduce((s,r)=>s+r.value, 0);
-  const max = rows.length ? rows[0].value : 1;
+  const max = rows.length ? Math.max(...rows.map(r=>r.value)) : 1;
+  const colCount = showYoyCol ? 5 : 4;
 
   const thead = document.querySelector('#platform-table thead');
   const tbody = document.querySelector('#platform-table tbody');
-  thead.innerHTML = `<tr><th>通路</th><th>營收</th><th>占比</th></tr>`;
-  tbody.innerHTML = rows.map(r => `
+  thead.innerHTML = `<tr><th>類別</th><th>通路</th><th>營收</th><th>占比</th>${showYoyCol ? '<th>較去年同期</th>' : ''}</tr>`;
+  tbody.innerHTML = rows.map(r => {
+    const cs = CATEGORY_STYLE[r.cat] || {color:'#9ca3af', bg:'#f3f4f6', label:'-'};
+    return `
     <tr>
+      <td><span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;color:${cs.color};background:${cs.bg}">${cs.label}</span></td>
       <td>${r.label}</td>
       <td class="bar-cell">
-        <div class="bar-fill" style="width:${(r.value/max*100).toFixed(1)}%"></div>
+        <div class="bar-fill" style="width:${(r.value/max*100).toFixed(1)}%;background:${cs.bg}"></div>
         <span class="bar-text">NT$ ${fmt(r.value)}</span>
       </td>
       <td>${total ? pct(r.value/total) : '-'}</td>
-    </tr>`).join('') || `<tr><td colspan="3" class="empty-hint">此區間無資料</td></tr>`;
+      ${showYoyCol ? `<td>${growthHtml(growthPct(r.value, r.yoyValue))}</td>` : ''}
+    </tr>`;
+  }).join('') || `<tr><td colspan="${colCount}" class="empty-hint">此區間無資料</td></tr>`;
 }
 
 // ---------- trend chart ----------
+function monthTotalOf(k) {
+  const d = monthData(k) || {};
+  return (d['月平台總計_不含批發實體']||0) + (d['實體批發總計']||0);
+}
 function renderTrend() {
   const keys = keysInRange(currentRange.from, currentRange.to);
   const labels = keys;
-  const totals = keys.map(k => {
-    const d = monthData(k) || {};
-    return (d['月平台總計_不含批發實體']||0) + (d['實體批發總計']||0);
-  });
+  const totals = keys.map(monthTotalOf);
+  const datasets = [{ label: '本期', data: totals, borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.1)', fill: true, tension: 0.3 }];
+
+  // 疊加去年同期,用相對月份位置對齊(而非日曆月份),因為去年同期的實際年月不同
+  const yoyKeys = getYoyKeysForRange(currentRange);
+  if (yoyKeys.length) {
+    const yr = yoyRangeOf(currentRange);
+    const yoyTotals = labels.map((_, i) => i < yoyKeys.length ? monthTotalOf(yoyKeys[i]) : null);
+    datasets.push({ label: `去年同期(${yr.from}~${yr.to})`, data: yoyTotals, borderColor: '#9ca3af', backgroundColor: 'transparent', borderDash: [6,4], fill: false, tension: 0.3 });
+  }
+
   const ctx = document.getElementById('trend-chart').getContext('2d');
   if (chart) chart.destroy();
   chart = new Chart(ctx, {
     type: 'line',
-    data: { labels, datasets: [{ label: '總營業額', data: totals, borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.1)', fill: true, tension: 0.3 }] },
-    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{ticks:{callback:v=>'NT$'+(v/1000).toFixed(0)+'k'}}} }
+    data: { labels, datasets },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display: datasets.length>1, position:'top'}}, scales:{y:{ticks:{callback:v=>'NT$'+(v/1000).toFixed(0)+'k'}}} }
   });
 }
 
@@ -534,17 +629,25 @@ function aggregateBrands(keys, platform) {
   });
   return Object.entries(totals).map(([name,value]) => ({name,value})).sort((a,b)=>b.value-a.value).slice(0,5);
 }
+function datasetHasAnyBrandData() {
+  return Object.values(DATA).some(yd => Object.values(yd).some(md => md && md.brands && Object.keys(md.brands).length));
+}
 function renderBrandTop5() {
   const keys = keysInRange(currentRange.from, currentRange.to);
   const platform = document.getElementById('brand-platform-select').value;
   const top5 = aggregateBrands(keys, platform);
-  const total = top5.reduce((s,r)=>s+r.value,0);
   const thead = document.querySelector('#brand-table thead');
   const tbody = document.querySelector('#brand-table tbody');
   thead.innerHTML = `<tr><th>排名</th><th>品牌</th><th>銷售額</th></tr>`;
-  tbody.innerHTML = top5.map((r,i) => `
-    <tr><td>${i+1}</td><td>${r.name}</td><td>NT$ ${fmt(r.value)}</td></tr>
-  `).join('') || `<tr><td colspan="3" class="empty-hint">此區間 / 此通路無品牌資料</td></tr>`;
+  if (top5.length) {
+    tbody.innerHTML = top5.map((r,i) => `
+      <tr><td>${i+1}</td><td>${r.name}</td><td>NT$ ${fmt(r.value)}</td></tr>
+    `).join('');
+  } else if (!datasetHasAnyBrandData()) {
+    tbody.innerHTML = `<tr><td colspan="3" class="empty-hint">目前瀏覽器裡的資料是舊版、沒有品牌明細。請按右上角「重新上傳」,匯入最新的 通路營收資料_2023-2026.json</td></tr>`;
+  } else {
+    tbody.innerHTML = `<tr><td colspan="3" class="empty-hint">此區間 / 此通路無品牌資料</td></tr>`;
+  }
 }
 
 // ---------- comparison ----------
@@ -567,7 +670,7 @@ function runCompare() {
     const av = sumField(earlierKeys, f), bv = sumField(laterKeys, f);
     const growth = av ? (bv-av)/av : null;
     return {label: PLATFORM_LABELS[f], av, bv, growth};
-  }).sort((x,y)=>y.bv-x.bv);
+  }); // 照原始表單欄位順序,不依金額排序
 
   const aTotal = totalOnline(earlierKeys)+totalOffline(earlierKeys);
   const bTotal = totalOnline(laterKeys)+totalOffline(laterKeys);
@@ -581,6 +684,32 @@ function runCompare() {
       <td>NT$ ${fmt(r.bv)}</td>
       <td class="${r.growth==null?'':(r.growth>=0?'growth-pos':'growth-neg')}">${r.growth==null?'-':(r.growth>=0?'+':'')+pct(r.growth)}</td>
     </tr>`).join('');
+
+  renderCompareChart(earlier, later, earlierKeys, laterKeys);
+}
+
+// 月份用「第N月」對齊比較,不是用日曆月份對齊,因為兩個期間通常是不同年份
+function renderCompareChart(earlier, later, earlierKeys, laterKeys) {
+  const wrap = document.getElementById('cmp-chart-wrap');
+  wrap.style.display = '';
+  const len = Math.max(earlierKeys.length, laterKeys.length);
+  const labels = Array.from({length: len}, (_, i) => `第${i+1}月`);
+  const earlierData = earlierKeys.map(monthTotalOf);
+  const laterData = laterKeys.map(monthTotalOf);
+
+  const ctx = document.getElementById('cmp-chart').getContext('2d');
+  if (cmpChart) cmpChart.destroy();
+  cmpChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: `較早 (${earlier.from}~${earlier.to})`, data: earlierData, borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.08)', tension: 0.3 },
+        { label: `較晚 (${later.from}~${later.to})`, data: laterData, borderColor: '#d97706', backgroundColor: 'rgba(217,119,6,0.08)', tension: 0.3 },
+      ]
+    },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:true, position:'top'}}, scales:{y:{ticks:{callback:v=>'NT$'+(v/1000).toFixed(0)+'k'}}} }
+  });
 }
 
 // ---------- months management table ----------
@@ -647,11 +776,9 @@ function saveMonthForm() {
     const v = el ? parseFloat(el.value) : NaN;
     if (!isNaN(v)) rec[f] = v;
   });
-  const online = PLATFORM_FIELDS.filter(f => !['廠商','市集'].includes(f)).reduce((s,f)=>s+(rec[f]||0),0);
-  const offline = (rec['廠商']||0) + (rec['市集']||0) + (rec['酷澎_實際收款']||0) + (rec['酷澎商城']||0);
-  // note: keep raw fields; recompute standard aggregate fields for consistency with parsed historical data
-  rec['月平台總計_不含批發實體'] = PLATFORM_FIELDS.filter(f => !['廠商','市集','酷澎_實際收款','酷澎商城'].includes(f)).reduce((s,f)=>s+(rec[f]||0),0);
-  rec['實體批發總計'] = (rec['廠商']||0) + (rec['市集']||0) + (rec['酷澎_實際收款']||0) + (rec['酷澎商城']||0);
+  // 依 PLATFORM_CATEGORY 分類重新計算總計,跟解析歷史資料的邏輯一致(全蝦皮不計入,避免與LaLaV商城/一般/桑爹重複)
+  rec['月平台總計_不含批發實體'] = PLATFORM_FIELDS.filter(f => PLATFORM_CATEGORY[f] === 'online').reduce((s,f)=>s+(rec[f]||0),0);
+  rec['實體批發總計'] = PLATFORM_FIELDS.filter(f => PLATFORM_CATEGORY[f] === 'offline').reduce((s,f)=>s+(rec[f]||0),0);
   rec['各平台總計廣告費'] = AD_FIELDS.reduce((s,f)=>s+(rec[f]||0),0);
   rec['總營業額'] = rec['月平台總計_不含批發實體'] + rec['實體批發總計'];
 
