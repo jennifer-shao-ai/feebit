@@ -75,6 +75,14 @@ table.data-table td:first-child{text-align:left;font-weight:500}
 .small-note{font-size:11px;color:var(--gray-500);margin-top:6px}
 .ym-picker{display:inline-flex;gap:4px}
 .ym-picker select{padding:6px 8px;border:1px solid var(--gray-200);border-radius:var(--radius);font-size:13px;background:white}
+.chart-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.chart-header h3{margin:0}
+.card-header{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
+.card-header h3{margin:0}
+.collapse-chevron{font-size:12px;color:var(--gray-500);transition:transform .2s;flex-shrink:0}
+.collapse-chevron.open{transform:rotate(90deg)}
+.collapsible-body{display:none;margin-top:14px}
+.collapsible-body.open{display:block}
 </style>
 </head>
 <body>
@@ -148,7 +156,7 @@ table.data-table td:first-child{text-align:left;font-weight:500}
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v2.0 · Feebit © 2026</div>
+  <div class="sidebar-footer">v2.1 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -241,11 +249,16 @@ table.data-table td:first-child{text-align:left;font-weight:500}
 
       <!-- MONTHS DATA MANAGEMENT -->
       <div class="card">
-        <h3>資料管理(逐月)</h3>
-        <div class="toolbar">
-          <button class="btn btn-primary" onclick="openMonthForm()">＋ 新增/編輯月份</button>
+        <div class="card-header" onclick="toggleMonthsPanel()">
+          <h3>資料管理(逐月)</h3>
+          <span class="collapse-chevron" id="months-chevron">▶</span>
         </div>
-        <table class="data-table months-table" id="months-table"><thead></thead><tbody></tbody></table>
+        <div class="collapsible-body" id="months-panel">
+          <div class="toolbar">
+            <button class="btn btn-primary" onclick="openMonthForm()">＋ 新增/編輯月份</button>
+          </div>
+          <table class="data-table months-table" id="months-table"><thead></thead><tbody></tbody></table>
+        </div>
       </div>
 
     </div>
@@ -730,6 +743,11 @@ function renderMonthsTable() {
       </td>
     </tr>`;
   }).join('') || `<tr><td colspan="3" class="empty-hint">尚無資料</td></tr>`;
+}
+
+function toggleMonthsPanel() {
+  document.getElementById('months-panel').classList.toggle('open');
+  document.getElementById('months-chevron').classList.toggle('open');
 }
 
 function deleteMonth(key) {
