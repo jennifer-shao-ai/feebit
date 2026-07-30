@@ -171,10 +171,10 @@ tbody tr:hover .edit-btn{opacity:1}
       <span style="font-size:11px;color:#aaa;font-weight:400;">v1.0</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
-      <button class="btn btn-primary" onclick="openAddModal()">＋ 新增資料</button>
+      <button class="btn btn-primary" id="add-data-btn" onclick="openAddModal()" style="display:none">＋ 新增資料</button>
       <button class="btn btn-ghost" onclick="refreshData()">重新整理</button>
       <button class="btn btn-ghost" onclick="exportBackup()">匯出備份</button>
-      <button class="btn btn-ghost" onclick="document.getElementById('import-input').click()">匯入</button>
+      <button class="btn btn-ghost" id="import-btn" onclick="document.getElementById('import-input').click()" style="display:none">匯入</button>
       <input type="file" id="import-input" accept=".json" style="display:none" onchange="handleImport(event)">
     </div>
   </div>
@@ -337,14 +337,22 @@ tbody tr:hover .edit-btn{opacity:1}
 // ══════════════════════════════════════════
 // Supabase（跨裝置共用資料庫，跟研發筆記同一個專案）
 // ══════════════════════════════════════════
-const SUPABASE_URL = 'https://tokhhoyzztaynppcatci.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRva2hob3l6enRheW5wcGNhdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMDAyODMsImV4cCI6MjA5MDg3NjI4M30.PQB4lJGF3OMatv5wIedCu3zIWq0urrFbniBRYTbNtUU';
 const TABLE = 'brand_trend_records';
-const { createClient } = supabase;
-const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const OWNER_EMAIL = 'esuse.adobe@gmail.com';
+
+// 沿用 auth.js 建立的登入連線（帶有登入者身分），不要另外建立匿名連線，
+// 否則資料庫權限規則（只有我能編輯）會失效
+let db;
+async function waitForAuthClient() {
+  while (!window._authClient) {
+    await new Promise(r => setTimeout(r, 50));
+  }
+  return window._authClient;
+}
 
 let RECORDS = [];
 let editingBrand = null;
+let IS_OWNER = false;
 
 async function loadRecords() {
   const { data, error } = await db.from(TABLE).select('*').order('id', { ascending: true });
@@ -496,7 +504,7 @@ function renderRankTable() {
            <datalist id="rank-brand-datalist">${opts}</datalist>
            <span class="edit-hint">Enter 儲存 · Esc 取消</span>`
         : `<span class="brand-text">${esc(g.brand)}</span>
-           <button class="edit-btn" onclick="startBrandEdit('${esc(g.brand)}')">編輯</button>`;
+           ${IS_OWNER ? `<button class="edit-btn" onclick="startBrandEdit('${esc(g.brand)}')">編輯</button>` : ''}`;
       return `
         <tr>
           <td><span class="rank ${rc}">${rk}</span></td>
@@ -624,8 +632,9 @@ function renderDataTable() {
           <td>NT$ ${fmt(r.revenue)}</td>
           <td><span class="source-tag ${r.source==='manual'?'manual':''}">${r.source==='manual'?'手動':'匯入'}</span></td>
           <td>
+            ${IS_OWNER ? `
             <button class="btn btn-ghost" style="padding:4px 8px;font-size:12px" onclick="openEditModal(${r.id})">編輯</button>
-            <button class="btn btn-danger" style="padding:4px 8px;font-size:12px" onclick="deleteRecord(${r.id})">刪除</button>
+            <button class="btn btn-danger" style="padding:4px 8px;font-size:12px" onclick="deleteRecord(${r.id})">刪除</button>` : '<span style="color:var(--gray-300);font-size:12px">唯讀</span>'}
           </td>
         </tr>`).join('');
 }
@@ -758,11 +767,22 @@ function renderAll() {
 }
 
 async function init() {
+  db = await waitForAuthClient();
+  const { data: { session } } = await db.auth.getSession();
+  IS_OWNER = (session?.user?.email || '') === OWNER_EMAIL;
+  applyOwnerUI();
   await loadRecords();
   activeShops = new Set(allShops());
   activeMonths = new Set(allMonths());
   renderFilterBar();
   renderAll();
+}
+
+function applyOwnerUI() {
+  const addBtn = document.getElementById('add-data-btn');
+  if (addBtn) addBtn.style.display = IS_OWNER ? '' : 'none';
+  const importBtn = document.getElementById('import-btn');
+  if (importBtn) importBtn.style.display = IS_OWNER ? '' : 'none';
 }
 
 function toggleSidebar() {
