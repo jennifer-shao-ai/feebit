@@ -184,7 +184,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v3.1 · Feebit © 2026</div>
+  <div class="sidebar-footer">v3.2 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -193,7 +193,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div style="display:flex;align-items:center;gap:10px">
       <button class="btn-hamburger" onclick="toggleSidebar()">☰</button>
       <span class="topbar-title">📊 品牌趨勢分析</span>
-      <span style="font-size:11px;color:#aaa;font-weight:400;">v3.1</span>
+      <span style="font-size:11px;color:#aaa;font-weight:400;">v3.2</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <button class="btn btn-primary" id="add-data-btn" onclick="openAddModal()" style="display:none">＋ 新增資料</button>
@@ -952,6 +952,32 @@ function updateOverrideField(idx, field, value) {
   if (field === 'rate') { const v = parseFloat(value); o.rate = isNaN(v) ? 0 : v/100; }
   else o[field] = value;
 }
+function importOverridesFromText(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  let added = 0;
+  for (const line of lines) {
+    const parts = line.split('\t').map(p => p.trim()).filter(Boolean);
+    if (parts.length < 2) continue;
+    const brand = parts[0];
+    if (!brand) continue;
+    const shopHint = parts[1] || '';
+    const rateField = parts.find(p => /%$/.test(p));
+    if (!rateField) continue;
+    const rate = parseFloat(rateField) / 100;
+    if (isNaN(rate)) continue;
+    PROFIT_SETTINGS.marginOverrides.push({ brand, shop: '', fromMonth: '', rate, hint: shopHint });
+    added++;
+  }
+  return added;
+}
+function handleImportOverrides() {
+  const ta = document.getElementById('override-import-text');
+  const added = importOverridesFromText(ta.value);
+  if (added === 0) { alert('沒有解析到任何一列，請確認是不是「毛利率換算工作表」複製出來的格式'); return; }
+  ta.value = '';
+  renderProfitSettingsTab();
+  alert(`已新增 ${added} 列，記得幫每一列選對應的賣場，選完再按「💾 儲存利潤設定」`);
+}
 async function handleSaveProfitSettings() {
   const ok = await saveProfitSettings();
   if (ok) { alert('利潤設定已儲存 ✅'); renderAll(); renderProfitSettingsTab(); }
@@ -993,6 +1019,7 @@ function renderProfitSettingsTab() {
           <option value="">（全部賣場）</option>
           ${shops.map(s => `<option value="${esc(s)}" ${o.shop===s?'selected':''}>${esc(s)}</option>`).join('')}
         </select>
+        ${(!o.shop && o.hint) ? `<div class="table-hint" style="margin-top:4px">匯入提示：${esc(o.hint)}，請選對應賣場</div>` : ''}
       </td>
       <td>
         <select onchange="updateOverrideField(${idx},'fromMonth',this.value)">
@@ -1034,6 +1061,12 @@ function renderProfitSettingsTab() {
         <tbody>${overrideRows || ''}</tbody>
       </table>
       <button class="btn btn-ghost" style="margin-top:10px" onclick="addOverrideRow()">＋ 新增一列</button>
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--gray-100)">
+        <label style="font-size:12px;color:var(--gray-600);font-weight:600;display:block;margin-bottom:6px">批次貼上匯入</label>
+        <span class="table-hint" style="display:block;margin-bottom:6px">從「毛利率換算工作表」按「複製全部結果」，整段貼到下面這格，會自動新增品牌與毛利率；賣場請匯入後自己選（工作表不知道這裡的正確賣場名稱）</span>
+        <textarea id="override-import-text" placeholder="貼上複製的內容…" style="width:100%;height:70px;padding:8px 10px;border:1px solid var(--gray-300);border-radius:6px;font-size:12.5px;font-family:monospace"></textarea>
+        <button class="btn btn-ghost" style="margin-top:8px" onclick="handleImportOverrides()">貼上匯入</button>
+      </div>
     </div>
 
     <button class="btn btn-primary" onclick="handleSaveProfitSettings()">💾 儲存利潤設定</button>
