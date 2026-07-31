@@ -184,7 +184,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v3.2 · Feebit © 2026</div>
+  <div class="sidebar-footer">v3.3 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -193,7 +193,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div style="display:flex;align-items:center;gap:10px">
       <button class="btn-hamburger" onclick="toggleSidebar()">☰</button>
       <span class="topbar-title">📊 品牌趨勢分析</span>
-      <span style="font-size:11px;color:#aaa;font-weight:400;">v3.2</span>
+      <span style="font-size:11px;color:#aaa;font-weight:400;">v3.3</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <button class="btn btn-primary" id="add-data-btn" onclick="openAddModal()" style="display:none">＋ 新增資料</button>
@@ -405,6 +405,7 @@ const SHOP_GROUP_LABELS = {
   coupang: '酷澎（買斷實收，直接看毛利率）',
   poya: '寶雅（買斷實收，固定毛利率）',
   official: '官網 Shopline（抽成約5%）',
+  carrefour: '家樂福商城（抽成約15%）',
   unset: '尚未設定'
 };
 function defaultProfitSettings() {
@@ -415,6 +416,7 @@ function defaultProfitSettings() {
       shopee_other: 0.15
     },
     officialCommission: 0.05,
+    carrefourCommission: 0.15,
     momoFlatRate: 0.35,
     poyaMargin: 0.40,
     defaultMargin: 0.20,
@@ -467,6 +469,7 @@ function commissionRateFor(group) {
   if (group === 'shopee_lalav') return PROFIT_SETTINGS.shopeeCommission.shopee_lalav;
   if (group === 'shopee_other') return PROFIT_SETTINGS.shopeeCommission.shopee_other;
   if (group === 'official') return PROFIT_SETTINGS.officialCommission;
+  if (group === 'carrefour') return PROFIT_SETTINGS.carrefourCommission;
   return 0;
 }
 function profitForRecord(r) {
@@ -1048,6 +1051,7 @@ function renderProfitSettingsTab() {
       <div class="rate-row"><label>蝦皮-LaLaV 月度混合抽成</label><input class="rate-input" type="number" step="0.1" value="${pct(S.shopeeCommission.shopee_lalav)}" oninput="updateShopeeRate('shopee_lalav',this.value)"> %</div>
       <div class="rate-row"><label>蝦皮-其他店 月度混合抽成</label><input class="rate-input" type="number" step="0.1" value="${pct(S.shopeeCommission.shopee_other)}" oninput="updateShopeeRate('shopee_other',this.value)"> %</div>
       <div class="rate-row"><label>官網 Shopline 抽成</label><input class="rate-input" type="number" step="0.1" value="${pct(S.officialCommission)}" oninput="updateSimpleRate('officialCommission',this.value)"> %</div>
+      <div class="rate-row"><label>家樂福商城 抽成</label><input class="rate-input" type="number" step="0.1" value="${pct(S.carrefourCommission)}" oninput="updateSimpleRate('carrefourCommission',this.value)"> %</div>
       <div class="rate-row"><label>momo 綜合扣抵（含成本）</label><input class="rate-input" type="number" step="0.1" value="${pct(S.momoFlatRate)}" oninput="updateSimpleRate('momoFlatRate',this.value)"> %</div>
       <div class="rate-row"><label>寶雅 固定毛利率</label><input class="rate-input" type="number" step="0.1" value="${pct(S.poyaMargin)}" oninput="updateSimpleRate('poyaMargin',this.value)"> %</div>
       <div class="rate-row"><label>全站預設品牌毛利率</label><input class="rate-input" type="number" step="0.1" value="${pct(S.defaultMargin)}" oninput="updateSimpleRate('defaultMargin',this.value)"> %　<span class="table-hint">（酷澎／蝦皮／官網品牌沒有下面單獨設定時，會用這個%）</span></div>
