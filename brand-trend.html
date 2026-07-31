@@ -399,8 +399,8 @@ let crossView = 'revenue';
 // ══════════════════════════════════════════
 const SETTINGS_TABLE = 'brand_trend_profit_settings';
 const SHOP_GROUP_LABELS = {
-  shopee_lalav: '蝦皮-LaLaV式（抽成21%／活動24%）',
-  shopee_other: '蝦皮-其他店式（抽成14.5%／活動17%）',
+  shopee_lalav: '蝦皮-LaLaV式（月度混合抽成約22%，已含活動日）',
+  shopee_other: '蝦皮-其他店式（月度混合抽成約15%，已含活動日）',
   momo: 'momo（成本+平台費綜合扣抵）',
   coupang: '酷澎（買斷實收，直接看毛利率）',
   poya: '寶雅（買斷實收，固定毛利率）',
@@ -411,10 +411,9 @@ function defaultProfitSettings() {
   return {
     shopGroup: {},
     shopeeCommission: {
-      shopee_lalav: { normal: 0.21, campaign: 0.24 },
-      shopee_other: { normal: 0.145, campaign: 0.17 }
+      shopee_lalav: 0.22,
+      shopee_other: 0.15
     },
-    campaignMonths: [],
     officialCommission: 0.05,
     momoFlatRate: 0.35,
     poyaMargin: 0.40,
@@ -438,11 +437,7 @@ async function loadProfitSettings() {
   PROFIT_SETTINGS = {
     ...base, ...saved,
     shopGroup: { ...base.shopGroup, ...(saved.shopGroup||{}) },
-    shopeeCommission: {
-      shopee_lalav: { ...base.shopeeCommission.shopee_lalav, ...((saved.shopeeCommission||{}).shopee_lalav||{}) },
-      shopee_other: { ...base.shopeeCommission.shopee_other, ...((saved.shopeeCommission||{}).shopee_other||{}) }
-    },
-    campaignMonths: saved.campaignMonths || [],
+    shopeeCommission: { ...base.shopeeCommission, ...(saved.shopeeCommission||{}) },
     marginOverrides: saved.marginOverrides || []
   };
 }
@@ -468,10 +463,9 @@ function resolveMargin(shop, brand, month) {
   if (generic != null) return generic;
   return PROFIT_SETTINGS.defaultMargin;
 }
-function commissionRateFor(group, month) {
-  const isCampaign = PROFIT_SETTINGS.campaignMonths.includes(month);
-  if (group === 'shopee_lalav') return isCampaign ? PROFIT_SETTINGS.shopeeCommission.shopee_lalav.campaign : PROFIT_SETTINGS.shopeeCommission.shopee_lalav.normal;
-  if (group === 'shopee_other') return isCampaign ? PROFIT_SETTINGS.shopeeCommission.shopee_other.campaign : PROFIT_SETTINGS.shopeeCommission.shopee_other.normal;
+function commissionRateFor(group) {
+  if (group === 'shopee_lalav') return PROFIT_SETTINGS.shopeeCommission.shopee_lalav;
+  if (group === 'shopee_other') return PROFIT_SETTINGS.shopeeCommission.shopee_other;
   if (group === 'official') return PROFIT_SETTINGS.officialCommission;
   return 0;
 }
@@ -482,7 +476,7 @@ function profitForRecord(r) {
   if (group === 'momo') return revenue * (1 - PROFIT_SETTINGS.momoFlatRate);
   if (group === 'poya') return revenue * PROFIT_SETTINGS.poyaMargin;
   if (group === 'coupang') return revenue * resolveMargin(r.shop, r.brand, r.month);
-  const commission = commissionRateFor(group, r.month);
+  const commission = commissionRateFor(group);
   const margin = resolveMargin(r.shop, r.brand, r.month);
   return revenue * (1 - commission) * margin;
 }
@@ -936,18 +930,13 @@ create policy "profit_settings_write_owner"
   with check (auth.jwt() ->> 'email' = 'esuse.adobe@gmail.com');`;
 
 function updateShopGroup(shop, value) { PROFIT_SETTINGS.shopGroup[shop] = value; }
-function updateShopeeRate(group, kind, value) {
+function updateShopeeRate(group, value) {
   const v = parseFloat(value); if (isNaN(v)) return;
-  PROFIT_SETTINGS.shopeeCommission[group][kind] = v/100;
+  PROFIT_SETTINGS.shopeeCommission[group] = v/100;
 }
 function updateSimpleRate(field, value) {
   const v = parseFloat(value); if (isNaN(v)) return;
   PROFIT_SETTINGS[field] = v/100;
-}
-function toggleCampaignMonth(month, el) {
-  const i = PROFIT_SETTINGS.campaignMonths.indexOf(month);
-  if (i >= 0) PROFIT_SETTINGS.campaignMonths.splice(i,1); else PROFIT_SETTINGS.campaignMonths.push(month);
-  el.classList.toggle('active');
 }
 function addOverrideRow() {
   PROFIT_SETTINGS.marginOverrides.push({ brand: '', shop: '', fromMonth: '', rate: PROFIT_SETTINGS.defaultMargin });
@@ -1028,10 +1017,9 @@ function renderProfitSettingsTab() {
 
     <div class="settings-block">
       <h4>② 抽成／扣抵／毛利率參數</h4>
-      <div class="rate-row"><label>蝦皮-LaLaV 一般日抽成</label><input class="rate-input" type="number" step="0.1" value="${pct(S.shopeeCommission.shopee_lalav.normal)}" oninput="updateShopeeRate('shopee_lalav','normal',this.value)"> %</div>
-      <div class="rate-row"><label>蝦皮-LaLaV 活動日抽成</label><input class="rate-input" type="number" step="0.1" value="${pct(S.shopeeCommission.shopee_lalav.campaign)}" oninput="updateShopeeRate('shopee_lalav','campaign',this.value)"> %</div>
-      <div class="rate-row"><label>蝦皮-其他店 一般日抽成</label><input class="rate-input" type="number" step="0.1" value="${pct(S.shopeeCommission.shopee_other.normal)}" oninput="updateShopeeRate('shopee_other','normal',this.value)"> %</div>
-      <div class="rate-row"><label>蝦皮-其他店 活動日抽成</label><input class="rate-input" type="number" step="0.1" value="${pct(S.shopeeCommission.shopee_other.campaign)}" oninput="updateShopeeRate('shopee_other','campaign',this.value)"> %</div>
+      <span class="table-hint">蝦皮的抽成是「月度混合%」，已經把每個月固定幾天的活動日折抵進去，不用再分一般/活動日</span>
+      <div class="rate-row"><label>蝦皮-LaLaV 月度混合抽成</label><input class="rate-input" type="number" step="0.1" value="${pct(S.shopeeCommission.shopee_lalav)}" oninput="updateShopeeRate('shopee_lalav',this.value)"> %</div>
+      <div class="rate-row"><label>蝦皮-其他店 月度混合抽成</label><input class="rate-input" type="number" step="0.1" value="${pct(S.shopeeCommission.shopee_other)}" oninput="updateShopeeRate('shopee_other',this.value)"> %</div>
       <div class="rate-row"><label>官網 Shopline 抽成</label><input class="rate-input" type="number" step="0.1" value="${pct(S.officialCommission)}" oninput="updateSimpleRate('officialCommission',this.value)"> %</div>
       <div class="rate-row"><label>momo 綜合扣抵（含成本）</label><input class="rate-input" type="number" step="0.1" value="${pct(S.momoFlatRate)}" oninput="updateSimpleRate('momoFlatRate',this.value)"> %</div>
       <div class="rate-row"><label>寶雅 固定毛利率</label><input class="rate-input" type="number" step="0.1" value="${pct(S.poyaMargin)}" oninput="updateSimpleRate('poyaMargin',this.value)"> %</div>
@@ -1039,15 +1027,7 @@ function renderProfitSettingsTab() {
     </div>
 
     <div class="settings-block">
-      <h4>③ 蝦皮活動月份</h4>
-      <span class="table-hint">勾選的月份，蝦皮抽成會用「活動日」的%計算（例如雙11、雙12所在月份）</span>
-      <div class="chip-row">
-        ${months.map(m => `<span class="chip ${S.campaignMonths.includes(m)?'active':''}" onclick="toggleCampaignMonth('${m}', this)">${monthLabel(m)}</span>`).join('') || '<span class="table-hint">目前沒有月份資料</span>'}
-      </div>
-    </div>
-
-    <div class="settings-block">
-      <h4>④ 品牌毛利率覆寫（例如 LACTO FIT 在酷澎、不同時間毛利率不同）</h4>
+      <h4>③ 品牌毛利率覆寫（例如 LACTO FIT 在酷澎、不同時間毛利率不同）</h4>
       <span class="table-hint">賣場留空＝套用到該品牌所有賣場；生效月份留空＝一直適用。同品牌同賣場可以加多列做「幾月起改成多少%」</span>
       <table class="margin-table">
         <thead><tr><th style="width:26%">品牌</th><th style="width:24%">賣場</th><th style="width:22%">生效月份</th><th style="width:16%">毛利率</th><th style="width:80px"></th></tr></thead>
