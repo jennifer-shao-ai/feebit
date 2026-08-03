@@ -170,7 +170,7 @@ select.inline-sel:focus{border-color:var(--primary);}
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v3.1 · Feebit © 2026</div>
+  <div class="sidebar-footer">v3.2 · Feebit © 2026</div>
 </div>
 
 <div id="main">
@@ -179,19 +179,19 @@ select.inline-sel:focus{border-color:var(--primary);}
       <button class="btn-hamburger" style="display:none;" onclick="openSidebar()">☰</button>
       <span class="topbar-title">考勤查驗</span>
       <span class="topbar-badge">人事工具</span>
-      <span style="font-size:11px;color:var(--gray-400);margin-left:4px;">v3.1</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:4px;">v3.2</span>
     </div>
   </div>
 
   <div class="tab-nav">
-    <button class="tab-btn active" onclick="switchTab(this,'employees')">👥 員工設定</button>
+    <button class="tab-btn" onclick="switchTab(this,'employees')">👥 員工設定</button>
     <button class="tab-btn" onclick="switchTab(this,'import')">📋 當月匯入</button>
     <button class="tab-btn" onclick="switchTab(this,'verify')">🔍 考勤查驗</button>
-    <button class="tab-btn" onclick="switchTab(this,'annual')">📊 年度報告</button>
+    <button class="tab-btn active" onclick="switchTab(this,'annual')">📊 年度報告</button>
   </div>
 
   <!-- ══ TAB: EMPLOYEES ══ -->
-  <div id="tab-employees" class="tab-content active">
+  <div id="tab-employees" class="tab-content">
     <!-- Ragic Sync Card -->
     <div class="card" style="margin-bottom:12px;">
       <div class="card-header" style="margin-bottom:12px;">
@@ -237,7 +237,12 @@ select.inline-sel:focus{border-color:var(--primary);}
     <div class="card">
       <div class="card-header">
         <span class="card-title">員工名單</span>
-        <button class="btn btn-primary btn-sm" onclick="openEmpModal()">＋ 手動新增</button>
+        <div style="display:flex;align-items:center;gap:14px;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--gray-600);font-weight:normal;cursor:pointer;">
+            <input type="checkbox" id="show-resigned-toggle" onchange="toggleShowResigned()">顯示已離職員工
+          </label>
+          <button class="btn btn-primary btn-sm" onclick="openEmpModal()">＋ 手動新增</button>
+        </div>
       </div>
       <div class="tbl-wrap" id="emp-table"></div>
     </div>
@@ -446,7 +451,7 @@ select.inline-sel:focus{border-color:var(--primary);}
   </div>
 
   <!-- ══ TAB: ANNUAL ══ -->
-  <div id="tab-annual" class="tab-content">
+  <div id="tab-annual" class="tab-content active">
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
       <div style="display:flex;align-items:center;gap:6px;">
         <label style="font-size:13px;color:var(--gray-600);">年度：</label>
@@ -547,6 +552,19 @@ let db = { employees:[], monthlyData:{}, holidays:[] };
 function loadDB(){ try{ const s=localStorage.getItem(SK); if(s) db=JSON.parse(s); if(!db.holidays) db.holidays=[]; }catch(e){} }
 function saveDB(){ localStorage.setItem(SK,JSON.stringify(db)); }
 
+// ══ 離職員工顯示/隱藏 ══
+const SHOW_RESIGNED_KEY='feebit_att_show_resigned';
+let showResigned = localStorage.getItem(SHOW_RESIGNED_KEY)==='1';
+function activeEmployees(){ return showResigned ? db.employees : db.employees.filter(e=>!e.resignDate); }
+function toggleShowResigned(){
+  showResigned = document.getElementById('show-resigned-toggle').checked;
+  localStorage.setItem(SHOW_RESIGNED_KEY, showResigned?'1':'0');
+  renderEmployees();
+  refreshEmpDrops();
+  if(document.getElementById('tab-verify').classList.contains('active')) initVerify();
+  if(document.getElementById('tab-annual').classList.contains('active')) initAnnual();
+}
+
 // ══ SIDEBAR ══
 function openSidebar(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-overlay').classList.add('open'); }
 function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('open'); }
@@ -635,9 +653,10 @@ let editId=null;
 
 function renderEmployees(){
   const w=document.getElementById('emp-table');
-  if(!db.employees.length){ w.innerHTML='<div class="empty-state"><div class="ei">👥</div><div>尚未新增員工</div></div>'; return; }
+  const list=activeEmployees();
+  if(!list.length){ w.innerHTML=`<div class="empty-state"><div class="ei">👥</div><div>${db.employees.length?'已離職員工已隱藏，勾選上方「顯示已離職員工」可查看':'尚未新增員工'}</div></div>`; return; }
   w.innerHTML=`<table><thead><tr><th>姓名</th><th>類型</th><th>上班</th><th>下班</th><th>遲到寬限</th><th>早退寬限</th><th>工作日</th><th></th></tr></thead><tbody>
-  ${db.employees.map(e=>`<tr>
+  ${list.map(e=>`<tr>
     <td><strong>${esc(e.name)}</strong>${e.resignDate?`<div style="font-size:10px;color:var(--danger);">離職 ${e.resignDate}</div>`:''}</td>
     <td><span class="badge ${e.type==='full-time'?'badge-ft':'badge-pt'}">${e.type==='full-time'?'正職':'工讀'}</span></td>
     <td>${e.startTime||'-'}</td><td>${e.endTime||'-'}</td>
@@ -749,7 +768,7 @@ function onImportMonthChange(){
 }
 
 function refreshEmpDrops(){
-  const opts=db.employees.map(e=>`<option value="${e.id}">${esc(e.name)}</option>`).join('');
+  const opts=activeEmployees().map(e=>`<option value="${e.id}">${esc(e.name)}</option>`).join('');
   ['lv-emp','ot-emp','sh-emp'].forEach(id=>{ const s=document.getElementById(id); if(s) s.innerHTML=opts||'<option value="">（無員工）</option>'; });
 }
 
@@ -1315,14 +1334,14 @@ function initVerify(){
   const cur=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0');
   genMonthOpts('vfy-month',cur);
   const sel=document.getElementById('vfy-emp');
-  sel.innerHTML='<option value="">全部</option>'+db.employees.map(e=>`<option value="${e.id}">${esc(e.name)}</option>`).join('');
+  sel.innerHTML='<option value="">全部</option>'+activeEmployees().map(e=>`<option value="${e.id}">${esc(e.name)}</option>`).join('');
   renderVerify();
 }
 
 function renderVerify(){
   const month=document.getElementById('vfy-month').value;
   const filterEmp=document.getElementById('vfy-emp').value;
-  const emps=filterEmp?db.employees.filter(e=>e.id===filterEmp):db.employees;
+  const emps=filterEmp?db.employees.filter(e=>e.id===filterEmp):activeEmployees();
 
   if(!emps.length){
     document.getElementById('vfy-stats').innerHTML='';
@@ -1488,7 +1507,7 @@ function annPopulateEmpSelect(empStats){
 async function syncAnnualToCloud(){
   if(!annIsAdmin || !annCloudClient) return;
   const year=document.getElementById('ann-year').value;
-  const built=buildAnnualStats(year, db.employees);
+  const built=buildAnnualStats(year, activeEmployees());
   if(!built){ alert('目前沒有資料可以拋轉'); return; }
   const btn=document.getElementById('ann-sync-btn');
   if(btn){ btn.disabled=true; btn.textContent='拋轉中…'; }
@@ -1507,7 +1526,7 @@ function initAnnual(){
   const sel=document.getElementById('ann-year');
   sel.innerHTML=[y-1,y,y+1].map(x=>`<option value="${x}"${x===y?' selected':''}>${x}</option>`).join('');
   const empSel=document.getElementById('ann-emp');
-  empSel.innerHTML='<option value="">全部</option>'+db.employees.map(e=>`<option value="${e.id}">${esc(e.name)}</option>`).join('');
+  empSel.innerHTML='<option value="">全部</option>'+activeEmployees().map(e=>`<option value="${e.id}">${esc(e.name)}</option>`).join('');
   (async()=>{
     if(!annCloudClient) await annInitCloud();
     renderAnnual();
@@ -1632,7 +1651,7 @@ async function renderAnnual(){
   if(db.employees.length){
     if(syncBtn) syncBtn.style.display=annIsAdmin?'':'none';
     if(cloudNote) cloudNote.textContent='';
-    const emps=filterEmp?db.employees.filter(e=>e.id===filterEmp):db.employees;
+    const emps=filterEmp?db.employees.filter(e=>e.id===filterEmp):activeEmployees();
     const built=buildAnnualStats(year, emps);
     if(!built){ content.innerHTML=`<div class="card"><div class="empty-state"><div class="ei">📊</div><div>${year} 年尚無考勤資料</div></div></div>`; return; }
     content.innerHTML=renderAnnualHTML(year, built.monthsCount, built.empStats);
@@ -2083,11 +2102,13 @@ async function autoSyncIfFirstOfMonth(){
 
 // ══ INIT ══
 loadDB();
+document.getElementById('show-resigned-toggle').checked=showResigned;
 renderEmployees();
 renderHolidays();
 genMonthOpts('import-month');
 initRagicFields();
 autoSyncIfFirstOfMonth();
+initAnnual();
 </script>
 </body>
 </html>
