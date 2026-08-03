@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <script src="auth.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>考勤查驗 · 飛比特工具箱</title>
 <link rel="icon" href="favicon.svg">
@@ -455,6 +456,8 @@ select.inline-sel:focus{border-color:var(--primary);}
         <label style="font-size:13px;color:var(--gray-600);">員工：</label>
         <select id="ann-emp" class="inline-sel" onchange="renderAnnual()"><option value="">全部</option></select>
       </div>
+      <button id="ann-sync-btn" class="btn btn-primary" style="display:none;font-size:12px;padding:6px 12px;" onclick="syncAnnualToCloud()">☁️ 拋轉到雲端</button>
+      <span id="ann-cloud-note" style="font-size:11px;color:var(--gray-400);"></span>
     </div>
     <div id="ann-content"><div class="empty-state"><div class="ei">📊</div><div>請先匯入考勤資料</div></div></div>
   </div>
@@ -1450,27 +1453,74 @@ function renderVerify(){
 }
 
 // ══ ANNUAL ══
+// ══ 年度報告：雲端拋轉(Supabase) ══
+// 讀取：任何已登入帳號皆可；寫入：只認 ANN_ADMIN_EMAIL，規則鎖在資料庫 RLS，不是只靠前端隱藏按鈕
+const ANN_CLOUD_URL   = 'https://tokhhoyzztaynppcatci.supabase.co';
+const ANN_CLOUD_KEY   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRva2hob3l6enRheW5wcGNhdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMDAyODMsImV4cCI6MjA5MDg3NjI4M30.PQB4lJGF3OMatv5wIedCu3zIWq0urrFbniBRYTbNtUU';
+const ANN_ADMIN_EMAIL = 'esuse.adobe@gmail.com';
+let annCloudClient = null;
+let annIsAdmin = false;
+
+function annWaitForSDK(){
+  return new Promise(resolve=>{
+    if(window.supabase) return resolve();
+    const t=setInterval(()=>{ if(window.supabase){ clearInterval(t); resolve(); } },50);
+  });
+}
+async function annInitCloud(){
+  await annWaitForSDK();
+  annCloudClient = window.supabase.createClient(ANN_CLOUD_URL, ANN_CLOUD_KEY);
+  const { data:{ session } } = await annCloudClient.auth.getSession();
+  annIsAdmin = (session?.user?.email||'') === ANN_ADMIN_EMAIL;
+}
+async function annLoadFromCloud(year){
+  if(!annCloudClient) return null;
+  const { data, error } = await annCloudClient.from('attendance_annual_reports').select('data,updated_at').eq('year', Number(year)).maybeSingle();
+  if(error || !data) return null;
+  return data;
+}
+function annPopulateEmpSelect(empStats){
+  const empSel=document.getElementById('ann-emp');
+  const cur=empSel.value;
+  empSel.innerHTML='<option value="">全部</option>'+empStats.map(s=>`<option value="${s.emp.id}">${esc(s.emp.name)}</option>`).join('');
+  empSel.value=cur;
+}
+async function syncAnnualToCloud(){
+  if(!annIsAdmin || !annCloudClient) return;
+  const year=document.getElementById('ann-year').value;
+  const built=buildAnnualStats(year, db.employees);
+  if(!built){ alert('目前沒有資料可以拋轉'); return; }
+  const btn=document.getElementById('ann-sync-btn');
+  if(btn){ btn.disabled=true; btn.textContent='拋轉中…'; }
+  const { error } = await annCloudClient.from('attendance_annual_reports').upsert({
+    year: Number(year),
+    data: { months: built.monthsCount, empStats: built.empStats },
+    updated_at: new Date().toISOString()
+  }, { onConflict:'year' });
+  if(btn){ btn.disabled=false; btn.textContent='☁️ 拋轉到雲端'; }
+  if(error){ alert('拋轉失敗:'+error.message); return; }
+  alert(`已將 ${year} 年度報告拋轉到雲端，其他登入帳號重新整理即可看到最新資料。`);
+}
+
 function initAnnual(){
   const today=new Date(), y=today.getFullYear();
   const sel=document.getElementById('ann-year');
   sel.innerHTML=[y-1,y,y+1].map(x=>`<option value="${x}"${x===y?' selected':''}>${x}</option>`).join('');
   const empSel=document.getElementById('ann-emp');
   empSel.innerHTML='<option value="">全部</option>'+db.employees.map(e=>`<option value="${e.id}">${esc(e.name)}</option>`).join('');
-  renderAnnual();
+  (async()=>{
+    if(!annCloudClient) await annInitCloud();
+    renderAnnual();
+  })();
 }
 
-function renderAnnual(){
-  const year=document.getElementById('ann-year').value;
-  const filterEmp=document.getElementById('ann-emp').value;
-  const emps=filterEmp?db.employees.filter(e=>e.id===filterEmp):db.employees;
+// 純計算：從本機 db 依年度彙總員工統計資料(admin 本機資料來源、拋轉雲端前的計算都用這個)
+function buildAnnualStats(year, emps){
   const months=Object.keys(db.monthlyData).filter(m=>{
     if(!m.startsWith(year+'-')) return false;
     return (db.monthlyData[m].records?.length||0)>0;
   }).sort();
-  const content=document.getElementById('ann-content');
-
-  if(!emps.length){ content.innerHTML='<div class="empty-state"><div class="ei">👥</div><div>請先新增員工</div></div>'; return; }
-  if(!months.length){ content.innerHTML=`<div class="card"><div class="empty-state"><div class="ei">📊</div><div>${year} 年尚無考勤資料</div></div></div>`; return; }
+  if(!months.length) return null;
 
   const empStats=emps.map(emp=>{
     let totalDays=0,totalHours=0,lateCount=0,earlyCount=0,missingCount=0,absentCount=0,totalOT=0,expectedDays=0;
@@ -1492,13 +1542,18 @@ function renderAnnual(){
     const avgScore=monthScores.length?Math.round(monthScores.reduce((s,m)=>s+m.score,0)/monthScores.length):0;
     const leaveTotal=fmt(Object.entries(leaveBreakdown).filter(([t])=>t!=='公假').reduce((s,[,v])=>s+v,0),1);
 
-    return {emp,totalDays,totalHours:fmt(totalHours),lateCount,earlyCount,missingCount,absentCount,
+    return {emp:{id:emp.id,name:emp.name,type:emp.type},totalDays,totalHours:fmt(totalHours),lateCount,earlyCount,missingCount,absentCount,
       totalOT,leaveBreakdown,expectedDays,rate,avgScore,leaveTotal,monthScores};
   });
 
-  content.innerHTML=`
+  return { monthsCount: months.length, empStats };
+}
+
+// 純渲染：admin 本機資料與 viewer 雲端資料共用同一份 HTML 模板
+function renderAnnualHTML(year, monthsCount, empStats){
+  return `
     <div class="card">
-      <div class="card-header"><span class="card-title">${year} 年度考勤總覽</span><span style="font-size:11px;color:var(--gray-400);">共 ${months.length} 個月資料</span></div>
+      <div class="card-header"><span class="card-title">${year} 年度考勤總覽</span><span style="font-size:11px;color:var(--gray-400);">共 ${monthsCount} 個月資料</span></div>
       <div class="tbl-wrap"><table>
         <thead><tr>
           <th>員工</th><th>類型</th><th>應出勤</th><th>實出勤</th><th>出勤率</th>
@@ -1563,6 +1618,44 @@ function renderAnnual(){
       </div>
     `).join('')}
   `;
+}
+
+async function renderAnnual(){
+  const year=document.getElementById('ann-year').value;
+  const filterEmp=document.getElementById('ann-emp').value;
+  const content=document.getElementById('ann-content');
+  const syncBtn=document.getElementById('ann-sync-btn');
+  const cloudNote=document.getElementById('ann-cloud-note');
+
+  if(annIsAdmin){
+    if(syncBtn) syncBtn.style.display='';
+    if(cloudNote) cloudNote.textContent='';
+    const emps=filterEmp?db.employees.filter(e=>e.id===filterEmp):db.employees;
+    if(!emps.length){ content.innerHTML='<div class="empty-state"><div class="ei">👥</div><div>請先新增員工</div></div>'; return; }
+    const built=buildAnnualStats(year, emps);
+    if(!built){ content.innerHTML=`<div class="card"><div class="empty-state"><div class="ei">📊</div><div>${year} 年尚無考勤資料</div></div></div>`; return; }
+    content.innerHTML=renderAnnualHTML(year, built.monthsCount, built.empStats);
+    return;
+  }
+
+  // 非 admin：一律讀雲端拋轉過的資料
+  if(syncBtn) syncBtn.style.display='none';
+  content.innerHTML='<div class="empty-state"><div class="ei">☁️</div><div>載入中…</div></div>';
+  const row=await annLoadFromCloud(year);
+  if(!row){
+    content.innerHTML=`<div class="card"><div class="empty-state"><div class="ei">📊</div><div>管理員尚未上傳 ${year} 年度報告</div></div></div>`;
+    if(cloudNote) cloudNote.textContent='';
+    return;
+  }
+  const fullEmpStats=row.data?.empStats||[];
+  annPopulateEmpSelect(fullEmpStats);
+  const empStats=filterEmp?fullEmpStats.filter(s=>s.emp.id===filterEmp):fullEmpStats;
+  if(!empStats.length){ content.innerHTML='<div class="empty-state"><div class="ei">👥</div><div>無資料</div></div>'; return; }
+  content.innerHTML=renderAnnualHTML(year, row.data?.months||0, empStats);
+  if(cloudNote){
+    const d=new Date(row.updated_at);
+    cloudNote.textContent=`☁️ 資料更新於 ${d.toLocaleString('zh-TW',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}`;
+  }
 }
 
 // ══ RAGIC SYNC ══
