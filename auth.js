@@ -4,9 +4,10 @@
 (function () {
   const SB_URL = 'https://tokhhoyzztaynppcatci.supabase.co';
   const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRva2hob3l6enRheW5wcGNhdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMDAyODMsImV4cCI6MjA5MDg3NjI4M30.PQB4lJGF3OMatv5wIedCu3zIWq0urrFbniBRYTbNtUU';
-  const VIEWER_ROLE    = 'finance_viewer';
-  const VIEWER_ALLOWED = 'finance-dashboard.html';
-  const ADMIN_EMAIL    = 'esuse.adobe@gmail.com';
+  const VIEWER_ROLE      = 'finance_viewer';
+  const VIEWER_ALLOWED   = 'finance-dashboard.html';
+  const FULL_VIEWER_ROLE = 'full_viewer';
+  const ADMIN_EMAIL      = 'esuse.adobe@gmail.com';
 
   const path = location.pathname;
   const qs   = location.search;
@@ -45,14 +46,19 @@
           <button onclick="document.getElementById('_um_modal').style.display='none'" style="background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280">✕</button>
         </div>
         <div style="margin-bottom:20px;padding:12px 14px;background:#f0fdf4;border-radius:8px;font-size:12px;color:#15803d;line-height:1.6">
-          在這裡加入的 email 會被設定為 <strong>finance_viewer</strong> 角色，只能查看帳務分析頁面，無法存取其他工具。<br>
+          <strong>帳務分析唯讀</strong>：只能查看帳務分析頁面，無法存取其他工具。<br>
+          <strong>全站唯讀</strong>：可瀏覽所有工具，但無法編輯／上傳／同步任何資料，也看不到用戶權限管理。<br>
           不在列表中的帳號（包含你）預設擁有完整權限。
         </div>
         <div style="margin-bottom:16px">
           <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:8px">新增用戶</div>
           <div style="display:flex;gap:8px">
             <input id="_um_email" type="email" placeholder="email@example.com" style="flex:1;padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px">
-            <input id="_um_note" type="text" placeholder="備註（選填）" style="width:120px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px">
+            <input id="_um_note" type="text" placeholder="備註（選填）" style="width:100px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px">
+            <select id="_um_role" style="padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px">
+              <option value="finance_viewer">帳務分析唯讀</option>
+              <option value="full_viewer">全站唯讀</option>
+            </select>
             <button id="_um_add" onclick="_umAdd()" style="padding:8px 16px;background:#2563eb;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">＋ 新增</button>
           </div>
           <div id="_um_err" style="font-size:12px;color:#dc2626;margin-top:6px;min-height:16px"></div>
@@ -75,7 +81,7 @@
         <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #f3f4f6;border-radius:8px;margin-bottom:6px">
           <div style="flex:1;min-width:0">
             <div style="font-size:13px;font-weight:600;color:#1f2937;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.email}</div>
-            <div style="font-size:11px;color:#9ca3af;margin-top:1px">${r.note||''}　角色：${r.role}　${r.created_at?.slice(0,10)||''}</div>
+            <div style="font-size:11px;color:#9ca3af;margin-top:1px">${r.note||''}　角色：${r.role === 'full_viewer' ? '全站唯讀' : '帳務分析唯讀'}　${r.created_at?.slice(0,10)||''}</div>
           </div>
           <button onclick="_umDelete('${r.email.replace(/'/g,"\\'")}',this)" style="padding:4px 10px;border:1px solid #fca5a5;border-radius:6px;background:#fff;color:#dc2626;font-size:12px;cursor:pointer;white-space:nowrap">移除</button>
         </div>`).join('');
@@ -84,12 +90,13 @@
     window._umAdd = async function () {
       const email = document.getElementById('_um_email').value.trim().toLowerCase();
       const note  = document.getElementById('_um_note').value.trim();
+      const role  = document.getElementById('_um_role').value;
       const err   = document.getElementById('_um_err');
       err.textContent = '';
       if (!email || !email.includes('@')) { err.textContent = '請輸入有效的 email'; return; }
       const btn = document.getElementById('_um_add');
       btn.disabled = true; btn.textContent = '新增中…';
-      const { error } = await client.from('user_roles').upsert({ email, role: VIEWER_ROLE, note }, { onConflict: 'email' });
+      const { error } = await client.from('user_roles').upsert({ email, role, note }, { onConflict: 'email' });
       btn.disabled = false; btn.textContent = '＋ 新增';
       if (error) { err.textContent = '失敗：' + error.message; return; }
       document.getElementById('_um_email').value = '';
@@ -149,12 +156,14 @@
 
       // 查 user_roles 表取得角色（找不到 = 完整管理員）
       const { data: roleRow } = await client.from('user_roles').select('role').eq('email', userEmail).maybeSingle();
-      const role     = roleRow?.role || '';
-      const isViewer = role === VIEWER_ROLE;
-      const isAdmin  = !isViewer;
+      const role            = roleRow?.role || '';
+      const isFinanceViewer = role === VIEWER_ROLE;
+      const isFullViewer    = role === FULL_VIEWER_ROLE;
+      const isViewer        = isFinanceViewer || isFullViewer;
+      const isAdmin         = !isViewer;
 
-      // viewer 只能進 finance-dashboard.html
-      if (isViewer && !path.includes(VIEWER_ALLOWED)) {
+      // 帳務分析唯讀：只能進 finance-dashboard.html；全站唯讀：不限頁面
+      if (isFinanceViewer && !path.includes(VIEWER_ALLOWED)) {
         const base = path.replace(/\/[^/]*$/, '');
         location.href = base + '/' + VIEWER_ALLOWED;
         return;
@@ -164,16 +173,17 @@
         window._feebitViewerMode = true;
         // 先套用限制，再顯示頁面（頁面仍是 hidden 狀態，不會閃）
         const restrict = () => {
-          // 隱藏側邊欄
-          const sb = document.getElementById('sidebar');
-          const ov = document.getElementById('sidebar-overlay');
-          const hb = document.querySelector('.btn-hamburger');
-          if (sb) sb.style.display = 'none';
-          if (ov) ov.style.display = 'none';
-          if (hb) hb.style.display = 'none';
-          // main 不需要 sidebar 的 margin
-          const main = document.getElementById('main');
-          if (main) main.style.marginLeft = '0';
+          if (isFinanceViewer) {
+            // 帳務分析唯讀：單頁模式，隱藏側邊欄
+            const sb = document.getElementById('sidebar');
+            const ov = document.getElementById('sidebar-overlay');
+            const hb = document.querySelector('.btn-hamburger');
+            if (sb) sb.style.display = 'none';
+            if (ov) ov.style.display = 'none';
+            if (hb) hb.style.display = 'none';
+            const main = document.getElementById('main');
+            if (main) main.style.marginLeft = '0';
+          }
           // 隱藏管理按鈕（用文字比對，兼容各頁面）
           const hideKeywords = ['初始化DB','Ragic 設定','Debug','Ragic 同步','上傳CSV','⬆','⚙️','🔎','🔗','↻'];
           document.querySelectorAll('.topbar button').forEach(btn => {
