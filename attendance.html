@@ -170,7 +170,7 @@ select.inline-sel:focus{border-color:var(--primary);}
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v3.0 · Feebit © 2026</div>
+  <div class="sidebar-footer">v3.1 · Feebit © 2026</div>
 </div>
 
 <div id="main">
@@ -179,7 +179,7 @@ select.inline-sel:focus{border-color:var(--primary);}
       <button class="btn-hamburger" style="display:none;" onclick="openSidebar()">☰</button>
       <span class="topbar-title">考勤查驗</span>
       <span class="topbar-badge">人事工具</span>
-      <span style="font-size:11px;color:var(--gray-400);margin-left:4px;">v3.0</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:4px;">v3.1</span>
     </div>
   </div>
 
@@ -1627,18 +1627,19 @@ async function renderAnnual(){
   const syncBtn=document.getElementById('ann-sync-btn');
   const cloudNote=document.getElementById('ann-cloud-note');
 
-  if(annIsAdmin){
-    if(syncBtn) syncBtn.style.display='';
+  // 本機這台裝置只要有員工資料，就直接用本機資料渲染(不論登入的是誰)；
+  // 拋轉按鈕仍只有 admin email 看得到/能按，但「看不看得到本機資料」不綁 email，避免管理員自己在別的裝置/無痕測試時被當成「viewer 但本機是空的」而卡住
+  if(db.employees.length){
+    if(syncBtn) syncBtn.style.display=annIsAdmin?'':'none';
     if(cloudNote) cloudNote.textContent='';
     const emps=filterEmp?db.employees.filter(e=>e.id===filterEmp):db.employees;
-    if(!emps.length){ content.innerHTML='<div class="empty-state"><div class="ei">👥</div><div>請先新增員工</div></div>'; return; }
     const built=buildAnnualStats(year, emps);
     if(!built){ content.innerHTML=`<div class="card"><div class="empty-state"><div class="ei">📊</div><div>${year} 年尚無考勤資料</div></div></div>`; return; }
     content.innerHTML=renderAnnualHTML(year, built.monthsCount, built.empStats);
     return;
   }
 
-  // 非 admin：一律讀雲端拋轉過的資料
+  // 本機沒有員工資料(其他人、或 admin 在別的裝置)：一律讀雲端拋轉過的資料
   if(syncBtn) syncBtn.style.display='none';
   content.innerHTML='<div class="empty-state"><div class="ei">☁️</div><div>載入中…</div></div>';
   const row=await annLoadFromCloud(year);
