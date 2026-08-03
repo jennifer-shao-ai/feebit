@@ -169,7 +169,7 @@ select.inline-sel:focus{border-color:var(--primary);}
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v2.6 · Feebit © 2026</div>
+  <div class="sidebar-footer">v2.7 · Feebit © 2026</div>
 </div>
 
 <div id="main">
@@ -178,7 +178,7 @@ select.inline-sel:focus{border-color:var(--primary);}
       <button class="btn-hamburger" style="display:none;" onclick="openSidebar()">☰</button>
       <span class="topbar-title">考勤查驗</span>
       <span class="topbar-badge">人事工具</span>
-      <span style="font-size:11px;color:var(--gray-400);margin-left:4px;">v2.6</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:4px;">v2.7</span>
     </div>
   </div>
 
@@ -478,7 +478,7 @@ select.inline-sel:focus{border-color:var(--primary);}
     </div>
     <div class="form-row">
       <div class="form-group"><label>到職日期</label><input type="date" id="emp-hire-date"></div>
-      <div class="form-group"></div>
+      <div class="form-group"><label>離職日期（在職留空）</label><input type="date" id="emp-resign-date"></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label>標準上班時間</label><input type="time" id="emp-start" value="09:00"></div>
@@ -635,7 +635,7 @@ function renderEmployees(){
   if(!db.employees.length){ w.innerHTML='<div class="empty-state"><div class="ei">👥</div><div>尚未新增員工</div></div>'; return; }
   w.innerHTML=`<table><thead><tr><th>姓名</th><th>類型</th><th>上班</th><th>下班</th><th>遲到寬限</th><th>早退寬限</th><th>工作日</th><th></th></tr></thead><tbody>
   ${db.employees.map(e=>`<tr>
-    <td><strong>${esc(e.name)}</strong></td>
+    <td><strong>${esc(e.name)}</strong>${e.resignDate?`<div style="font-size:10px;color:var(--danger);">離職 ${e.resignDate}</div>`:''}</td>
     <td><span class="badge ${e.type==='full-time'?'badge-ft':'badge-pt'}">${e.type==='full-time'?'正職':'工讀'}</span></td>
     <td>${e.startTime||'-'}</td><td>${e.endTime||'-'}</td>
     <td>${e.lateGrace||0} 分</td><td>${e.earlyGrace||0} 分</td>
@@ -655,6 +655,7 @@ function openEmpModal(id){
     document.getElementById('emp-name').value=e.name;
     document.getElementById('emp-type').value=e.type;
     document.getElementById('emp-hire-date').value=e.hireDate||'';
+    document.getElementById('emp-resign-date').value=e.resignDate||'';
     document.getElementById('emp-start').value=e.startTime||'09:00';
     document.getElementById('emp-end').value=e.endTime||'18:00';
     document.getElementById('emp-late').value=e.lateGrace||0;
@@ -668,6 +669,7 @@ function openEmpModal(id){
     document.getElementById('emp-name').value='';
     document.getElementById('emp-type').value='full-time';
     document.getElementById('emp-hire-date').value='';
+    document.getElementById('emp-resign-date').value='';
     document.getElementById('emp-start').value='08:30';
     document.getElementById('emp-end').value='18:00';
     document.getElementById('emp-late').value=30;
@@ -691,6 +693,7 @@ function saveEmployee(){
     ragicId:existing?.ragicId||'',
     name,
     hireDate:document.getElementById('emp-hire-date').value||'',
+    resignDate:document.getElementById('emp-resign-date').value||'',
     type:document.getElementById('emp-type').value,
     startTime:document.getElementById('emp-start').value,
     endTime:document.getElementById('emp-end').value,
@@ -1077,6 +1080,8 @@ function analyzeEmployee(empId, month){
   // 排除被標記為非工作日的 override（彈性假期、補假等）
   const NON_WORK_OVERRIDES=['彈性假期','補假','國定假日','假日'];
   expected=expected.filter(d=>!NON_WORK_OVERRIDES.includes(overrideMap[empId+'|'+d]));
+  // 離職日之後不應出勤，避免顯示「未打卡」
+  if(emp.resignDate) expected=expected.filter(d=>d<=emp.resignDate);
 
   const rows=[];
   let totalDays=0, totalHours=0, lateCount=0, earlyCount=0, missingCount=0, absentCount=0;
@@ -1093,9 +1098,9 @@ function analyzeEmployee(empId, month){
 
   // FT 顯示整月所有日期；PT 只顯示排班+打卡日；加入有 override 的日期
   const overrideDates=Object.keys(overrideMap).filter(k=>k.startsWith(empId+'|')).map(k=>k.split('|')[1]);
-  const baseDates=isPT
+  const baseDates=(isPT
     ?[...new Set([...expected,...Object.keys(recMap)])]
-    :monthDays(month);
+    :monthDays(month)).filter(d=>!emp.resignDate||d<=emp.resignDate);
   const allDates=[...new Set([...baseDates,...overrideDates])].filter(d=>d.startsWith(month)).sort();
 
   allDates.forEach(date=>{
@@ -1252,17 +1257,21 @@ function calcScore(empId, month){
 // 依年資計算本年度特休額度（勞基法第38條）
 function calcAnnualLeaveDays(hireDate, asOfDate){
   if(!hireDate) return null;
-  const diffMs=new Date(asOfDate)-new Date(hireDate);
-  if(diffMs<0) return 0;
-  const months=diffMs/(30.4375*24*3600*1000);
-  if(months<6) return 0;
-  const yrs=diffMs/(365.25*24*3600*1000);
+  const hire=new Date(hireDate+'T00:00:00');
+  const asOf=new Date(asOfDate+'T00:00:00');
+  if(asOf<hire) return 0;
+  const sixMo=new Date(hire); sixMo.setMonth(sixMo.getMonth()+6);
+  if(asOf<sixMo) return 0;
+  // 以日曆年為單位計算完整年資，避免用平均天數（365.25）換算在週年當天產生誤差
+  let yrs=asOf.getFullYear()-hire.getFullYear();
+  const anniv=new Date(hire); anniv.setFullYear(hire.getFullYear()+yrs);
+  if(asOf<anniv) yrs--;
   if(yrs<1) return 3;
   if(yrs<2) return 7;
   if(yrs<3) return 10;
   if(yrs<5) return 14;
   if(yrs<10) return 15;
-  return Math.min(30,15+Math.floor(yrs)-9);
+  return Math.min(30,6+yrs);
 }
 // 取得員工以到職日起算的「當前特休年度」區間
 function getAnniversaryPeriod(hireDate, asOfDate){
@@ -1278,7 +1287,7 @@ function getAnniversaryPeriod(hireDate, asOfDate){
     const pStart=new Date(hire); pStart.setFullYear(hire.getFullYear()+n);
     const pEnd=new Date(hire); pEnd.setFullYear(hire.getFullYear()+n+1);
     if(asOf>=pStart&&asOf<pEnd){
-      return {start:pStart,end:pEnd,entitledDays:calcAnnualLeaveDays(hireDate,localDateStr(pStart)),label:`到職滿${n+1}年`};
+      return {start:pStart,end:pEnd,entitledDays:calcAnnualLeaveDays(hireDate,localDateStr(pStart)),label:`到職滿${n}年`};
     }
     n++;
   }
@@ -1395,6 +1404,7 @@ function renderVerify(){
         <div style="display:flex;align-items:center;gap:8px;">
           <strong>${esc(a.emp.name)}</strong>
           <span class="badge ${a.emp.type==='full-time'?'badge-ft':'badge-pt'}">${a.emp.type==='full-time'?'正職':'工讀'}</span>
+          ${a.emp.resignDate?`<span class="badge" style="background:var(--danger);color:white;">已離職 ${a.emp.resignDate}</span>`:''}
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           <span style="font-size:12px;color:var(--gray-600);">考勤評分</span>
