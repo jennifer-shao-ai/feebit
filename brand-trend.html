@@ -208,7 +208,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v4.2 · Feebit © 2026</div>
+  <div class="sidebar-footer">v4.3 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -217,7 +217,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div style="display:flex;align-items:center;gap:10px">
       <button class="btn-hamburger" onclick="toggleSidebar()">☰</button>
       <span class="topbar-title">📊 品牌趨勢分析</span>
-      <span style="font-size:11px;color:#aaa;font-weight:400;">v4.2</span>
+      <span style="font-size:11px;color:#aaa;font-weight:400;">v4.3</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <button class="btn btn-primary" id="add-data-btn" onclick="openAddModal()" style="display:none">＋ 新增資料</button>
@@ -314,19 +314,21 @@ tbody tr:hover .edit-btn{opacity:1}
             <span class="chip" data-metric="profitYoy" onclick="setPotentialMetric('profitYoy')">依利潤成長</span>
           </div>
         </div>
-        <div class="table-hint" style="display:block;margin-bottom:14px">
+        <div class="table-hint" style="display:block;margin-bottom:6px">
           橫軸＝利潤率（越右越賺），縱軸＝與去年同期比成長%（越上越衝），點的大小＝目前營業額規模；自動抓「目前月份篩選」對應的去年同期，不受品牌排行的「與去年同期比較」開關影響。
           右上角（🌟高成長＋高利潤率）是最值得優先加碼的品牌；左上角（成長快但利潤率偏低）值得觀察但要留意賺不賺錢；右下角是穩定收成的品牌；左下角建議收斂資源。
         </div>
+        <div id="potential-period-info" style="font-size:12.5px;color:var(--primary);font-weight:600;margin-bottom:14px"></div>
         <div id="potential-empty" class="empty-state" style="display:none">目前篩選範圍內，沒有品牌同時有「今年」與「去年同期」的資料可以比較，換個月份篩選試試（例如按「今年」再比對「去年」）</div>
         <div style="height:420px"><canvas id="potential-chart"></canvas></div>
       </div>
       <div class="table-wrap" style="margin-top:14px">
         <div class="table-header">
-          <h3>🌟 潛力候選 Top 20（依成長率＋利潤率綜合分數排序）</h3>
+          <h3>🌟 潛力候選 Top 20</h3>
+          <span class="table-hint">預設依成長率＋利潤率綜合分數排序，點欄位標題可換排序方式</span>
         </div>
         <table>
-          <thead><tr><th>排名</th><th>品牌</th><th>象限</th><th>營業額</th><th>利潤率</th><th>成長%</th></tr></thead>
+          <thead id="potential-star-thead"><tr><th>排名</th><th>品牌</th><th>象限</th><th>營業額</th><th>利潤率</th><th>成長%</th></tr></thead>
           <tbody id="potential-star-tbody"></tbody>
         </table>
       </div>
@@ -918,12 +920,25 @@ function renderRankFooter(groups) {
 // ══════════════════════════════════════════
 let potentialMetric = 'yoy';
 let potentialChart = null;
+let potentialSortState = { key: 'score', dir: 'desc' };
+let potentialTop20 = [];
 function setPotentialMetric(metric) {
   potentialMetric = metric;
   document.querySelectorAll('#potential-metric-toggle .chip').forEach(c => c.classList.toggle('active', c.dataset.metric === metric));
   renderPotentialTab();
 }
+function formatMonthList(months) {
+  const sorted = [...months].sort();
+  if (sorted.length === 0) return '（未選擇月份）';
+  if (sorted.length <= 4) return sorted.map(monthLabel).join('、');
+  return `${monthLabel(sorted[0])} ～ ${monthLabel(sorted[sorted.length-1])}（共${sorted.length}個月）`;
+}
 function renderPotentialTab() {
+  const curMonths = [...activeMonths];
+  const prevMonths = curMonths.map(shiftYearBack);
+  document.getElementById('potential-period-info').innerHTML =
+    `📅 本期：${formatMonthList(curMonths)}　vs　去年同期：${formatMonthList(prevMonths)}`;
+
   const recs = filteredRecords();
   const groups = computeBrandGroups(recs, true).filter(g => g.revenue > 0);
   const usable = groups.filter(g => g[potentialMetric] != null);
@@ -931,7 +946,8 @@ function renderPotentialTab() {
   document.getElementById('potential-empty').style.display = usable.length === 0 ? '' : 'none';
   if (usable.length === 0) {
     if (potentialChart) { potentialChart.destroy(); potentialChart = null; }
-    document.getElementById('potential-star-tbody').innerHTML = `<tr><td colspan="6" class="empty-state">無資料</td></tr>`;
+    potentialTop20 = [];
+    renderPotentialTable();
     return;
   }
 
@@ -998,18 +1014,43 @@ function renderPotentialTab() {
   const byGrowth = [...points].sort((a,b) => a.y - b.y);
   const marginRank = new Map(byMargin.map((p,i) => [p.brand, byMargin.length>1 ? i/(byMargin.length-1) : 1]));
   const growthRank = new Map(byGrowth.map((p,i) => [p.brand, byGrowth.length>1 ? i/(byGrowth.length-1) : 1]));
-  const top20 = points
-    .map(p => ({ ...p, score: 0.5*marginRank.get(p.brand) + 0.5*growthRank.get(p.brand) }))
+  potentialTop20 = points
+    .map(p => ({ ...p, score: 0.5*marginRank.get(p.brand) + 0.5*growthRank.get(p.brand), quadrantLabel: quadrantInfo(p).label }))
     .sort((a,b) => b.score - a.score)
     .slice(0, 20);
+  renderPotentialTable();
+}
+function setPotentialSort(key) {
+  if (potentialSortState.key === key) potentialSortState.dir = potentialSortState.dir === 'desc' ? 'asc' : 'desc';
+  else { potentialSortState.key = key; potentialSortState.dir = key === 'brand' ? 'asc' : 'desc'; }
+  renderPotentialTable();
+}
+function renderPotentialTable() {
+  const { key, dir } = potentialSortState;
+  const mult = dir === 'asc' ? 1 : -1;
+  const rows = [...potentialTop20].sort((a,b) => {
+    if (key === 'brand') return a.brand.localeCompare(b.brand) * mult;
+    if (key === 'revenue') return (a.revenue - b.revenue) * mult;
+    if (key === 'marginPct') return (a.marginPct - b.marginPct) * mult;
+    if (key === 'growthPct') return (a.growthPct - b.growthPct) * mult;
+    return (a.score - b.score) * mult;
+  });
 
-  document.getElementById('potential-star-tbody').innerHTML = top20.length === 0
+  document.getElementById('potential-star-thead').innerHTML = `<tr>
+    <th>排名</th>
+    <th class="th-sort" onclick="setPotentialSort('brand')">品牌 ${triHtml(key==='brand', dir)}</th>
+    <th>象限</th>
+    <th class="th-sort" onclick="setPotentialSort('revenue')">營業額 ${triHtml(key==='revenue', dir)}</th>
+    <th class="th-sort" onclick="setPotentialSort('marginPct')">利潤率 ${triHtml(key==='marginPct', dir)}</th>
+    <th class="th-sort" onclick="setPotentialSort('growthPct')">成長% ${triHtml(key==='growthPct', dir)}</th>
+  </tr>`;
+  document.getElementById('potential-star-tbody').innerHTML = rows.length === 0
     ? `<tr><td colspan="6" class="empty-state">無資料</td></tr>`
-    : top20.map((p,i) => `
+    : rows.map((p,i) => `
       <tr>
         <td><span class="rank ${i===0?'r1':i===1?'r2':i===2?'r3':''}">${i+1}</span></td>
         <td style="font-weight:600">${esc(p.brand)}</td>
-        <td>${quadrantInfo(p).label}</td>
+        <td>${p.quadrantLabel}</td>
         <td>NT$ ${fmt(p.revenue)}</td>
         <td>${p.marginPct.toFixed(1)}%</td>
         <td class="${p.growthPct>=0?'growth-pos':'growth-neg'}">${p.growthPct>=0?'+':''}${p.growthPct.toFixed(1)}%</td>
