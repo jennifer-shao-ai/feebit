@@ -22,6 +22,8 @@
 .chip.all{font-weight:600}
 .sort-select{padding:7px 10px;border:1px solid var(--gray-300);border-radius:var(--radius);font-size:13px;background:white}
 .th-sort{cursor:pointer;user-select:none;-webkit-user-select:none}
+.th-sort-mini{cursor:pointer;user-select:none;-webkit-user-select:none;display:inline-block;margin:2px 3px 0;padding:1px 4px;border-radius:3px;font-size:10px}
+.th-sort-mini:hover{background:rgba(0,0,0,.06)}
 .th-sort:hover{color:var(--primary)}
 .sort-tri{font-size:9px;opacity:.35;margin-left:3px;display:inline-block}
 .sort-tri.active{opacity:1;color:var(--primary)}
@@ -206,7 +208,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v4.1 · Feebit © 2026</div>
+  <div class="sidebar-footer">v4.2 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -215,7 +217,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div style="display:flex;align-items:center;gap:10px">
       <button class="btn-hamburger" onclick="toggleSidebar()">☰</button>
       <span class="topbar-title">📊 品牌趨勢分析</span>
-      <span style="font-size:11px;color:#aaa;font-weight:400;">v4.1</span>
+      <span style="font-size:11px;color:#aaa;font-weight:400;">v4.2</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <button class="btn btn-primary" id="add-data-btn" onclick="openAddModal()" style="display:none">＋ 新增資料</button>
@@ -284,9 +286,15 @@ tbody tr:hover .edit-btn{opacity:1}
             <th style="width:140px" class="th-sort grp-current" onclick="setSort('profit')">預估利潤 <span class="sort-tri" id="sort-icon-profit">↕</span></th>
             <th style="width:70px" class="th-sort grp-current" onclick="setSort('margin')">利潤率 <span class="sort-tri" id="sort-icon-margin">↕</span></th>
             <th style="width:130px" class="th-sort yoy-col grp-prev" onclick="setSort('prevRevenue')">💰去年同期營業額 <span class="sort-tri" id="sort-icon-prevRevenue">↕</span></th>
-            <th style="width:100px" class="th-sort yoy-col grp-prev" onclick="setSort('yoy')">💰漲跌% <span class="sort-tri" id="sort-icon-yoy">↕</span></th>
+            <th style="width:120px" class="yoy-col grp-prev">💰漲跌
+              <span class="th-sort-mini" onclick="setSort('yoyAmt')">金額<span class="sort-tri" id="sort-icon-yoyAmt">↕</span></span>
+              <span class="th-sort-mini" onclick="setSort('yoy')">%<span class="sort-tri" id="sort-icon-yoy">↕</span></span>
+            </th>
             <th style="width:130px" class="th-sort yoy-col grp-prev grp-prev-divider" onclick="setSort('prevProfit')">📊去年同期利潤 <span class="sort-tri" id="sort-icon-prevProfit">↕</span></th>
-            <th style="width:100px" class="th-sort yoy-col grp-prev" onclick="setSort('profitYoy')">📊漲跌% <span class="sort-tri" id="sort-icon-profitYoy">↕</span></th>
+            <th style="width:120px" class="yoy-col grp-prev">📊漲跌
+              <span class="th-sort-mini" onclick="setSort('profitYoyAmt')">金額<span class="sort-tri" id="sort-icon-profitYoyAmt">↕</span></span>
+              <span class="th-sort-mini" onclick="setSort('profitYoy')">%<span class="sort-tri" id="sort-icon-profitYoy">↕</span></span>
+            </th>
           </tr>
           </thead>
           <tbody id="rank-tbody"></tbody>
@@ -315,10 +323,10 @@ tbody tr:hover .edit-btn{opacity:1}
       </div>
       <div class="table-wrap" style="margin-top:14px">
         <div class="table-header">
-          <h3>🌟 優先加碼候選（高成長＋高利潤率，依營業額排序）</h3>
+          <h3>🌟 潛力候選 Top 20（依成長率＋利潤率綜合分數排序）</h3>
         </div>
         <table>
-          <thead><tr><th>品牌</th><th>營業額</th><th>利潤率</th><th>成長%</th></tr></thead>
+          <thead><tr><th>排名</th><th>品牌</th><th>象限</th><th>營業額</th><th>利潤率</th><th>成長%</th></tr></thead>
           <tbody id="potential-star-tbody"></tbody>
         </table>
       </div>
@@ -701,7 +709,7 @@ function setSort(key) {
   renderAll();
 }
 function updateSortIcons() {
-  ['brand','revenue','profit','margin','yoy','profitYoy','prevRevenue','prevProfit'].forEach(k => {
+  ['brand','revenue','profit','margin','yoy','profitYoy','prevRevenue','prevProfit','yoyAmt','profitYoyAmt'].forEach(k => {
     const el = document.getElementById('sort-icon-' + k);
     if (!el) return;
     if (sortState.key === k) {
@@ -781,7 +789,8 @@ function computeBrandGroups(records, forceYoY) {
     return {
       brand: g.brand, revenue: g.revenue, profit: g.profit, hasUnknown: g.hasUnknown, shopCount: g.shops.size,
       margin: g.revenue > 0 ? g.profit / g.revenue : 0,
-      prevRevenue, yoy, prevProfit, profitYoy
+      prevRevenue, yoy, prevProfit, profitYoy,
+      yoyAmt: g.revenue - prevRevenue, profitYoyAmt: g.profit - prevProfit
     };
   });
   sortGroups(groups);
@@ -922,7 +931,7 @@ function renderPotentialTab() {
   document.getElementById('potential-empty').style.display = usable.length === 0 ? '' : 'none';
   if (usable.length === 0) {
     if (potentialChart) { potentialChart.destroy(); potentialChart = null; }
-    document.getElementById('potential-star-tbody').innerHTML = `<tr><td colspan="4" class="empty-state">無資料</td></tr>`;
+    document.getElementById('potential-star-tbody').innerHTML = `<tr><td colspan="6" class="empty-state">無資料</td></tr>`;
     return;
   }
 
@@ -935,19 +944,19 @@ function renderPotentialTab() {
     r: 6 + (g.revenue / maxRev) * 34,
     brand: g.brand, revenue: g.revenue, marginPct: g.margin*100, growthPct: g[potentialMetric]*100
   }));
-  const colorOf = p => {
+  const quadrantInfo = p => {
     const highGrowth = p.y >= 0, highMargin = p.x >= avgMargin;
-    if (highGrowth && highMargin) return 'rgba(5,150,105,.75)';
-    if (highGrowth && !highMargin) return 'rgba(37,99,235,.7)';
-    if (!highGrowth && highMargin) return 'rgba(217,119,6,.7)';
-    return 'rgba(156,163,175,.65)';
+    if (highGrowth && highMargin) return { color: 'rgba(5,150,105,.75)', label: '🌟高成長高利潤' };
+    if (highGrowth && !highMargin) return { color: 'rgba(37,99,235,.7)', label: '📈高成長低利潤' };
+    if (!highGrowth && highMargin) return { color: 'rgba(217,119,6,.7)', label: '💰穩定收成' };
+    return { color: 'rgba(156,163,175,.65)', label: '⚠️待觀察' };
   };
 
   const ctx = document.getElementById('potential-chart').getContext('2d');
   if (potentialChart) potentialChart.destroy();
   potentialChart = new Chart(ctx, {
     type: 'bubble',
-    data: { datasets: [{ data: points, backgroundColor: points.map(colorOf), borderColor: 'rgba(0,0,0,.15)', borderWidth: 1 }] },
+    data: { datasets: [{ data: points, backgroundColor: points.map(p => quadrantInfo(p).color), borderColor: 'rgba(0,0,0,.15)', borderWidth: 1 }] },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: {
@@ -983,15 +992,27 @@ function renderPotentialTab() {
     }]
   });
 
-  const stars = points.filter(p => p.y >= 0 && p.x >= avgMargin).sort((a,b) => b.revenue - a.revenue);
-  document.getElementById('potential-star-tbody').innerHTML = stars.length === 0
-    ? `<tr><td colspan="4" class="empty-state">目前篩選範圍內沒有同時符合「高成長＋高利潤率」的品牌</td></tr>`
-    : stars.map(p => `
+  // 綜合分數＝利潤率排名(百分位) + 成長率排名(百分位) 各半權重，取前20名——
+  // 不是只挑嚴格符合「雙高」象限的品牌，不然象限條件太嚴格時清單會太短，湊不到20個
+  const byMargin = [...points].sort((a,b) => a.x - b.x);
+  const byGrowth = [...points].sort((a,b) => a.y - b.y);
+  const marginRank = new Map(byMargin.map((p,i) => [p.brand, byMargin.length>1 ? i/(byMargin.length-1) : 1]));
+  const growthRank = new Map(byGrowth.map((p,i) => [p.brand, byGrowth.length>1 ? i/(byGrowth.length-1) : 1]));
+  const top20 = points
+    .map(p => ({ ...p, score: 0.5*marginRank.get(p.brand) + 0.5*growthRank.get(p.brand) }))
+    .sort((a,b) => b.score - a.score)
+    .slice(0, 20);
+
+  document.getElementById('potential-star-tbody').innerHTML = top20.length === 0
+    ? `<tr><td colspan="6" class="empty-state">無資料</td></tr>`
+    : top20.map((p,i) => `
       <tr>
+        <td><span class="rank ${i===0?'r1':i===1?'r2':i===2?'r3':''}">${i+1}</span></td>
         <td style="font-weight:600">${esc(p.brand)}</td>
+        <td>${quadrantInfo(p).label}</td>
         <td>NT$ ${fmt(p.revenue)}</td>
         <td>${p.marginPct.toFixed(1)}%</td>
-        <td class="growth-pos">+${p.growthPct.toFixed(1)}%</td>
+        <td class="${p.growthPct>=0?'growth-pos':'growth-neg'}">${p.growthPct>=0?'+':''}${p.growthPct.toFixed(1)}%</td>
       </tr>`).join('');
 }
 
