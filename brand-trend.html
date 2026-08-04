@@ -40,6 +40,14 @@ table.yoy-on .yoy-col{display:table-cell}
 #rank-table tbody td.grp-prev-cell{background:var(--gray-50);color:var(--gray-500);font-weight:700}
 #rank-table .grp-prev-divider{border-left:2px solid var(--gray-200)}
 #rank-tfoot .grp-prev-divider{border-left:2px solid var(--gray-200)}
+/* 品牌欄固定在最左邊，開了與去年同期比較欄位變多要左右拉時，品牌名稱不會跟著滑走 */
+#rank-table .sticky-brand{position:sticky;left:0;z-index:2;box-shadow:2px 0 3px rgba(0,0,0,.04)}
+#rank-table thead .sticky-brand{background:var(--gray-50);z-index:3}
+#rank-table tbody .sticky-brand{background:white}
+#rank-table tbody tr:hover .sticky-brand{background:#fafafa}
+#rank-table tfoot .sticky-brand{background:var(--gray-50)}
+/* 開啟與去年同期比較時欄位變多，先把營業額欄的長條圖收起來省空間 */
+table.yoy-on .bar-track{display:none}
 .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
 .card{background:white;border-radius:var(--radius);padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .card-label{font-size:12px;color:var(--gray-500);margin-bottom:6px;font-weight:500}
@@ -208,7 +216,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v4.3 · Feebit © 2026</div>
+  <div class="sidebar-footer">v4.4 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -217,7 +225,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div style="display:flex;align-items:center;gap:10px">
       <button class="btn-hamburger" onclick="toggleSidebar()">☰</button>
       <span class="topbar-title">📊 品牌趨勢分析</span>
-      <span style="font-size:11px;color:#aaa;font-weight:400;">v4.3</span>
+      <span style="font-size:11px;color:#aaa;font-weight:400;">v4.4</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <button class="btn btn-primary" id="add-data-btn" onclick="openAddModal()" style="display:none">＋ 新增資料</button>
@@ -276,7 +284,7 @@ tbody tr:hover .edit-btn{opacity:1}
           <thead>
           <tr>
             <th style="width:50px" rowspan="2">排名</th>
-            <th rowspan="2" class="th-sort" onclick="setSort('brand')">品牌 <span class="sort-tri" id="sort-icon-brand">↕</span></th>
+            <th rowspan="2" class="th-sort sticky-brand" onclick="setSort('brand')">品牌 <span class="sort-tri" id="sort-icon-brand">↕</span></th>
             <th style="width:80px" rowspan="2">賣場數</th>
             <th colspan="3" class="grp-current">📅 今年（本期）</th>
             <th colspan="4" class="grp-prev yoy-col">🕰️ 與去年同期比較</th>
@@ -866,7 +874,7 @@ function renderRankTable() {
       return `
         <tr>
           <td><span class="rank ${rc}">${rk}</span></td>
-          <td><div class="brand-cell">${nameCell}</div></td>
+          <td class="sticky-brand"><div class="brand-cell">${nameCell}</div></td>
           <td><span class="count-badge">${g.shopCount} 個</span></td>
           <td class="grp-current-cell">
             <div class="sales-cell">
@@ -903,7 +911,7 @@ function renderRankFooter(groups) {
   const totalProfitYoy = totalPrevProfit > 0 ? (totalProfit-totalPrevProfit)/totalPrevProfit : (totalProfit > 0 ? null : 0);
   tfoot.innerHTML = `
     <tr>
-      <td colspan="2">總計（${groups.length} 個品牌）</td>
+      <td colspan="2" class="sticky-brand">總計（${groups.length} 個品牌）</td>
       <td></td>
       <td>NT$ ${fmt(totalRevenue)}</td>
       <td>NT$ ${fmt(totalProfit)}</td>
