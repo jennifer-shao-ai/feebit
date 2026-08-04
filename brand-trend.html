@@ -35,7 +35,7 @@ table.yoy-on .yoy-col{display:table-cell}
 #rank-table thead .grp-prev{background:#f9fafb;color:#6b7280}
 #rank-table thead tr:first-child th{text-align:center;font-size:11px;letter-spacing:.03em}
 #rank-table tbody td.grp-current-cell{background:rgba(37,99,235,.03)}
-#rank-table tbody td.grp-prev-cell{background:var(--gray-50);color:var(--gray-500)}
+#rank-table tbody td.grp-prev-cell{background:var(--gray-50);color:var(--gray-500);font-weight:700}
 #rank-table .grp-prev-divider{border-left:2px solid var(--gray-200)}
 #rank-tfoot .grp-prev-divider{border-left:2px solid var(--gray-200)}
 .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
@@ -205,7 +205,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v3.9 · Feebit © 2026</div>
+  <div class="sidebar-footer">v3.10 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -214,7 +214,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div style="display:flex;align-items:center;gap:10px">
       <button class="btn-hamburger" onclick="toggleSidebar()">☰</button>
       <span class="topbar-title">📊 品牌趨勢分析</span>
-      <span style="font-size:11px;color:#aaa;font-weight:400;">v3.9</span>
+      <span style="font-size:11px;color:#aaa;font-weight:400;">v3.10</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <button class="btn btn-primary" id="add-data-btn" onclick="openAddModal()" style="display:none">＋ 新增資料</button>
@@ -281,9 +281,9 @@ tbody tr:hover .edit-btn{opacity:1}
             <th style="width:220px" class="th-sort grp-current" onclick="setSort('revenue')">營業額 <span class="sort-tri" id="sort-icon-revenue">↕</span></th>
             <th style="width:140px" class="th-sort grp-current" onclick="setSort('profit')">預估利潤 <span class="sort-tri" id="sort-icon-profit">↕</span></th>
             <th style="width:70px" class="th-sort grp-current" onclick="setSort('margin')">利潤率 <span class="sort-tri" id="sort-icon-margin">↕</span></th>
-            <th style="width:130px" class="yoy-col grp-prev">💰去年同期營業額</th>
+            <th style="width:130px" class="th-sort yoy-col grp-prev" onclick="setSort('prevRevenue')">💰去年同期營業額 <span class="sort-tri" id="sort-icon-prevRevenue">↕</span></th>
             <th style="width:100px" class="th-sort yoy-col grp-prev" onclick="setSort('yoy')">💰漲跌% <span class="sort-tri" id="sort-icon-yoy">↕</span></th>
-            <th style="width:130px" class="yoy-col grp-prev grp-prev-divider">📊去年同期利潤</th>
+            <th style="width:130px" class="th-sort yoy-col grp-prev grp-prev-divider" onclick="setSort('prevProfit')">📊去年同期利潤 <span class="sort-tri" id="sort-icon-prevProfit">↕</span></th>
             <th style="width:100px" class="th-sort yoy-col grp-prev" onclick="setSort('profitYoy')">📊漲跌% <span class="sort-tri" id="sort-icon-profitYoy">↕</span></th>
           </tr>
           </thead>
@@ -668,7 +668,7 @@ function setSort(key) {
   renderAll();
 }
 function updateSortIcons() {
-  ['brand','revenue','profit','margin','yoy','profitYoy'].forEach(k => {
+  ['brand','revenue','profit','margin','yoy','profitYoy','prevRevenue','prevProfit'].forEach(k => {
     const el = document.getElementById('sort-icon-' + k);
     if (!el) return;
     if (sortState.key === k) {
