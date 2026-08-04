@@ -1,1 +1,656 @@
-hello
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>分錄帳轉換 · 飛比特營運工具箱</title>
+<link rel="icon" href="favicon.svg">
+<script>if(location.search.includes("share"))document.documentElement.classList.add("standalone");</script>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+</head>
+<body>
+
+<!-- ── SIDEBAR ── -->
+<div id="sidebar">
+  <div class="sidebar-logo">
+    <div class="brand">飛比特 Feebit</div>
+    <div class="sub">營運工具箱</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">總覽</div>
+    <a class="nav-item" href="index.html"><span class="icon">🏠</span> 首頁</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">財務</div>
+    <a class="nav-item" href="bank-converter.html"><span class="icon">🏦</span> 帳務轉換</a>
+    <a class="nav-item active" href="journal-voucher.html"><span class="icon">📗</span> 分錄帳轉換</a>
+    <a class="nav-item" href="accounting-ops.html"><span class="icon">📅</span> 例行帳務作業</a>
+    <a class="nav-item" href="finance-dashboard.html"><span class="icon">📊</span> 帳務分析</a>
+    <a class="nav-item" href="coupang-invoice.html"><span class="icon">🧾</span> 酷澎發票轉檔</a>
+    <a class="nav-item" href="coupang-reconcile.html"><span class="icon">🔍</span> 酷澎商城對帳</a>
+    <a class="nav-item" href="shopee-subsidy.html"><span class="icon">🚚</span> 蝦皮運費補助申請</a>
+    <a class="nav-item" href="shopee-converter.html"><span class="icon">🛒</span> 蝦皮撥款轉換</a>
+    <a class="nav-item" href="profit-calculator.html"><span class="icon">💰</span> 毛利試算機</a>
+    <a class="nav-item" href="brand-sales.html"><span class="icon">📈</span> 品牌銷售分析</a>
+    <a class="nav-item" href="channel-revenue.html"><span class="icon">🛍️</span> 通路營收分析</a>
+    <a class="nav-item" href="brand-trend.html"><span class="icon">📊</span> 品牌趨勢分析</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">市場分析</div>
+    <a class="nav-item" href="market-tracker.html"><span class="icon">🔭</span> 品類競品分析</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">行銷</div>
+    <a class="nav-item" href="product-image-gen.html"><span class="icon">🎨</span> 商品圖生成</a>
+    <div class="nav-item soon"><span class="icon">📢</span> 廣告文案<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">客服</div>
+    <div class="nav-item soon"><span class="icon">💬</span> 客服回覆<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">業務</div>
+    <a class="nav-item" href="purchase-order.html"><span class="icon">📄</span> 採購單轉換</a>
+    <div class="nav-item soon"><span class="icon">🤝</span> 廠商談判<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">人事</div>
+    <a class="nav-item" href="attendance.html"><span class="icon">🗓️</span> 考勤查驗</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">庫存</div>
+    <a class="nav-item" href="stock-analysis.html"><span class="icon">📦</span> 庫存訂貨分析</a>
+    <a class="nav-item" href="slow-mover-alert.html"><span class="icon">🔴</span> 滯銷品警示</a>
+    <a class="nav-item" href="feebit-inventory-filter.html"><span class="icon">🏪</span> 商品篩選工具</a>
+    <a class="nav-item" href="reorder-suggestions.html"><span class="icon">🔄</span> 庫存訂貨建議</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">研發</div>
+    <a class="nav-item" href="research-notes.html"><span class="icon">📚</span> 研發筆記</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">法規</div>
+    <a class="nav-item" href="fda-registration.html"><span class="icon">🧪</span> 化粧品登錄轉換</a>
+    <a class="nav-item" href="ingredient-checker.html"><span class="icon">🧫</span> 食品成分比對</a>
+    <a class="nav-item" href="http://127.0.0.1:5050" target="_blank"><span class="icon">📋</span> PIF Builder</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">生活</div>
+    <a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span> 旅行規劃</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">自動化</div>
+    <a class="nav-item" href="schedule-notifications.html"><span class="icon">⏰</span> 自動排程通知</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">系統</div>
+    <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
+  </div>
+  <div class="sidebar-footer">v1.0 · Feebit © 2026</div>
+</div>
+
+<!-- ── SIDEBAR OVERLAY ── -->
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<!-- ── MAIN ── -->
+<div id="main">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="btn-hamburger" onclick="openSidebar()">☰</button>
+      <span class="topbar-title">分錄帳轉換</span>
+      <span class="topbar-badge">財務工具</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:4px">v1.0</span>
+    </div>
+    <button class="btn-share" onclick="copyShare(this)" title="複製分享連結">🔗 分享</button>
+  </div>
+
+  <div class="page">
+
+    <div id="upload-section">
+      <div id="dropzone" onclick="document.getElementById('fileInput').click()"
+           ondragover="event.preventDefault();this.classList.add('dragover')"
+           ondragleave="this.classList.remove('dragover')"
+           ondrop="handleDrop(event)">
+        <div class="dz-icon">📗</div>
+        <h2>拖曳「交易明細」xlsx 到這裡</h2>
+        <p>格式需含：交易日期／交易類別／自帳戶／帳戶幣別／原幣金額／主分類／子分類／描述（由「帳務轉換」工具產出的分類明細）</p>
+        <div class="btn-upload">選擇檔案</div>
+        <input type="file" id="fileInput" accept=".xlsx" onchange="handleFile(this.files[0])">
+      </div>
+    </div>
+
+    <div id="result-section" style="display:none">
+      <div id="alert-info" class="alert alert-warning">
+        <span>ℹ️</span>
+        <span id="info-text"></span>
+      </div>
+
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('summary')">傳票總表</div>
+        <div class="tab" onclick="switchTab('coa')">科目對照表</div>
+        <div class="tab" onclick="switchTab('rules')">分類規則說明</div>
+      </div>
+
+      <div id="tab-summary" class="tab-content active">
+        <div class="card">
+          <div class="card-header">
+            <h2>各月傳票總表 <span id="voucher-count" style="color:var(--gray-600);font-weight:400;font-size:13px"></span></h2>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-outline" onclick="resetUpload()">↩ 重新上傳</button>
+              <button class="btn btn-success" onclick="downloadWorkbook()">⬇ 下載分錄帳 Excel</button>
+            </div>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr>
+                <th>月份</th><th>傳票號碼</th><th>傳票種類</th><th>原始憑證數</th>
+                <th>總借方金額</th><th>總貸方金額</th><th>平衡</th>
+              </tr></thead>
+              <tbody id="summary-body"></tbody>
+            </table>
+          </div>
+          <p style="font-size:12px;color:var(--gray-600);margin-top:12px">
+            每張傳票的科目明細（含交易日期/交易類別/自帳戶/主分類/子分類/幣別/金額/摘要）都在下載的 Excel 裡，用收合列展開查看組成。
+          </p>
+        </div>
+      </div>
+
+      <div id="tab-coa" class="tab-content">
+        <div class="card">
+          <h2 style="margin-bottom:8px">科目對照表</h2>
+          <p style="font-size:14px;color:var(--gray-600);margin-bottom:16px">依飛比特官方四階科目表對照，⚠ 標記的是官方科目未涵蓋、用判斷邏輯歸類的項目</p>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th>科目編號</th><th>科目名稱</th><th>對應原始主分類/子分類</th><th>狀態</th></tr></thead>
+              <tbody id="coa-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-rules" class="tab-content">
+        <div class="card">
+          <h2 style="margin-bottom:8px">分類規則說明</h2>
+          <div id="rules-explain" style="font-size:13px;line-height:1.8;color:var(--gray-700)"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /page -->
+</div><!-- /main -->
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  分錄帳轉換：把「帳務轉換」產出的分類明細，轉成官方四階科目分錄帳
+//  規則沿革：2026上半年分錄帳專案（詳見 memory: project_journal_voucher.md）
+// ══════════════════════════════════════════════════════════════
+
+const EXCLUDED_ACCOUNTS = new Set(['ARINNA COSMETIC餘額','SEHAN餘額','Style Korean餘額','TOPKOREA餘額','the plus+餘額']);
+
+// 自帳戶 → {code, name, group}　group='combined' 表示可與彰銀/零用金合併成一條；桑爹類要各自獨立(group=自己的code)
+const ASSET_MAP = {
+  '飛比特彰銀-台幣帳戶TWD': {code:'1113', name:'銀行存款', group:'combined'},
+  '飛比特彰銀-美金USD':     {code:'1114', name:'在途現金(美金)', group:'combined'},
+  '飛比特零用金':           {code:'1112', name:'零用金/週轉金', group:'combined'},
+  '桑爹賣場(玉山5222)':     {code:'1118', name:'其他現金(桑爹玉山5222)', group:'1118'},
+  '桑爹賣場(永豐7176)':     {code:'1116', name:'其他現金(桑爹永豐7176)', group:'1116'},
+  '桑爹賣場(玉山1986)':     {code:'1117', name:'其他現金(桑爹玉山1986)', group:'1117'},
+};
+let nextFallbackCode = 1191;
+function getAsset(acc) {
+  if (ASSET_MAP[acc]) return ASSET_MAP[acc];
+  // 未知帳戶：自動獨立編一個暫時科目，並標記待確認
+  const code = String(nextFallbackCode++);
+  const info = {code, name:`其他現金(${acc})`, group:code, uncertain:true};
+  ASSET_MAP[acc] = info;
+  return info;
+}
+
+const PACKAGING_KW = ['紙箱','氣泡袋','標籤貼紙','破壞袋','包材','緩衝'];
+const OFFICE_SUPPLY_KW = ['電池','垃圾袋'];
+const INFLOW_TYPES = new Set(['轉帳收入','收入']);
+
+function rocYearMonth(d){ return [d.getFullYear()-1911, d.getMonth()+1]; }
+function pad2(n){ return String(n).padStart(2,'0'); }
+function prevMonthDate(d){ return new Date(d.getFullYear(), d.getMonth()-1, 1); }
+
+// 傳回 {code, name, sub, uncertain} 或 null(不入帳)
+function classify(x, vdate) {
+  const mc=x.mc, sc=x.sc||'', desc=x.desc||'', acc=x.acc, cur=x.cur, typ=x.type;
+  if (EXCLUDED_ACCOUNTS.has(acc)) return null;
+  if (mc === '賣場/通路銷售') return {code:'4111', name:'銷貨收入', sub:null};
+  if (mc === '活息') return {code:'7111', name:'利息收入', sub:null};
+  if (mc === '商品貨款') {
+    if (acc === '飛比特彰銀-美金USD' && typ === '轉帳支出') {
+      return {code:'5121', name:'進貨', sub:'__USD貨款__'+x.rate.toFixed(4)};
+    } else if (cur === 'TWD') {
+      if (OFFICE_SUPPLY_KW.some(k=>desc.includes(k))) return {code:'6134', name:'其他營業費用', sub:'辦公/雜項耗材'};
+      return {code:'5121', name:'進貨', sub:'進貨'};
+    }
+    return null; // 供應商美金預付餘額內部移轉，不入帳
+  }
+  if (mc === '貨運運費') {
+    if ((sc+desc).includes('退貨')) return {code:'6134', name:'其他營業費用', sub:'退貨運費'};
+    if (sc === '東風貨運') return {code:'5122', name:'進貨費用', sub:'進口費用'};
+    return {code:'6115', name:'運費', sub:null};
+  }
+  if (mc === '薪資/外包') {
+    if (sc === 'Ricky') return {code:'2393', name:'業主(股東)往來', sub:'Ricky(待拆分)', flag:true};
+    const [y,m] = rocYearMonth(prevMonthDate(vdate));
+    return {code:'6111', name:'薪資支出', sub:`${y}${pad2(m)}`};
+  }
+  if (mc === '廣告費/加值費') return {code:'6118', name:'廣告費', sub:null};
+  if (mc === '軟體/系統工具') {
+    if (sc === 'SHOPLINE') return {code:'6134', name:'其他營業費用', sub:'官網續約'};
+    return {code:'6136', name:'軟體', sub:'__軟體合併__'};
+  }
+  if (mc === '耗材相關') {
+    if (PACKAGING_KW.some(k=>sc.includes(k))) return {code:'5121', name:'進貨', sub:'進貨'};
+    return {code:'6134', name:'其他營業費用', sub: sc || '設備/辦公相關'};
+  }
+  if (['健保','勞保','勞退','保險相關'].includes(mc)) return {code:'6120', name:'保險費', sub:'勞健退'};
+  if (mc === '進口費用') return {code:'5122', name:'進貨費用', sub:'進口費用'};
+  if (mc === '會計師') {
+    const y = vdate.getFullYear() - 1912; // 記帳費多為前一年度費用
+    return {code:'6135', name:'記帳費', sub:`${sc||'正一'} ${y}年度`};
+  }
+  if (mc === '政府相關') return {code:'6134', name:'其他營業費用', sub: sc || '政府規費'};
+  if (mc === '印刷相關') return {code:'6134', name:'其他營業費用', sub:'印刷/辦公用品'};
+  if (mc === '營業稅') return {code:'6134', name:'其他營業費用', sub:'營業稅', uncertain:true};
+  if (mc === '年度營所稅') return {code:'8211', name:'所得稅費用(或利益)', sub:null};
+  if (mc === '其他費用') {
+    if (sc === '加工費用') return {code:'5158', name:'包裝費', sub:'ESUSE'};
+    if (sc === '週轉金還款') return {code:'2393', name:'業主(股東)往來', sub:'週轉金還款'};
+    if (sc === '美金匯款手續費') return {code:'6134', name:'其他營業費用', sub:'美金手續費'};
+    return {code:'6134', name:'其他營業費用', sub: sc || '雜項'};
+  }
+  if (mc === '外幣兌換' || mc === '調帳作業') return null; // 另外處理(併入該月支出傳票)
+  return {code:'9999', name:`未分類-${mc}`, sub:null, uncertain:true};
+}
+
+// ── 動態偵測「外幣兌換」與「調帳作業」配對，取得每次實際結匯匯率 ──
+function detectTransferPairs(rows) {
+  const byDateType = {};
+  for (const mcName of ['外幣兌換','調帳作業']) {
+    const groups = {};
+    rows.filter(r=>r.mc===mcName).forEach(r=>{
+      const key = r.date.toISOString().slice(0,10);
+      (groups[key] ||= []).push(r);
+    });
+    Object.values(groups).forEach(items=>{
+      const inflow = items.filter(r=>INFLOW_TYPES.has(r.type));
+      const outflow = items.filter(r=>!INFLOW_TYPES.has(r.type));
+      if (inflow.length===1 && outflow.length===1) {
+        const a=inflow[0], b=outflow[0];
+        a.used = true; b.used = true;
+        (byDateType[mcName] ||= []).push({mc:mcName, in:a, out:b});
+      }
+    });
+  }
+  return [...(byDateType['外幣兌換']||[]), ...(byDateType['調帳作業']||[])];
+}
+
+function buildFxRateFn(transferPairs) {
+  const known = transferPairs.filter(tp=>tp.mc==='外幣兌換' && tp.in.cur!==tp.out.cur)
+    .map(tp=>({date:tp.in.date, rate:tp.out.amt/tp.in.amt}))
+    .sort((a,b)=>a.date-b.date);
+  return function(d) {
+    if (known.length===0) return 1;
+    let rate = known[0].rate;
+    for (const k of known) { if (k.date <= d) rate = k.rate; else break; }
+    return rate;
+  };
+}
+
+// ── 解析上傳的 xlsx ──
+function parseFile(file, cb) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const wb = XLSX.read(e.target.result, {type:'array', cellDates:true});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+    const parsed = rows.map((r,i)=>({
+      rid: i+1,
+      date: r['交易日期'] instanceof Date ? r['交易日期'] : new Date(r['交易日期']),
+      type: r['交易類別'], acc: r['自帳戶'], cur: r['帳戶幣別'],
+      amt: Number(r['原幣金額'])||0, mc: r['主分類'], sc: r['子分類']||'',
+      desc: r['描述']||'', used:false,
+    })).filter(r=>r.date && !isNaN(r.date));
+    cb(parsed);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ── 建立傳票 ──
+let VOUCHERS = null; // Map key "YYYY-MM|收入傳票/支出傳票" -> {n, lines:Map}
+
+function buildVouchers(rows) {
+  const transferPairs = detectTransferPairs(rows);
+  const fxRate = buildFxRateFn(transferPairs);
+  const vouchers = new Map();
+  function getV(m, vt) {
+    const key = m+'|'+vt;
+    if (!vouchers.has(key)) vouchers.set(key, {n:0, lines:new Map()});
+    return vouchers.get(key);
+  }
+  function addLine(v, code, name, grp, sub, side, amt, item, uncertain) {
+    const key = [code,name,grp,sub,side].join('||');
+    if (!v.lines.has(key)) v.lines.set(key, {code,name,grp,sub,side,total:0,items:[],uncertain:false});
+    const L = v.lines.get(key);
+    L.total += amt; L.items.push(item); if (uncertain) L.uncertain = true;
+    return L;
+  }
+
+  for (const x of rows) {
+    if (x.used || EXCLUDED_ACCOUNTS.has(x.acc)) continue;
+    const y = x.date.getFullYear(), mo = x.date.getMonth()+1;
+    const mKey = `${y}-${pad2(mo)}`;
+    const vdate = new Date(y, mo, 0); // 月底
+    const rate = x.cur === 'TWD' ? 1 : fxRate(x.date);
+    x.rate = rate;
+    const cls = classify(x, vdate);
+    if (!cls) continue;
+    const asset = getAsset(x.acc);
+    const twdAmt = x.cur === 'TWD' ? x.amt : Math.round(x.amt*rate);
+    const item = {date:x.date, type:x.type, acc:x.acc, mc:x.mc, sc:x.sc, origCur:x.cur, origAmt:x.amt, amt:twdAmt, rate, desc:x.desc, rid:x.rid, flag:!!cls.flag};
+    const isInflow = INFLOW_TYPES.has(x.type);
+    const vt = isInflow ? '收入傳票' : '支出傳票';
+    const v = getV(mKey, vt); v.n++;
+    if (isInflow) {
+      addLine(v, asset.code, asset.name, asset.group, null, 'debit', twdAmt, item, asset.uncertain);
+      addLine(v, cls.code, cls.name, asset.group, cls.sub, 'credit', twdAmt, item, cls.uncertain);
+    } else {
+      addLine(v, cls.code, cls.name, asset.group, cls.sub, 'debit', twdAmt, item, cls.uncertain);
+      addLine(v, asset.code, asset.name, asset.group, null, 'credit', twdAmt, item, asset.uncertain);
+    }
+  }
+
+  // 外幣兌換／調帳作業 併入該月支出傳票
+  for (const tp of transferPairs) {
+    const a = tp.in, b = tp.out;
+    const mKey = `${a.date.getFullYear()}-${pad2(a.date.getMonth()+1)}`;
+    const v = getV(mKey, '支出傳票'); v.n++;
+    const acIn = getAsset(a.acc), acOut = getAsset(b.acc);
+    const twdAmt = b.amt;
+    const rateUsed = a.amt ? b.amt/a.amt : 0;
+    const itemIn = {date:a.date, type:a.type, acc:a.acc, mc:tp.mc, sc:'', origCur:a.cur, origAmt:a.amt, amt:twdAmt, rate:rateUsed,
+      desc:`${tp.mc}｜結購美金 ${a.amt.toLocaleString(undefined,{minimumFractionDigits:2})} USD ＠${rateUsed.toFixed(4)}`, rid:a.rid, flag:false};
+    const itemOut = {date:b.date, type:b.type, acc:b.acc, mc:tp.mc, sc:'', origCur:b.cur, origAmt:b.amt, amt:twdAmt, rate:1,
+      desc:`${tp.mc}｜${b.desc}`, rid:b.rid, flag:false};
+    addLine(v, acIn.code, acIn.name, acIn.group, '__TP__'+a.rid, 'debit', twdAmt, itemIn, acIn.uncertain);
+    addLine(v, acOut.code, acOut.name, acOut.group, '__TP__'+b.rid, 'credit', twdAmt, itemOut, acOut.uncertain);
+  }
+  return vouchers;
+}
+
+// ── 排序規則（依畫面範例的科目順序）──
+const ORDER_OUT = ['6111','6135','6118','6120','5121','5122','6115','6134','6136','8211','2393'];
+const ORDER_IN  = ['4111','7111'];
+const ASSET_ORDER_IN  = ['1112','1113','1114'];
+const ASSET_ORDER_OUT = ['1114','1112','1113'];
+function isSangCode(grp){ return ['1116','1117','1118'].includes(grp); }
+
+function sortKeyIn(L) {
+  if (L.grp === 'combined') {
+    const rank = L.side==='debit' ? ASSET_ORDER_IN.indexOf(L.code) : ORDER_IN.indexOf(L.code);
+    return [0, rank<0?99:rank, L.side];
+  } else if (isSangCode(L.grp)) {
+    return [1, ['1116','1117','1118'].indexOf(L.grp), L.side==='debit'?0:1];
+  }
+  return [2, String(L.sub), L.side];
+}
+function sortKeyOut(L) {
+  if (typeof L.sub==='string' && L.sub.startsWith('__TP__')) return [3, L.sub, L.side];
+  if (L.grp === 'combined') {
+    const rank = L.side==='debit' ? ORDER_OUT.indexOf(L.code) : ASSET_ORDER_OUT.indexOf(L.code);
+    return [0, rank<0?99:rank, String(L.sub), L.side];
+  } else if (isSangCode(L.grp)) {
+    return [1, ['1116','1117','1118'].indexOf(L.grp), L.side==='debit'?0:1];
+  }
+  return [2, String(L.sub), L.side];
+}
+function cmpArr(a,b){ for(let i=0;i<a.length;i++){ if(a[i]<b[i])return -1; if(a[i]>b[i])return 1; } return 0; }
+
+function lineMemo(L, vdate) {
+  const sub = L.sub;
+  if (typeof sub === 'string' && sub.startsWith('__USD貨款__')) {
+    const usdTotal = L.items.reduce((s,it)=>s+it.origAmt,0);
+    const rateVal = parseFloat(sub.replace('__USD貨款__',''));
+    const y = vdate.getFullYear()-1911, m = vdate.getMonth()+1;
+    return `貨款 ${y}${pad2(m)}匯出美金${usdTotal.toLocaleString(undefined,{minimumFractionDigits:1})}＠${rateVal.toFixed(4)}`;
+  }
+  if (typeof sub === 'string' && sub.startsWith('__軟體合併__')) {
+    const names = [...new Set(L.items.map(it=>it.sc).filter(Boolean))].sort();
+    return names.join('、');
+  }
+  if (typeof sub === 'string' && sub.startsWith('__TP__')) return L.items[0].desc;
+  if (sub) return sub;
+  return L.items.length===1 ? L.items[0].desc : '';
+}
+
+// ══════════════════════ UI ══════════════════════
+let PARSED_ROWS = null;
+
+function handleDrop(e){ e.preventDefault(); e.currentTarget.classList.remove('dragover'); if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); }
+function handleFile(file) {
+  if (!file) return;
+  parseFile(file, rows => {
+    PARSED_ROWS = rows;
+    VOUCHERS = buildVouchers(rows);
+    renderSummary();
+    renderCoa();
+    renderRulesExplain();
+    document.getElementById('upload-section').style.display='none';
+    document.getElementById('result-section').style.display='block';
+  });
+}
+function resetUpload(){
+  PARSED_ROWS=null; VOUCHERS=null;
+  document.getElementById('upload-section').style.display='block';
+  document.getElementById('result-section').style.display='none';
+  document.getElementById('fileInput').value='';
+}
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+function renderSummary() {
+  const tbody = document.getElementById('summary-body');
+  tbody.innerHTML = '';
+  const keys = [...VOUCHERS.keys()].sort();
+  let flagCount = 0;
+  for (const key of keys) {
+    const [m, vt] = key.split('|');
+    const v = VOUCHERS.get(key);
+    const [y,mo] = m.split('-');
+    const lastDay = new Date(Number(y), Number(mo), 0).getDate();
+    const vno = `${y}${mo}${pad2(lastDay)}${vt==='收入傳票'?'01':'02'}`;
+    let td=0, tc=0, anyFlag=false;
+    v.lines.forEach(L=>{ if(L.side==='debit') td+=L.total; else tc+=L.total; if(L.uncertain) anyFlag=true; });
+    if (anyFlag) flagCount++;
+    const balanced = Math.abs(td-tc) < 1;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${m}</td><td>${vno}</td><td>${vt}</td><td>${v.n}</td>
+      <td>${td.toLocaleString()}</td><td>${tc.toLocaleString()}</td>
+      <td>${balanced?'✅':'⚠️ 不平衡'}</td>`;
+    tbody.appendChild(tr);
+  }
+  document.getElementById('voucher-count').textContent = `共 ${keys.length} 張傳票`;
+  document.getElementById('info-text').textContent =
+    `已讀取 ${PARSED_ROWS.length} 筆交易明細，產生 ${keys.length} 張傳票。⚠ 標記科目共 ${flagCount} 張傳票，請下載後在 Excel 內確認黃底列。`;
+}
+
+function renderCoa() {
+  const tbody = document.getElementById('coa-body');
+  const rows = [
+    ['1112','零用金/週轉金','飛比特零用金','✅'],
+    ['1113','銀行存款','飛比特彰銀-台幣帳戶TWD','✅'],
+    ['1114','在途現金(美金)','飛比特彰銀-美金USD','✅'],
+    ['1116','其他現金(桑爹永豐7176)','桑爹賣場(永豐7176)','✅ 獨立不合併'],
+    ['1117','其他現金(桑爹玉山1986)','桑爹賣場(玉山1986)','✅ 獨立不合併'],
+    ['1118','其他現金(桑爹玉山5222)','桑爹賣場(玉山5222)','✅ 獨立不合併'],
+    ['4111','銷貨收入','賣場/通路銷售(含員購)','✅'],
+    ['7111','利息收入','活息','✅'],
+    ['5121','進貨','商品貨款＋耗材(包材類)；美金/台幣分列','✅'],
+    ['5122','進貨費用','進口費用＋貨運運費(東風貨運)','✅'],
+    ['5158','包裝費','其他費用-加工費用(ESUSE)','✅ 僅此項目'],
+    ['6111','薪資支出','薪資/外包(不分職稱)','✅'],
+    ['2393','業主(股東)往來','薪資/外包-Ricky、其他費用-週轉金還款','⚠ 需人工確認拆分'],
+    ['6115','運費','貨運運費(排除退貨/東風)','✅'],
+    ['6118','廣告費','廣告費/加值費','✅'],
+    ['6120','保險費','健保+勞保+勞退+保險相關','✅'],
+    ['6134','其他營業費用','印刷/政府相關/營業稅/其他費用/退貨運費/SHOPLINE/辦公雜項','⚠ 官方科目未細分，統一併入'],
+    ['6135','記帳費','會計師(摘要標註前一年度)','✅'],
+    ['6136','軟體','軟體/系統工具(SHOPLINE除外，同月合併一列)','✅'],
+    ['8211','所得稅費用(或利益)','年度營所稅','✅'],
+    ['—','未列入(供應商美金預付餘額)','ARINNA/SEHAN/Style Korean/TOPKOREA/the plus+ 餘額','依指示排除，不入帳'],
+  ];
+  tbody.innerHTML = rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td></tr>`).join('');
+}
+
+function renderRulesExplain() {
+  document.getElementById('rules-explain').innerHTML = `
+    <p><b>資產科目</b>：飛比特彰銀台幣/美金＋零用金可合併成一條科目線；蝦皮桑爹三個子帳戶（玉山5222／永豐7176／玉山1986）各自獨立成一條，不與彰銀/零用金合併。</p>
+    <p><b>美金匯率</b>：自動抓取當期「外幣兌換」交易配對出的實際結匯匯率，依交易日期採用「當時最近一次已知匯率」計算，換匯日之後才切換新匯率；同一張傳票內若橫跨不同匯率期間，5121進貨會拆成多列分別列示，不會混合平均。</p>
+    <p><b>5121進貨</b>：拆成「美金貨款」（彰銀美金匯出，摘要含匯率）與「台灣進貨」（其餘台幣採購，含耗材相關的包材類）兩種列，不同幣別/匯率期間分開列。</p>
+    <p><b>5158包裝費</b>：只有「其他費用－加工費用」（ESUSE）走這個科目，其餘耗材一律算進5121進貨。</p>
+    <p><b>6111薪資支出</b>：摘要自動填「發放月份的前一個月」民國年月（例如7月發的傳票代表6月份薪資，就填 ROC年+06）。</p>
+    <p><b>6135記帳費</b>：摘要填「事務所名稱＋前一年度」。</p>
+    <p><b>6136軟體</b>：同月同帳戶的軟體訂閱合併成一條，摘要用「、」列出軟體名稱；SHOPLINE 例外，改記6134其他營業費用（摘要「官網續約」）。</p>
+    <p><b>6134其他營業費用</b>：涵蓋退貨運費（關鍵字比對「退貨」）、政府規費、印刷、營業稅、美金匯款手續費、辦公雜項等官方科目未細分的項目。</p>
+    <p><b>2393業主(股東)往來</b>：薪資子分類為「Ricky」或其他費用子分類為「週轉金還款」的款項，記在這裡而非費用科目，需人工確認是否要拆分股東還款/分紅獎金。</p>
+    <p><b>排除項目</b>：ARINNA COSMETIC／SEHAN／Style Korean／TOPKOREA／the plus+ 餘額，這些供應商美金預付子帳戶不列入分錄帳，只有實際從彰銀美金匯出的那一筆會記到5121進貨。</p>
+  `;
+}
+
+// ══════════════════ 下載 Excel (ExcelJS，含收合明細/顏色/傳票結構) ══════════════════
+async function downloadWorkbook() {
+  const wb = new ExcelJS.Workbook();
+  const MAROON='963634', GOLD='BF8F00', AGG_IN='CFE2F3', AGG_OUT='FCE5CD', DETAIL_BG='F3F3F3', FLAG_BG='FFE599', HEADER_BG='434343';
+  const COLS = ['交易日期','科目編號','科目名稱','交易類別','自帳戶','主分類','子分類','幣別','金額(原幣)','摘要','借方金額(TWD)','貸方金額(TWD)'];
+  const widths = [11,9,20,9,20,13,15,6,12,30,14,14];
+
+  const months = [...new Set([...VOUCHERS.keys()].map(k=>k.split('|')[0]))].sort();
+  for (const m of months) {
+    const [y,mo] = m.split('-').map(Number);
+    const ws = wb.addWorksheet(`${mo}月`);
+    ws.columns = widths.map(w=>({width:w}));
+    ws.properties.outlineLevelRow = 0;
+    let r = 1;
+    ws.mergeCells(r,1,r,COLS.length);
+    ws.getCell(r,1).value = `${mo}月 分錄帳`;
+    ws.getCell(r,1).font = {bold:true, size:13};
+    r += 2;
+
+    for (const vt of ['收入傳票','支出傳票']) {
+      const key = m+'|'+vt;
+      if (!VOUCHERS.has(key)) continue;
+      const v = VOUCHERS.get(key);
+      const vdate = new Date(y, mo, 0);
+      const lastDay = vdate.getDate();
+      const vno = `${y}${pad2(mo)}${pad2(lastDay)}${vt==='收入傳票'?'01':'02'}`;
+
+      // 傳票基本資訊
+      ws.mergeCells(r,1,r,COLS.length);
+      ws.getCell(r,1).value = '傳票基本資訊';
+      ws.getCell(r,1).fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FF'+MAROON}};
+      ws.getCell(r,1).font = {bold:true, color:{argb:'FFFFFFFF'}};
+      r++;
+      ws.getCell(r,1).value='日期'; ws.getCell(r,2).value=`${y}/${pad2(mo)}/${pad2(lastDay)}`;
+      ws.getCell(r,3).value='傳票號碼'; ws.getCell(r,4).value=vno;
+      r++;
+      ws.getCell(r,1).value='傳票種類'; ws.getCell(r,2).value=vt;
+      ws.getCell(r,3).value='原始憑證數'; ws.getCell(r,4).value=v.n;
+      r++;
+
+      // 傳票明細標題
+      ws.mergeCells(r,1,r,COLS.length);
+      ws.getCell(r,1).value = '傳票明細';
+      ws.getCell(r,1).fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FF'+GOLD}};
+      ws.getCell(r,1).font = {bold:true, color:{argb:'FFFFFFFF'}};
+      r++;
+      COLS.forEach((t,i)=>{
+        const c = ws.getCell(r,i+1);
+        c.value = t; c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FF'+HEADER_BG}};
+        c.font = {bold:true, color:{argb:'FFFFFFFF'}};
+      });
+      r++;
+
+      const aggColor = vt==='收入傳票' ? AGG_IN : AGG_OUT;
+      const sortFn = vt==='收入傳票' ? sortKeyIn : sortKeyOut;
+      const lines = [...v.lines.values()].sort((a,b)=>cmpArr(sortFn(a), sortFn(b)));
+      let totalD=0, totalC=0;
+      for (const L of lines) {
+        const memo = lineMemo(L, vdate);
+        const hasFlag = L.items.some(it=>it.flag);
+        const fill = (hasFlag||L.uncertain) ? FLAG_BG : aggColor;
+        ws.getCell(r,2).value = L.code;
+        ws.getCell(r,3).value = `${L.code}-${L.name}`;
+        ws.getCell(r,10).value = memo + (hasFlag?'　⚠內含待拆分項目':'') + (L.uncertain?'　⚠科目待確認':'');
+        if (L.side==='debit') { ws.getCell(r,11).value = L.total; totalD += L.total; }
+        else { ws.getCell(r,12).value = L.total; totalC += L.total; }
+        for (let c=1;c<=COLS.length;c++){ ws.getCell(r,c).fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FF'+fill}}; ws.getCell(r,c).font = {bold:true, color: hasFlag?{argb:'FFCC0000'}:undefined}; }
+        const aggRow = r;
+        r++;
+        if (L.items.length > 1) {
+          for (const it of [...L.items].sort((a,b)=>a.date-b.date)) {
+            ws.getCell(r,1).value = it.date;
+            ws.getCell(r,1).numFmt = 'yyyy/mm/dd';
+            ws.getCell(r,4).value = it.type;
+            ws.getCell(r,5).value = it.acc;
+            ws.getCell(r,6).value = it.mc;
+            ws.getCell(r,7).value = it.sc;
+            ws.getCell(r,8).value = it.origCur;
+            ws.getCell(r,9).value = it.origAmt;
+            let descv = it.desc + (it.origCur!=='TWD' ? `（原幣${it.origAmt.toLocaleString(undefined,{minimumFractionDigits:2})} ${it.origCur}＠${it.rate.toFixed(4)}）` : '');
+            ws.getCell(r,10).value = descv + (it.flag?'　⚠待拆分':'');
+            if (L.side==='debit') ws.getCell(r,11).value = it.amt; else ws.getCell(r,12).value = it.amt;
+            const rowfill = it.flag ? FLAG_BG : DETAIL_BG;
+            for (let c=1;c<=COLS.length;c++){ ws.getCell(r,c).fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FF'+rowfill}}; ws.getCell(r,c).font = {size:10, color: it.flag?{argb:'FFCC0000'}:{argb:'FF555555'}}; }
+            ws.getRow(r).outlineLevel = 1;
+            r++;
+          }
+        } else {
+          const it = L.items[0];
+          ws.getCell(aggRow,1).value = it.date; ws.getCell(aggRow,1).numFmt='yyyy/mm/dd';
+          ws.getCell(aggRow,4).value = it.type;
+          ws.getCell(aggRow,5).value = it.acc;
+          ws.getCell(aggRow,6).value = it.mc;
+          ws.getCell(aggRow,7).value = it.sc;
+          ws.getCell(aggRow,8).value = it.origCur;
+          ws.getCell(aggRow,9).value = it.origAmt;
+        }
+      }
+      ws.getCell(r,10).value = '傳票總計';
+      ws.getCell(r,11).value = totalD;
+      ws.getCell(r,12).value = totalC;
+      for (let c=1;c<=COLS.length;c++){ ws.getCell(r,c).fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FFD9EAD3'}}; ws.getCell(r,c).font = {bold:true,size:12}; }
+      r += 2;
+    }
+    ws.views = [{state:'frozen', ySplit:2, showOutlineSymbols:true}];
+    ['K','L'].forEach(col=>{ ws.getColumn(col).numFmt = '#,##0'; });
+  }
+
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `分錄帳_${new Date().toISOString().slice(0,10).replace(/-/g,'')}.xlsx`;
+  a.click();
+}
+
+// ── sidebar (shared) ──
+function openSidebar(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-overlay').classList.add('show'); }
+function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('show'); }
+function copyShare(btn){
+  const url = location.href.split('?')[0] + '?share=1';
+  navigator.clipboard.writeText(url).then(()=>{ const t=btn.textContent; btn.textContent='✅ 已複製'; setTimeout(()=>btn.textContent=t,1500); });
+}
+</script>
+</body>
+</html>
