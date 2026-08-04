@@ -20,6 +20,10 @@
 .chip:focus{outline:none}
 .chip.all{font-weight:600}
 .sort-select{padding:7px 10px;border:1px solid var(--gray-300);border-radius:var(--radius);font-size:13px;background:white}
+.th-sort{cursor:pointer;user-select:none;-webkit-user-select:none}
+.th-sort:hover{color:var(--primary)}
+.sort-tri{font-size:9px;opacity:.35;margin-left:3px;display:inline-block}
+.sort-tri.active{opacity:1;color:var(--primary)}
 .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
 .card{background:white;border-radius:var(--radius);padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .card-label{font-size:12px;color:var(--gray-500);margin-bottom:6px;font-weight:500}
@@ -187,7 +191,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v3.3 · Feebit © 2026</div>
+  <div class="sidebar-footer">v3.4 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -196,7 +200,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div style="display:flex;align-items:center;gap:10px">
       <button class="btn-hamburger" onclick="toggleSidebar()">☰</button>
       <span class="topbar-title">📊 品牌趨勢分析</span>
-      <span style="font-size:11px;color:#aaa;font-weight:400;">v3.3</span>
+      <span style="font-size:11px;color:#aaa;font-weight:400;">v3.4</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <button class="btn btn-primary" id="add-data-btn" onclick="openAddModal()" style="display:none">＋ 新增資料</button>
@@ -219,15 +223,6 @@ tbody tr:hover .edit-btn{opacity:1}
         <div class="filter-group">
           <div class="filter-group-label">月份</div>
           <div class="chip-row" id="month-filter"></div>
-        </div>
-        <div class="filter-group">
-          <div class="filter-group-label">排序</div>
-          <select class="sort-select" id="sort-select" onchange="renderAll()">
-            <option value="revenue-desc">營業額（高→低）</option>
-            <option value="revenue-asc">營業額（低→高）</option>
-            <option value="name-asc">品牌名稱（A→Z）</option>
-            <option value="name-desc">品牌名稱（Z→A）</option>
-          </select>
         </div>
       </div>
     </div>
@@ -254,11 +249,11 @@ tbody tr:hover .edit-btn{opacity:1}
         <table>
           <thead><tr>
             <th style="width:50px">排名</th>
-            <th>品牌</th>
+            <th class="th-sort" onclick="setSort('brand')">品牌 <span class="sort-tri" id="sort-icon-brand">↕</span></th>
             <th style="width:80px">賣場數</th>
-            <th style="width:240px">營業額</th>
-            <th style="width:160px">預估利潤</th>
-            <th style="width:70px">利潤率</th>
+            <th style="width:240px" class="th-sort" onclick="setSort('revenue')">營業額 <span class="sort-tri" id="sort-icon-revenue">↕</span></th>
+            <th style="width:160px" class="th-sort" onclick="setSort('profit')">預估利潤 <span class="sort-tri" id="sort-icon-profit">↕</span></th>
+            <th style="width:70px" class="th-sort" onclick="setSort('margin')">利潤率 <span class="sort-tri" id="sort-icon-margin">↕</span></th>
           </tr></thead>
           <tbody id="rank-tbody"></tbody>
         </table>
@@ -564,6 +559,37 @@ function filteredRecords() {
 // ══════════════════════════════════════════
 // Aggregation
 // ══════════════════════════════════════════
+// ══════════════════════════════════════════
+// Sort state（品牌排行表：點欄位標題三角形切換排序）
+// ══════════════════════════════════════════
+let sortState = { key: 'revenue', dir: 'desc' };
+function setSort(key) {
+  if (sortState.key === key) {
+    sortState.dir = sortState.dir === 'desc' ? 'asc' : 'desc';
+  } else {
+    sortState.key = key;
+    sortState.dir = key === 'brand' ? 'asc' : 'desc';
+  }
+  renderAll();
+}
+function updateSortIcons() {
+  ['brand','revenue','profit','margin'].forEach(k => {
+    const el = document.getElementById('sort-icon-' + k);
+    if (!el) return;
+    if (sortState.key === k) {
+      el.textContent = sortState.dir === 'asc' ? '▲' : '▼';
+      el.classList.add('active');
+    } else {
+      el.textContent = '↕';
+      el.classList.remove('active');
+    }
+  });
+}
+function sortGroups(groups) {
+  const { key, dir } = sortState;
+  const mult = dir === 'asc' ? 1 : -1;
+  groups.sort((a, b) => key === 'brand' ? a.brand.localeCompare(b.brand) * mult : (a[key] - b[key]) * mult);
+}
 function computeBrandGroups(records) {
   const m = {};
   for (const r of records) {
@@ -573,12 +599,11 @@ function computeBrandGroups(records) {
     if (p === null) m[r.brand].hasUnknown = true; else m[r.brand].profit += p;
     m[r.brand].shops.add(r.shop);
   }
-  let groups = Object.values(m).map(g => ({ brand: g.brand, revenue: g.revenue, profit: g.profit, hasUnknown: g.hasUnknown, shopCount: g.shops.size }));
-  const sort = document.getElementById('sort-select')?.value || 'revenue-desc';
-  if (sort === 'revenue-desc') groups.sort((a,b) => b.revenue - a.revenue);
-  else if (sort === 'revenue-asc') groups.sort((a,b) => a.revenue - b.revenue);
-  else if (sort === 'name-asc') groups.sort((a,b) => a.brand.localeCompare(b.brand));
-  else if (sort === 'name-desc') groups.sort((a,b) => b.brand.localeCompare(a.brand));
+  let groups = Object.values(m).map(g => ({
+    brand: g.brand, revenue: g.revenue, profit: g.profit, hasUnknown: g.hasUnknown, shopCount: g.shops.size,
+    margin: g.revenue > 0 ? g.profit / g.revenue : 0
+  }));
+  sortGroups(groups);
   return groups;
 }
 
@@ -707,11 +732,10 @@ function renderCrossTable() {
     const total = Object.values(v.shopMap).reduce((s,x)=>s+x,0);
     return { brand: b, shopMap: v.shopMap, unknownShops: v.unknownShops, total };
   });
-  const sort = document.getElementById('sort-select')?.value || 'revenue-desc';
-  if (sort === 'revenue-desc') brandTotals.sort((a,b)=>b.total-a.total);
-  else if (sort === 'revenue-asc') brandTotals.sort((a,b)=>a.total-b.total);
-  else if (sort === 'name-asc') brandTotals.sort((a,b)=>a.brand.localeCompare(b.brand));
-  else brandTotals.sort((a,b)=>b.brand.localeCompare(a.brand));
+  const { key, dir } = sortState;
+  const mult = dir === 'asc' ? 1 : -1;
+  if (key === 'brand') brandTotals.sort((a,b) => a.brand.localeCompare(b.brand) * mult);
+  else brandTotals.sort((a,b) => (a.total - b.total) * mult);
 
   const thead = document.querySelector('#cross-table thead');
   const tbody = document.querySelector('#cross-table tbody');
@@ -1086,6 +1110,7 @@ function renderProfitSettingsTab() {
 function renderAll() {
   renderCards();
   renderRankTable();
+  updateSortIcons();
   renderCrossTable();
   renderDataTable();
 }
