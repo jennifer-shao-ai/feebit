@@ -173,7 +173,7 @@ select.inline-sel:focus{border-color:var(--primary);}
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v3.2 · Feebit © 2026</div>
+  <div class="sidebar-footer">v3.3 · Feebit © 2026</div>
 </div>
 
 <div id="main">
@@ -182,7 +182,7 @@ select.inline-sel:focus{border-color:var(--primary);}
       <button class="btn-hamburger" style="display:none;" onclick="openSidebar()">☰</button>
       <span class="topbar-title">考勤查驗</span>
       <span class="topbar-badge">人事工具</span>
-      <span style="font-size:11px;color:var(--gray-400);margin-left:4px;">v3.2</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:4px;">v3.3</span>
     </div>
   </div>
 
@@ -1510,7 +1510,8 @@ function annPopulateEmpSelect(empStats){
 async function syncAnnualToCloud(){
   if(!annIsAdmin || !annCloudClient) return;
   const year=document.getElementById('ann-year').value;
-  const built=buildAnnualStats(year, activeEmployees());
+  // 拋轉雲端存整年度完整歷史，不受「顯示已離職員工」畫面開關影響，避免離職員工的資料漏傳
+  const built=buildAnnualStats(year, db.employees);
   if(!built){ alert('目前沒有資料可以拋轉'); return; }
   const btn=document.getElementById('ann-sync-btn');
   if(btn){ btn.disabled=true; btn.textContent='拋轉中…'; }
