@@ -206,7 +206,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v4.0 · Feebit © 2026</div>
+  <div class="sidebar-footer">v4.1 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -215,7 +215,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div style="display:flex;align-items:center;gap:10px">
       <button class="btn-hamburger" onclick="toggleSidebar()">☰</button>
       <span class="topbar-title">📊 品牌趨勢分析</span>
-      <span style="font-size:11px;color:#aaa;font-weight:400;">v4.0</span>
+      <span style="font-size:11px;color:#aaa;font-weight:400;">v4.1</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <button class="btn btn-primary" id="add-data-btn" onclick="openAddModal()" style="display:none">＋ 新增資料</button>
@@ -1172,7 +1172,7 @@ function renderCompareTable() {
       <td style="font-weight:600">${esc(r.brand)}</td>
       <td>NT$ ${fmt(r.av)}</td>
       <td>NT$ ${fmt(r.bv)}</td>
-      <td>${yoyCellHtml(r.bv - r.av, r.growth)}</td>
+      <td>${yoyCellHtml(r.av - r.bv, r.growth)}</td>
     </tr>`).join('') || `<tr><td colspan="4" class="empty-state">無資料</td></tr>`;
 }
 function runCompare() {
@@ -1190,7 +1190,8 @@ function runCompare() {
   const brands = [...new Set([...Object.keys(aData), ...Object.keys(bData)])];
   lastCompareRows = brands.map(b => {
     const av = aData[b]||0, bv = bData[b]||0;
-    const growth = av ? (bv-av)/av : (bv>0 ? null : 0);
+    // 增減％以「期間A」為觀察對象、「期間B」當基期分母，符合「期間B＝期間A去年同期」的用法（A今年 vs B去年，呈現的是A的漲跌，不是B的）
+    const growth = bv ? (av-bv)/bv : (av>0 ? null : 0);
     return { brand:b, av, bv, growth };
   });
   cmpSortState = { key: 'total', dir: 'desc' };
