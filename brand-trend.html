@@ -198,7 +198,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v3.6 · Feebit © 2026</div>
+  <div class="sidebar-footer">v3.7 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -207,7 +207,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div style="display:flex;align-items:center;gap:10px">
       <button class="btn-hamburger" onclick="toggleSidebar()">☰</button>
       <span class="topbar-title">📊 品牌趨勢分析</span>
-      <span style="font-size:11px;color:#aaa;font-weight:400;">v3.6</span>
+      <span style="font-size:11px;color:#aaa;font-weight:400;">v3.7</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <button class="btn btn-primary" id="add-data-btn" onclick="openAddModal()" style="display:none">＋ 新增資料</button>
@@ -563,7 +563,7 @@ function renderFilterBar() {
     ` + months.map(m => `<span class="chip ${activeMonths.has(m)?'active':''}" onclick="toggleMonth('${m}')">${monthLabel(m)}</span>`).join('');
 
   const presets = [
-    ['this-month', '當月'], ['h1', '上半年'], ['h2', '下半年'],
+    ['this-month', '當月'], ['last-month', '上個月'], ['h1', '上半年'], ['h2', '下半年'],
     ['this-year', '今年'], ['last-year', '去年']
   ];
   document.getElementById('month-preset-filter').innerHTML = presets
@@ -576,6 +576,9 @@ function selectMonthPreset(preset) {
   let want = [];
   if (preset === 'this-month') {
     want = [`${y}-${String(now.getMonth()+1).padStart(2,'0')}`];
+  } else if (preset === 'last-month') {
+    const d = new Date(y, now.getMonth() - 1, 1);
+    want = [`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`];
   } else if (preset === 'h1') {
     want = [1,2,3,4,5,6].map(m => `${y}-${String(m).padStart(2,'0')}`);
   } else if (preset === 'h2') {
