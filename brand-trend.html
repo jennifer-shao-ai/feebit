@@ -217,7 +217,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v4.5 · Feebit © 2026</div>
+  <div class="sidebar-footer">v4.6 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -226,7 +226,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div style="display:flex;align-items:center;gap:10px">
       <button class="btn-hamburger" onclick="toggleSidebar()">☰</button>
       <span class="topbar-title">📊 品牌趨勢分析</span>
-      <span style="font-size:11px;color:#aaa;font-weight:400;">v4.5</span>
+      <span style="font-size:11px;color:#aaa;font-weight:400;">v4.6</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <button class="btn btn-primary" id="add-data-btn" onclick="openAddModal()" style="display:none">＋ 新增資料</button>
@@ -323,12 +323,17 @@ tbody tr:hover .edit-btn{opacity:1}
             <span class="chip" data-metric="profitYoy" onclick="setPotentialMetric('profitYoy')">依利潤成長</span>
           </div>
         </div>
-        <div class="table-hint" style="display:block;margin-bottom:6px">
-          橫軸＝利潤率（越右越賺），縱軸＝與去年同期比成長%（越上越衝），點的大小＝目前營業額規模；自動抓「目前月份篩選」對應的去年同期，不受品牌排行的「與去年同期比較」開關影響。
+        <div class="table-hint" style="display:block;margin-bottom:10px">
+          橫軸＝利潤率（越右越賺），縱軸＝與去年同期比成長%（越上越衝），點的大小＝目前營業額規模；下面自選分析週期，會自動抓對應的去年同期比較，跟「品牌排行」的月份篩選是分開的、不受它影響。
           右上角（🌟高成長＋高利潤率）是最值得優先加碼的品牌；左上角（成長快但利潤率偏低）值得觀察但要留意賺不賺錢；右下角是穩定收成的品牌；左下角建議收斂資源。
         </div>
+        <div class="filter-group" style="margin-bottom:14px">
+          <div class="filter-group-label">分析週期</div>
+          <div class="chip-row" id="potential-period-preset" style="margin-bottom:6px"></div>
+          <div class="chip-row" id="potential-period-months"></div>
+        </div>
         <div id="potential-period-info" style="font-size:12.5px;color:var(--primary);font-weight:600;margin-bottom:14px"></div>
-        <div id="potential-empty" class="empty-state" style="display:none">目前篩選範圍內，沒有品牌同時有「今年」與「去年同期」的資料可以比較，換個月份篩選試試（例如按「今年」再比對「去年」）</div>
+        <div id="potential-empty" class="empty-state" style="display:none">目前選的週期內，沒有品牌同時有「本期」與「去年同期」的資料可以比較，換個週期試試（例如選「今年」再比對「去年」）</div>
         <div style="height:420px"><canvas id="potential-chart"></canvas></div>
       </div>
       <div class="table-wrap" style="margin-top:14px">
@@ -769,9 +774,10 @@ function shiftYearBack(m) {
   const [y, mo] = m.split('-');
   return `${parseInt(y) - 1}-${mo}`;
 }
-function computeYoYMap(force) {
+function computeYoYMap(force, monthsOverride) {
   if (!force && !compareYoY) return { revenue: {}, profit: {} };
-  const shiftedMonths = new Set([...activeMonths].map(shiftYearBack));
+  const baseMonths = monthsOverride || activeMonths;
+  const shiftedMonths = new Set([...baseMonths].map(shiftYearBack));
   const prevRecs = RECORDS.filter(r => activeShops.has(r.shop) && shiftedMonths.has(r.month));
   const revenue = {}, profit = {};
   for (const r of prevRecs) {
@@ -782,7 +788,7 @@ function computeYoYMap(force) {
   return { revenue, profit };
 }
 
-function computeBrandGroups(records, forceYoY) {
+function computeBrandGroups(records, forceYoY, monthsOverride) {
   const m = {};
   for (const r of records) {
     if (!m[r.brand]) m[r.brand] = { brand: r.brand, revenue: 0, profit: 0, hasUnknown: false, shops: new Set() };
@@ -791,7 +797,7 @@ function computeBrandGroups(records, forceYoY) {
     if (p === null) m[r.brand].hasUnknown = true; else m[r.brand].profit += p;
     m[r.brand].shops.add(r.shop);
   }
-  const yoyMap = computeYoYMap(forceYoY);
+  const yoyMap = computeYoYMap(forceYoY, monthsOverride);
   let groups = Object.values(m).map(g => {
     const prevRevenue = yoyMap.revenue[g.brand] || 0;
     const yoy = prevRevenue > 0 ? (g.revenue - prevRevenue) / prevRevenue : (g.revenue > 0 ? null : 0);
@@ -931,6 +937,7 @@ let potentialMetric = 'yoy';
 let potentialChart = null;
 let potentialSortState = { key: 'score', dir: 'desc' };
 let potentialTop20 = [];
+let potentialMonths = null;   // 潛力分析自己的月份週期，跟主篩選列(activeMonths)分開
 function setPotentialMetric(metric) {
   potentialMetric = metric;
   document.querySelectorAll('#potential-metric-toggle .chip').forEach(c => c.classList.toggle('active', c.dataset.metric === metric));
@@ -942,14 +949,51 @@ function formatMonthList(months) {
   if (sorted.length <= 4) return sorted.map(monthLabel).join('、');
   return `${monthLabel(sorted[0])} ～ ${monthLabel(sorted[sorted.length-1])}（共${sorted.length}個月）`;
 }
+function initPotentialMonths() {
+  if (potentialMonths !== null) return;
+  const months = allMonths();
+  const thisYear = presetMonths('this-year', months);
+  potentialMonths = new Set(thisYear.length ? thisYear : months);
+}
+function renderPotentialPeriodPicker() {
+  const months = allMonths();
+  const presets = [
+    ['this-month', '當月'], ['last-month', '上個月'], ['h1', '上半年'], ['h2', '下半年'],
+    ['this-year', '今年'], ['last-year', '去年']
+  ];
+  document.getElementById('potential-period-preset').innerHTML = presets
+    .map(([key,label]) => `<span class="chip preset-chip" onclick="selectPotentialPreset('${key}')">${label}</span>`).join('');
+  document.getElementById('potential-period-months').innerHTML = `
+    <span class="chip all ${potentialMonths.size===months.length?'active':''}" onclick="toggleAllPotentialMonths()">全部</span>
+    ` + months.map(m => `<span class="chip ${potentialMonths.has(m)?'active':''}" onclick="togglePotentialMonth('${m}')">${monthLabel(m)}</span>`).join('');
+}
+function selectPotentialPreset(preset) {
+  potentialMonths = new Set(presetMonths(preset, allMonths()));
+  renderPotentialPeriodPicker();
+  renderPotentialTab();
+}
+function togglePotentialMonth(m) {
+  if (potentialMonths.has(m)) potentialMonths.delete(m); else potentialMonths.add(m);
+  renderPotentialPeriodPicker();
+  renderPotentialTab();
+}
+function toggleAllPotentialMonths() {
+  const months = allMonths();
+  potentialMonths = potentialMonths.size === months.length ? new Set() : new Set(months);
+  renderPotentialPeriodPicker();
+  renderPotentialTab();
+}
 function renderPotentialTab() {
-  const curMonths = [...activeMonths];
+  initPotentialMonths();
+  renderPotentialPeriodPicker();
+
+  const curMonths = [...potentialMonths];
   const prevMonths = curMonths.map(shiftYearBack);
   document.getElementById('potential-period-info').innerHTML =
     `📅 本期：${formatMonthList(curMonths)}　vs　去年同期：${formatMonthList(prevMonths)}`;
 
-  const recs = filteredRecords();
-  const groups = computeBrandGroups(recs, true).filter(g => g.revenue > 0);
+  const recs = RECORDS.filter(r => activeShops.has(r.shop) && potentialMonths.has(r.month));
+  const groups = computeBrandGroups(recs, true, potentialMonths).filter(g => g.revenue > 0);
   const usable = groups.filter(g => g[potentialMetric] != null);
 
   document.getElementById('potential-empty').style.display = usable.length === 0 ? '' : 'none';
