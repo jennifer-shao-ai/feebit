@@ -206,7 +206,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v3.12 · Feebit © 2026</div>
+  <div class="sidebar-footer">v4.0 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -215,7 +215,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div style="display:flex;align-items:center;gap:10px">
       <button class="btn-hamburger" onclick="toggleSidebar()">☰</button>
       <span class="topbar-title">📊 品牌趨勢分析</span>
-      <span style="font-size:11px;color:#aaa;font-weight:400;">v3.12</span>
+      <span style="font-size:11px;color:#aaa;font-weight:400;">v4.0</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <button class="btn btn-primary" id="add-data-btn" onclick="openAddModal()" style="display:none">＋ 新增資料</button>
@@ -255,6 +255,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <!-- TABS -->
     <div class="tabs">
       <div class="tab active" data-tab="rank-tab" onclick="switchTab(this)">品牌排行</div>
+      <div class="tab" data-tab="potential-tab" onclick="switchTab(this)">🎯 潛力分析</div>
       <div class="tab" data-tab="shop-tab" onclick="switchTab(this)">分賣場明細</div>
       <div class="tab" data-tab="compare-tab" onclick="switchTab(this)">月份比對</div>
       <div class="tab" data-tab="data-tab" onclick="switchTab(this)">資料管理</div>
@@ -292,6 +293,34 @@ tbody tr:hover .edit-btn{opacity:1}
           <tfoot id="rank-tfoot"></tfoot>
         </table>
         </div>
+      </div>
+    </div>
+
+    <!-- TAB: 潛力分析 -->
+    <div id="potential-tab" class="tab-content">
+      <div class="table-wrap" style="padding:18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:4px">
+          <h3 style="font-size:15px;font-weight:700">品牌潛力象限</h3>
+          <div class="view-toggle" id="potential-metric-toggle">
+            <span class="chip active" data-metric="yoy" onclick="setPotentialMetric('yoy')">依營業額成長</span>
+            <span class="chip" data-metric="profitYoy" onclick="setPotentialMetric('profitYoy')">依利潤成長</span>
+          </div>
+        </div>
+        <div class="table-hint" style="display:block;margin-bottom:14px">
+          橫軸＝利潤率（越右越賺），縱軸＝與去年同期比成長%（越上越衝），點的大小＝目前營業額規模；自動抓「目前月份篩選」對應的去年同期，不受品牌排行的「與去年同期比較」開關影響。
+          右上角（🌟高成長＋高利潤率）是最值得優先加碼的品牌；左上角（成長快但利潤率偏低）值得觀察但要留意賺不賺錢；右下角是穩定收成的品牌；左下角建議收斂資源。
+        </div>
+        <div id="potential-empty" class="empty-state" style="display:none">目前篩選範圍內，沒有品牌同時有「今年」與「去年同期」的資料可以比較，換個月份篩選試試（例如按「今年」再比對「去年」）</div>
+        <div style="height:420px"><canvas id="potential-chart"></canvas></div>
+      </div>
+      <div class="table-wrap" style="margin-top:14px">
+        <div class="table-header">
+          <h3>🌟 優先加碼候選（高成長＋高利潤率，依營業額排序）</h3>
+        </div>
+        <table>
+          <thead><tr><th>品牌</th><th>營業額</th><th>利潤率</th><th>成長%</th></tr></thead>
+          <tbody id="potential-star-tbody"></tbody>
+        </table>
       </div>
     </div>
 
@@ -721,8 +750,8 @@ function shiftYearBack(m) {
   const [y, mo] = m.split('-');
   return `${parseInt(y) - 1}-${mo}`;
 }
-function computeYoYMap() {
-  if (!compareYoY) return { revenue: {}, profit: {} };
+function computeYoYMap(force) {
+  if (!force && !compareYoY) return { revenue: {}, profit: {} };
   const shiftedMonths = new Set([...activeMonths].map(shiftYearBack));
   const prevRecs = RECORDS.filter(r => activeShops.has(r.shop) && shiftedMonths.has(r.month));
   const revenue = {}, profit = {};
@@ -734,7 +763,7 @@ function computeYoYMap() {
   return { revenue, profit };
 }
 
-function computeBrandGroups(records) {
+function computeBrandGroups(records, forceYoY) {
   const m = {};
   for (const r of records) {
     if (!m[r.brand]) m[r.brand] = { brand: r.brand, revenue: 0, profit: 0, hasUnknown: false, shops: new Set() };
@@ -743,7 +772,7 @@ function computeBrandGroups(records) {
     if (p === null) m[r.brand].hasUnknown = true; else m[r.brand].profit += p;
     m[r.brand].shops.add(r.shop);
   }
-  const yoyMap = computeYoYMap();
+  const yoyMap = computeYoYMap(forceYoY);
   let groups = Object.values(m).map(g => {
     const prevRevenue = yoyMap.revenue[g.brand] || 0;
     const yoy = prevRevenue > 0 ? (g.revenue - prevRevenue) / prevRevenue : (g.revenue > 0 ? null : 0);
@@ -874,6 +903,98 @@ function renderRankFooter(groups) {
       <td class="yoy-col">${yoyCellHtml(totalProfit - totalPrevProfit, totalProfitYoy)}</td>
     </tr>`;
 }
+
+// ══════════════════════════════════════════
+// Potential quadrant（潛力分析：利潤率×YoY成長%泡泡圖，泡泡大小＝營業額規模）
+// ══════════════════════════════════════════
+let potentialMetric = 'yoy';
+let potentialChart = null;
+function setPotentialMetric(metric) {
+  potentialMetric = metric;
+  document.querySelectorAll('#potential-metric-toggle .chip').forEach(c => c.classList.toggle('active', c.dataset.metric === metric));
+  renderPotentialTab();
+}
+function renderPotentialTab() {
+  const recs = filteredRecords();
+  const groups = computeBrandGroups(recs, true).filter(g => g.revenue > 0);
+  const usable = groups.filter(g => g[potentialMetric] != null);
+
+  document.getElementById('potential-empty').style.display = usable.length === 0 ? '' : 'none';
+  if (usable.length === 0) {
+    if (potentialChart) { potentialChart.destroy(); potentialChart = null; }
+    document.getElementById('potential-star-tbody').innerHTML = `<tr><td colspan="4" class="empty-state">無資料</td></tr>`;
+    return;
+  }
+
+  const maxRev = Math.max(...usable.map(g => g.revenue), 1);
+  const avgMargin = usable.reduce((s,g) => s + g.margin, 0) / usable.length * 100;
+
+  const points = usable.map(g => ({
+    x: +(g.margin*100).toFixed(1),
+    y: +(g[potentialMetric]*100).toFixed(1),
+    r: 6 + (g.revenue / maxRev) * 34,
+    brand: g.brand, revenue: g.revenue, marginPct: g.margin*100, growthPct: g[potentialMetric]*100
+  }));
+  const colorOf = p => {
+    const highGrowth = p.y >= 0, highMargin = p.x >= avgMargin;
+    if (highGrowth && highMargin) return 'rgba(5,150,105,.75)';
+    if (highGrowth && !highMargin) return 'rgba(37,99,235,.7)';
+    if (!highGrowth && highMargin) return 'rgba(217,119,6,.7)';
+    return 'rgba(156,163,175,.65)';
+  };
+
+  const ctx = document.getElementById('potential-chart').getContext('2d');
+  if (potentialChart) potentialChart.destroy();
+  potentialChart = new Chart(ctx, {
+    type: 'bubble',
+    data: { datasets: [{ data: points, backgroundColor: points.map(colorOf), borderColor: 'rgba(0,0,0,.15)', borderWidth: 1 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => {
+          const p = c.raw;
+          return [p.brand, `營業額 NT$${fmt(p.revenue)}`, `利潤率 ${p.marginPct.toFixed(1)}%`, `成長 ${p.growthPct>=0?'+':''}${p.growthPct.toFixed(1)}%`];
+        } } }
+      },
+      scales: {
+        x: { title: { display: true, text: '利潤率 %' } },
+        y: { title: { display: true, text: '成長%（與去年同期比）' } }
+      }
+    },
+    plugins: [{
+      id: 'quadrantShade',
+      beforeDraw(chart) {
+        const { ctx, chartArea, scales } = chart;
+        if (!chartArea) return;
+        const xMid = scales.x.getPixelForValue(avgMargin);
+        const yMid = scales.y.getPixelForValue(0);
+        ctx.save();
+        ctx.fillStyle = 'rgba(5,150,105,.05)';
+        ctx.fillRect(xMid, chartArea.top, chartArea.right - xMid, yMid - chartArea.top);
+        ctx.fillStyle = 'rgba(156,163,175,.05)';
+        ctx.fillRect(chartArea.left, yMid, xMid - chartArea.left, chartArea.bottom - yMid);
+        ctx.strokeStyle = 'rgba(107,114,128,.4)';
+        ctx.setLineDash([4,4]);
+        ctx.beginPath(); ctx.moveTo(xMid, chartArea.top); ctx.lineTo(xMid, chartArea.bottom); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(chartArea.left, yMid); ctx.lineTo(chartArea.right, yMid); ctx.stroke();
+        ctx.restore();
+      }
+    }]
+  });
+
+  const stars = points.filter(p => p.y >= 0 && p.x >= avgMargin).sort((a,b) => b.revenue - a.revenue);
+  document.getElementById('potential-star-tbody').innerHTML = stars.length === 0
+    ? `<tr><td colspan="4" class="empty-state">目前篩選範圍內沒有同時符合「高成長＋高利潤率」的品牌</td></tr>`
+    : stars.map(p => `
+      <tr>
+        <td style="font-weight:600">${esc(p.brand)}</td>
+        <td>NT$ ${fmt(p.revenue)}</td>
+        <td>${p.marginPct.toFixed(1)}%</td>
+        <td class="growth-pos">+${p.growthPct.toFixed(1)}%</td>
+      </tr>`).join('');
+}
+
 function startBrandEdit(brand) { editingBrand = brand; renderRankTable(); }
 function onBrandKeydown(evt, oldBrand) {
   if (evt.key === 'Enter') { evt.preventDefault(); saveBrandEdit(oldBrand); }
@@ -1237,6 +1358,7 @@ function switchTab(el) {
   document.getElementById(tabId).classList.add('active');
   if (tabId === 'compare-tab') renderComparePickers();
   if (tabId === 'profit-tab') renderProfitSettingsTab();
+  if (tabId === 'potential-tab') renderPotentialTab();
 }
 
 // ══════════════════════════════════════════
