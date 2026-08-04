@@ -8,6 +8,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 .container{max-width:1280px;margin:0 auto}
 .filter-bar{background:white;border-radius:var(--radius);padding:16px 18px;margin-bottom:18px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
@@ -27,6 +28,9 @@
 .yoy-col{display:none}
 table.yoy-on .yoy-col{display:table-cell}
 .chip.yoy-toggle.active{background:var(--gray-800);color:white;border-color:var(--gray-800)}
+.chip.preset-chip{border-style:dashed;color:var(--primary);border-color:var(--primary)}
+.chip.preset-chip:hover{background:var(--primary);color:white}
+#rank-tfoot td{font-weight:700;background:var(--gray-50);border-top:2px solid var(--gray-200);padding:10px 14px;font-size:13px}
 .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
 .card{background:white;border-radius:var(--radius);padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .card-label{font-size:12px;color:var(--gray-500);margin-bottom:6px;font-weight:500}
@@ -194,7 +198,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v3.5 · Feebit © 2026</div>
+  <div class="sidebar-footer">v3.6 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -203,7 +207,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div style="display:flex;align-items:center;gap:10px">
       <button class="btn-hamburger" onclick="toggleSidebar()">☰</button>
       <span class="topbar-title">📊 品牌趨勢分析</span>
-      <span style="font-size:11px;color:#aaa;font-weight:400;">v3.5</span>
+      <span style="font-size:11px;color:#aaa;font-weight:400;">v3.6</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <button class="btn btn-primary" id="add-data-btn" onclick="openAddModal()" style="display:none">＋ 新增資料</button>
@@ -225,6 +229,7 @@ tbody tr:hover .edit-btn{opacity:1}
         </div>
         <div class="filter-group">
           <div class="filter-group-label">月份</div>
+          <div class="chip-row" id="month-preset-filter" style="margin-bottom:6px"></div>
           <div class="chip-row" id="month-filter"></div>
         </div>
         <div class="filter-group">
@@ -267,6 +272,7 @@ tbody tr:hover .edit-btn{opacity:1}
             <th style="width:90px" class="th-sort yoy-col" onclick="setSort('yoy')">漲跌% <span class="sort-tri" id="sort-icon-yoy">↕</span></th>
           </tr></thead>
           <tbody id="rank-tbody"></tbody>
+          <tfoot id="rank-tfoot"></tfoot>
         </table>
       </div>
     </div>
@@ -377,6 +383,18 @@ tbody tr:hover .edit-btn{opacity:1}
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeAddModal()">取消</button>
       <button class="btn btn-primary" onclick="saveAddModal()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- BRAND TREND CHART MODAL -->
+<div class="modal-overlay" id="brand-chart-modal">
+  <div class="modal" style="width:720px;max-width:95vw">
+    <h3 id="brand-chart-title">品牌每月趨勢</h3>
+    <div style="font-size:12px;color:var(--gray-400);margin-bottom:12px">依目前「賣場」篩選彙總，跨所有年份逐月比較（不受月份篩選影響）</div>
+    <div style="height:320px"><canvas id="brand-chart-canvas"></canvas></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeBrandChart()">關閉</button>
     </div>
   </div>
 </div>
@@ -543,6 +561,32 @@ function renderFilterBar() {
   document.getElementById('month-filter').innerHTML = `
     <span class="chip all ${activeMonths.size===months.length?'active':''}" onclick="toggleAllMonths()">全部</span>
     ` + months.map(m => `<span class="chip ${activeMonths.has(m)?'active':''}" onclick="toggleMonth('${m}')">${monthLabel(m)}</span>`).join('');
+
+  const presets = [
+    ['this-month', '當月'], ['h1', '上半年'], ['h2', '下半年'],
+    ['this-year', '今年'], ['last-year', '去年']
+  ];
+  document.getElementById('month-preset-filter').innerHTML = presets
+    .map(([key, label]) => `<span class="chip preset-chip" onclick="selectMonthPreset('${key}')">${label}</span>`).join('');
+}
+function selectMonthPreset(preset) {
+  const months = allMonths();
+  const now = new Date();
+  const y = now.getFullYear();
+  let want = [];
+  if (preset === 'this-month') {
+    want = [`${y}-${String(now.getMonth()+1).padStart(2,'0')}`];
+  } else if (preset === 'h1') {
+    want = [1,2,3,4,5,6].map(m => `${y}-${String(m).padStart(2,'0')}`);
+  } else if (preset === 'h2') {
+    want = [7,8,9,10,11,12].map(m => `${y}-${String(m).padStart(2,'0')}`);
+  } else if (preset === 'this-year') {
+    want = months.filter(m => m.startsWith(`${y}-`));
+  } else if (preset === 'last-year') {
+    want = months.filter(m => m.startsWith(`${y-1}-`));
+  }
+  activeMonths = new Set(want.filter(m => months.includes(m)));
+  renderFilterBar(); renderAll();
 }
 function toggleShop(s) {
   if (activeShops.has(s)) activeShops.delete(s); else activeShops.add(s);
@@ -714,7 +758,7 @@ function renderRankTable() {
              onkeydown="onBrandKeydown(event,'${esc(g.brand)}')" onblur="saveBrandEdit('${esc(g.brand)}')">
            <datalist id="rank-brand-datalist">${opts}</datalist>
            <span class="edit-hint">Enter 儲存 · Esc 取消</span>`
-        : `<span class="brand-text">${esc(g.brand)}</span>
+        : `<span class="brand-text" style="cursor:pointer" title="點擊看每月趨勢" onclick="openBrandChart('${esc(g.brand)}')">${esc(g.brand)}</span>
            ${IS_OWNER ? `<button class="edit-btn" onclick="startBrandEdit('${esc(g.brand)}')">編輯</button>` : ''}`;
       const marginPct = g.revenue > 0 ? (g.profit/g.revenue*100).toFixed(1) : '0.0';
       return `
@@ -740,6 +784,27 @@ function renderRankTable() {
     const inp = document.getElementById('brand-edit-input');
     if (inp) { inp.focus(); inp.select(); }
   }
+
+  renderRankFooter(groups);
+}
+function renderRankFooter(groups) {
+  const tfoot = document.getElementById('rank-tfoot');
+  if (groups.length === 0) { tfoot.innerHTML = ''; return; }
+  const totalRevenue = groups.reduce((s,g) => s+g.revenue, 0);
+  const totalProfit = groups.reduce((s,g) => s+g.profit, 0);
+  const totalPrev = groups.reduce((s,g) => s+g.prevRevenue, 0);
+  const totalMarginPct = totalRevenue > 0 ? (totalProfit/totalRevenue*100).toFixed(1) : '0.0';
+  const totalYoy = totalPrev > 0 ? (totalRevenue-totalPrev)/totalPrev : (totalRevenue > 0 ? null : 0);
+  tfoot.innerHTML = `
+    <tr>
+      <td colspan="2">總計（${groups.length} 個品牌）</td>
+      <td></td>
+      <td>NT$ ${fmt(totalRevenue)}</td>
+      <td>NT$ ${fmt(totalProfit)}</td>
+      <td>${totalMarginPct}%</td>
+      <td class="yoy-col">NT$ ${fmt(totalPrev)}</td>
+      <td class="yoy-col">${totalYoy == null ? '<span class="table-hint">新品牌</span>' : `<span class="${totalYoy>=0?'growth-pos':'growth-neg'}">${totalYoy>=0?'▲':'▼'} ${Math.abs(totalYoy*100).toFixed(1)}%</span>`}</td>
+    </tr>`;
 }
 function startBrandEdit(brand) { editingBrand = brand; renderRankTable(); }
 function onBrandKeydown(evt, oldBrand) {
@@ -756,6 +821,51 @@ async function saveBrandEdit(oldBrand) {
     for (const r of RECORDS) { if (r.brand === oldBrand) r.brand = newBrand; }
   }
   renderAll();
+}
+
+// ══════════════════════════════════════════
+// Brand trend chart（點品牌名稱跳出每月趨勢，跨年份比較）
+// ══════════════════════════════════════════
+let brandChart = null;
+const YEAR_COLORS = ['#2563eb', '#9ca3af', '#d97706', '#059669'];
+function openBrandChart(brand) {
+  const recs = RECORDS.filter(r => r.brand === brand && activeShops.has(r.shop));
+  const byYearMonth = {};
+  for (const r of recs) {
+    const [y, mo] = r.month.split('-');
+    if (!byYearMonth[y]) byYearMonth[y] = Array(12).fill(null);
+    const idx = parseInt(mo) - 1;
+    byYearMonth[y][idx] = (byYearMonth[y][idx] || 0) + Number(r.revenue);
+  }
+  const years = Object.keys(byYearMonth).sort((a,b) => b.localeCompare(a));
+  const labels = Array.from({length:12}, (_,i) => `${i+1}月`);
+  const datasets = years.map((y, i) => ({
+    label: `${y}年`,
+    data: byYearMonth[y],
+    borderColor: YEAR_COLORS[i % YEAR_COLORS.length],
+    backgroundColor: 'transparent',
+    borderDash: i === 0 ? [] : [6,4],
+    spanGaps: true,
+    tension: 0.3
+  }));
+
+  document.getElementById('brand-chart-title').textContent = `📈 ${brand} 每月趨勢`;
+  document.getElementById('brand-chart-modal').classList.add('open');
+
+  const ctx = document.getElementById('brand-chart-canvas').getContext('2d');
+  if (brandChart) brandChart.destroy();
+  brandChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, position: 'top' } },
+      scales: { y: { ticks: { callback: v => 'NT$' + (v/1000).toFixed(0) + 'k' } } }
+    }
+  });
+}
+function closeBrandChart() {
+  document.getElementById('brand-chart-modal').classList.remove('open');
 }
 
 // ══════════════════════════════════════════
