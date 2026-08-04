@@ -6,6 +6,7 @@
 <title>例行帳務作業 · 飛比特營運工具箱</title>
 <link rel="icon" href="favicon.svg">
 <script>if(location.search.includes("share"))document.documentElement.classList.add("standalone");</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="stylesheet" href="style.css">
 <style>
 /* ── Timeline ── */
@@ -311,6 +312,84 @@
 @media (max-width: 380px) {
   .platform-grid { grid-template-columns: 1fr; }
 }
+
+/* ── SOP 連結 ── */
+.sop-row { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+.sop-link-btn {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+  padding: 5px 8px;
+  background: #eff6ff; color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  font-size: 10px; font-weight: 600;
+  text-decoration: none;
+}
+.sop-link-btn:hover { background: #dbeafe; }
+.sop-edit-btn {
+  flex-shrink: 0;
+  width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  background: #fff; border: 1px solid var(--gray-200); border-radius: 6px;
+  font-size: 11px; cursor: pointer;
+}
+.sop-edit-btn:hover { background: var(--gray-50); }
+.sop-add-btn {
+  margin-top: 2px;
+  padding: 5px 8px;
+  background: transparent;
+  border: 1px dashed var(--gray-300);
+  border-radius: 6px;
+  font-size: 10px; font-weight: 600;
+  color: var(--gray-400);
+  cursor: pointer;
+  width: 100%;
+}
+.sop-add-btn:hover { color: var(--gray-600); border-color: var(--gray-400); }
+.sop-edit-form { display: flex; flex-direction: column; gap: 4px; margin-top: 2px; }
+.sop-input {
+  width: 100%;
+  padding: 5px 7px;
+  font-size: 10px;
+  border: 1px solid var(--gray-300);
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+.sop-edit-form-btns { display: flex; gap: 4px; }
+.sop-save-btn, .sop-cancel-btn {
+  flex: 1;
+  padding: 4px 0;
+  font-size: 10px; font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  border: none;
+}
+.sop-save-btn { background: var(--primary); color: #fff; }
+.sop-cancel-btn { background: #fff; color: var(--gray-500); border: 1px solid var(--gray-200); }
+
+/* ── DB 初始化按鈕/彈窗（僅後台版顯示） ── */
+.standalone #db-init-btn { display: none; }
+.btn-init-db {
+  font-size: 11px;
+  padding: 6px 12px;
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  color: var(--gray-500);
+  cursor: pointer;
+}
+.btn-init-db:hover { background: var(--gray-50); }
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.5); z-index: 200;
+  align-items: center; justify-content: center;
+  padding: 20px;
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+  background: #fff; border-radius: 12px; padding: 22px;
+  width: 560px; max-width: 100%; max-height: 85vh; overflow-y: auto;
+}
 </style>
 </head>
 <body>
@@ -393,7 +472,7 @@
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v3.3 · Feebit © 2026</div>
+  <div class="sidebar-footer">v4.0 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -404,9 +483,12 @@
       <button class="btn-hamburger" onclick="openSidebar()">☰</button>
       <span class="topbar-title">例行帳務作業</span>
       <span class="topbar-badge">財務工具</span>
-      <span style="font-size:11px;color:var(--gray-400);margin-left:4px">v3.3</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:4px">v4.0</span>
     </div>
-    <button class="btn-share" onclick="copyShare(this)" title="複製分享連結">🔗 分享</button>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <button class="btn-init-db" id="db-init-btn" onclick="openDbModal()" title="首次使用需建立 SOP 連結資料表">⚙️ SOP資料表</button>
+      <button class="btn-share" onclick="copyShare(this)" title="複製分享連結">🔗 分享</button>
+    </div>
   </div>
 
   <div class="page">
@@ -480,7 +562,7 @@
       </div>
       <div class="dg-grid-wrap">
         <div class="platform-grid">
-          <div class="platform-card">
+          <div class="platform-card" data-sop="poya-reconcile">
             <div class="pc-header">
               <div class="pc-icon">🧾</div>
               <div class="pc-info">
@@ -490,8 +572,9 @@
             </div>
             <div class="pc-note note-red">申請後需等 3～5 小時才可開立發票，請提前作業</div>
             <a class="btn-goto" href="https://order.poya.com.tw/LoginCom.aspx" target="_blank" rel="noopener">進入後台 →</a>
+            <div class="sop-slot"></div>
           </div>
-          <div class="platform-card">
+          <div class="platform-card" data-sop="poya-invoice-sign">
             <div class="pc-header">
               <div class="pc-icon">📄</div>
               <div class="pc-info">
@@ -501,6 +584,7 @@
             </div>
             <div class="pc-note">需先完成對帳申請才可開發票；折讓單月底前完成</div>
             <a class="btn-goto" href="https://lgc.tradevan.com.tw/tln-bin/APTLN/welcome.do" target="_blank" rel="noopener">進入後台 →</a>
+            <div class="sop-slot"></div>
           </div>
         </div>
       </div>
@@ -518,7 +602,7 @@
       </div>
       <div class="dg-grid-wrap">
         <div class="platform-grid">
-          <div class="platform-card">
+          <div class="platform-card" data-sop="momoplus">
             <div class="pc-header">
               <div class="pc-icon">🛒</div>
               <div class="pc-info">
@@ -527,6 +611,7 @@
               </div>
             </div>
             <a class="btn-goto" href="https://3p.momo.com.tw/LoginServlet.do" target="_blank" rel="noopener">進入後台 →</a>
+            <div class="sop-slot"></div>
           </div>
         </div>
       </div>
@@ -544,7 +629,7 @@
       </div>
       <div class="dg-grid-wrap">
         <div class="platform-grid">
-          <div class="platform-card">
+          <div class="platform-card" data-sop="momo">
             <div class="pc-header">
               <div class="pc-icon">📺</div>
               <div class="pc-info">
@@ -553,6 +638,7 @@
               </div>
             </div>
             <a class="btn-goto" href="https://scm.momoshop.com.tw/manage/login.jsp" target="_blank" rel="noopener">進入後台 →</a>
+            <div class="sop-slot"></div>
           </div>
         </div>
       </div>
@@ -570,7 +656,7 @@
       </div>
       <div class="dg-grid-wrap">
         <div class="platform-grid">
-          <div class="platform-card">
+          <div class="platform-card" data-sop="coupang-invoice">
             <div class="pc-header">
               <div class="pc-icon">🛍️</div>
               <div class="pc-info">
@@ -581,8 +667,9 @@
             <div class="pc-note note-red">逾期則次月才能請款，務必準時</div>
             <a class="btn-goto" href="https://xauth.tw.coupang.com/auth/realms/seller/protocol/openid-connect/auth?response_type=code&client_id=supplier-hub&scope=openid&state=oNqpvmNirCqGaHrHmBf16LDUDT6O-cVRwMQ-WlVdi6Q%3D&redirect_uri=https://supplier.tw.coupang.com/login/oauth2/code/keycloak?returnUrl%3Dhttps%253A%252F%252Fsupplier.tw.coupang.com%252Fpom%252Fpurchase-order%252Flist&nonce=miIx6Tk0sfcpqsHlcNhx6VvYzRsQ7YL5RePZpyNAWMk&ui_locales=zh-TW" target="_blank" rel="noopener">進入後台 →</a>
             <a class="btn-goto" href="coupang-invoice.html?share=1" style="background:#059669;" onmouseover="this.style.background='#047857'" onmouseout="this.style.background='#059669'">🧾 發票轉檔工具 →</a>
+            <div class="sop-slot"></div>
           </div>
-          <div class="platform-card">
+          <div class="platform-card" data-sop="coupang-mall">
             <div class="pc-header">
               <div class="pc-icon">🏪</div>
               <div class="pc-info">
@@ -593,6 +680,7 @@
             <div class="pc-note note-neutral">建議與酷澎請款一併處理</div>
             <a class="btn-goto" href="https://xauth.coupang.com/auth/realms/seller/protocol/openid-connect/auth?response_type=code&client_id=wing&redirect_uri=https%3A%2F%2Fwing.coupang.com%2Fsso%2Flogin?returnUrl%3Dhttp%253A%252F%252Fwing.coupang.com%252Ftenants%252Fmsf%252Fwing%252Fview%252Fpayment-report-view&state=23342799-1d08-48e0-b907-49de33072a07&login=true&ui_locales=zh-TW&scope=openid" target="_blank" rel="noopener">進入後台 →</a>
             <a class="btn-goto" href="coupang-reconcile.html" style="background:#7c3aed;" onmouseover="this.style.background='#6d28d9'" onmouseout="this.style.background='#7c3aed'">🔍 對帳工具 →</a>
+            <div class="sop-slot"></div>
           </div>
         </div>
       </div>
@@ -610,7 +698,7 @@
       </div>
       <div class="dg-grid-wrap">
         <div class="platform-grid">
-          <div class="platform-card">
+          <div class="platform-card" data-sop="shopee-reconcile">
             <div class="pc-header">
               <div class="pc-icon">🦐</div>
               <div class="pc-info">
@@ -626,6 +714,7 @@
             <a class="btn-goto" href="https://seller.shopee.tw/portal/finance/income?type=2&dateRange=THIS_WEEK" target="_blank" rel="noopener">進入後台 →</a>
             <a class="btn-goto" href="https://self-service.twtc.shopee.tw/other/65fac5e52adcc9a257a17322" target="_blank" rel="noopener">📋 發票開立回傳 →</a>
             <div class="pc-note note-neutral" style="font-size:10px;margin-top:6px;">發票上傳帳號：jennifer.feebit@gmail.com</div>
+            <div class="sop-slot"></div>
           </div>
         </div>
       </div>
@@ -643,7 +732,7 @@
       </div>
       <div class="dg-grid-wrap">
         <div class="platform-grid">
-          <div class="platform-card">
+          <div class="platform-card" data-sop="shopee-subsidy">
             <div class="pc-header">
               <div class="pc-icon">🚚</div>
               <div class="pc-info">
@@ -654,6 +743,7 @@
             <div class="pc-note note-purple">25 號當天務必回線上確認審核狀態</div>
             <a class="btn-goto" href="shopee-subsidy.html?share=1" style="background:#7c3aed;" onmouseover="this.style.background='#6d28d9'" onmouseout="this.style.background='#7c3aed'">📊 篩選訂單工具 →</a>
             <a class="btn-goto" href="https://self-service.twtc.shopee.tw/other/685a5589d35e81d452e52bb2" target="_blank" rel="noopener">申請連結 →</a>
+            <div class="sop-slot"></div>
           </div>
         </div>
       </div>
@@ -671,7 +761,7 @@
       </div>
       <div class="dg-grid-wrap">
         <div class="platform-grid">
-          <div class="platform-card">
+          <div class="platform-card" data-sop="poya-credit-note">
             <div class="pc-header">
               <div class="pc-icon">📄</div>
               <div class="pc-info">
@@ -680,8 +770,9 @@
               </div>
             </div>
             <a class="btn-goto" href="https://lgc.tradevan.com.tw/tln-bin/APTLN/welcome.do" target="_blank" rel="noopener">進入後台 →</a>
+            <div class="sop-slot"></div>
           </div>
-          <div class="platform-card">
+          <div class="platform-card" data-sop="carrefour">
             <div class="pc-header">
               <div class="pc-icon">🛒</div>
               <div class="pc-info">
@@ -690,6 +781,7 @@
               </div>
             </div>
             <a class="btn-goto" href="https://scm.carrefour.com.tw/product/list" target="_blank" rel="noopener">進入後台 →</a>
+            <div class="sop-slot"></div>
           </div>
         </div>
       </div>
@@ -725,6 +817,33 @@
   </div><!-- .page -->
 </div><!-- #main -->
 
+<!-- ── SOP 資料表初始化 Modal（僅後台版） ── -->
+<div class="modal-overlay" id="db-modal">
+  <div class="modal-box">
+    <h3 style="margin:0 0 8px;font-size:14px;">⚙️ 建立 SOP 連結資料表</h3>
+    <p style="font-size:12px;color:var(--gray-500);margin:0 0 10px;line-height:1.6;">只需執行一次。到 Supabase → SQL Editor 貼上並執行以下指令，之後每個平台卡片就能新增／編輯 SOP 連結：</p>
+    <pre id="db-sql" style="background:#0f172a;color:#e2e8f0;padding:12px;border-radius:8px;font-size:11px;overflow-x:auto;white-space:pre-wrap;line-height:1.6;">CREATE TABLE IF NOT EXISTS sop_links (
+  key text PRIMARY KEY,
+  url text NOT NULL,
+  updated_at timestamptz DEFAULT now()
+);
+ALTER TABLE sop_links ENABLE ROW LEVEL SECURITY;
+-- 本頁（accounting-ops.html）不需登入，因此開放 anon 角色讀寫
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='sop_links' AND policyname='public_select') THEN
+    CREATE POLICY "public_select" ON sop_links FOR SELECT TO anon, authenticated USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='sop_links' AND policyname='public_write') THEN
+    CREATE POLICY "public_write" ON sop_links FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+  END IF;
+END $$;</pre>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button class="btn-goto" style="flex:none;padding:7px 14px;" onclick="copyDbSql()">複製 SQL</button>
+      <button class="btn-goto" style="flex:none;padding:7px 14px;background:var(--gray-400);" onclick="closeDbModal()">關閉</button>
+    </div>
+  </div>
+</div>
+
 <script>
 function openSidebar() {
   document.getElementById('sidebar').classList.add('open');
@@ -742,6 +861,101 @@ function copyShare(btn) {
     setTimeout(() => btn.textContent = orig, 2000);
   });
 }
+
+// ── SOP 連結（各平台作業流程，存於 Supabase） ──
+const SB_URL = 'https://tokhhoyzztaynppcatci.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRva2hob3l6enRheW5wcGNhdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMDAyODMsImV4cCI6MjA5MDg3NjI4M30.PQB4lJGF3OMatv5wIedCu3zIWq0urrFbniBRYTbNtUU';
+const db = supabase.createClient(SB_URL, SB_KEY);
+const isShareView = document.documentElement.classList.contains('standalone');
+let sopMap = {};
+
+function escAttr(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+async function loadSopLinks() {
+  try {
+    const { data, error } = await db.from('sop_links').select('key,url');
+    if (error) throw error;
+    (data || []).forEach(r => { sopMap[r.key] = r.url; });
+  } catch (e) {
+    console.warn('[sop_links] 讀取失敗（可能尚未建立資料表）', e);
+  }
+  document.querySelectorAll('.platform-card[data-sop]').forEach(card => {
+    renderSopSlot(card.querySelector('.sop-slot'), card.dataset.sop);
+  });
+}
+
+function renderSopSlot(slot, key) {
+  if (!slot) return;
+  const url = sopMap[key];
+  if (url) {
+    slot.innerHTML =
+      '<div class="sop-row">' +
+        '<a class="sop-link-btn" href="' + escAttr(url) + '" target="_blank" rel="noopener">📖 SOP作業流程 →</a>' +
+        (isShareView ? '' : '<button class="sop-edit-btn" onclick="openSopEdit(this,\'' + key + '\')" title="編輯SOP連結">✏️</button>') +
+      '</div>';
+  } else if (isShareView) {
+    slot.innerHTML = '';
+  } else {
+    slot.innerHTML = '<button class="sop-add-btn" onclick="openSopEdit(this,\'' + key + '\')">＋ 新增SOP</button>';
+  }
+}
+
+function openSopEdit(triggerEl, key) {
+  const slot = triggerEl.closest('.sop-slot');
+  const current = sopMap[key] || '';
+  slot.innerHTML =
+    '<div class="sop-edit-form">' +
+      '<input type="url" class="sop-input" placeholder="貼上 Ragic SOP 連結">' +
+      '<div class="sop-edit-form-btns">' +
+        '<button class="sop-save-btn" onclick="saveSopLink(this,\'' + key + '\')">儲存</button>' +
+        '<button class="sop-cancel-btn" onclick="renderSopSlot(this.closest(\'.sop-slot\'),\'' + key + '\')">取消</button>' +
+      '</div>' +
+    '</div>';
+  const input = slot.querySelector('.sop-input');
+  input.value = current;
+  input.focus();
+}
+
+async function saveSopLink(btn, key) {
+  const slot = btn.closest('.sop-slot');
+  const url = slot.querySelector('.sop-input').value.trim();
+  if (url && !/^https?:\/\//i.test(url)) {
+    alert('請輸入完整網址（需以 http:// 或 https:// 開頭）');
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = '儲存中…';
+  try {
+    if (url) {
+      const { error } = await db.from('sop_links').upsert({ key, url, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+      if (error) throw error;
+      sopMap[key] = url;
+    } else {
+      const { error } = await db.from('sop_links').delete().eq('key', key);
+      if (error) throw error;
+      delete sopMap[key];
+    }
+    renderSopSlot(slot, key);
+  } catch (e) {
+    console.error(e);
+    alert('儲存失敗，請確認 SOP 資料表已建立（點右上角「⚙️ SOP資料表」查看設定 SQL）。\n' + e.message);
+    btn.disabled = false;
+    btn.textContent = '儲存';
+  }
+}
+
+function openDbModal() { document.getElementById('db-modal').classList.add('open'); }
+function closeDbModal() { document.getElementById('db-modal').classList.remove('open'); }
+function copyDbSql() {
+  navigator.clipboard.writeText(document.getElementById('db-sql').textContent);
+}
+document.getElementById('db-modal')?.addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeDbModal();
+});
+
+loadSopLinks();
 
 // ── 時間軸 ──
 (function () {
