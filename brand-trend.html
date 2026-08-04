@@ -198,7 +198,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v3.7 · Feebit © 2026</div>
+  <div class="sidebar-footer">v3.8 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -207,7 +207,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div style="display:flex;align-items:center;gap:10px">
       <button class="btn-hamburger" onclick="toggleSidebar()">☰</button>
       <span class="topbar-title">📊 品牌趨勢分析</span>
-      <span style="font-size:11px;color:#aaa;font-weight:400;">v3.7</span>
+      <span style="font-size:11px;color:#aaa;font-weight:400;">v3.8</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <button class="btn btn-primary" id="add-data-btn" onclick="openAddModal()" style="display:none">＋ 新增資料</button>
@@ -260,6 +260,7 @@ tbody tr:hover .edit-btn{opacity:1}
           <h3>品牌銷售排行</h3>
           <span class="table-hint">點擊「編輯」可重新命名／合併品牌，輸入已存在的品牌名稱即可合併；「預估利潤」＝營業額扣除平台抽成與成本後的估算值，係數可到「💰 利潤設定」調整</span>
         </div>
+        <div style="overflow-x:auto">
         <table id="rank-table">
           <thead><tr>
             <th style="width:50px">排名</th>
@@ -268,12 +269,15 @@ tbody tr:hover .edit-btn{opacity:1}
             <th style="width:240px" class="th-sort" onclick="setSort('revenue')">營業額 <span class="sort-tri" id="sort-icon-revenue">↕</span></th>
             <th style="width:160px" class="th-sort" onclick="setSort('profit')">預估利潤 <span class="sort-tri" id="sort-icon-profit">↕</span></th>
             <th style="width:70px" class="th-sort" onclick="setSort('margin')">利潤率 <span class="sort-tri" id="sort-icon-margin">↕</span></th>
-            <th style="width:140px" class="yoy-col">去年同期</th>
-            <th style="width:90px" class="th-sort yoy-col" onclick="setSort('yoy')">漲跌% <span class="sort-tri" id="sort-icon-yoy">↕</span></th>
+            <th style="width:140px" class="yoy-col">去年同期營業額</th>
+            <th style="width:100px" class="th-sort yoy-col" onclick="setSort('yoy')">營業額漲跌% <span class="sort-tri" id="sort-icon-yoy">↕</span></th>
+            <th style="width:140px" class="yoy-col">去年同期利潤</th>
+            <th style="width:100px" class="th-sort yoy-col" onclick="setSort('profitYoy')">利潤漲跌% <span class="sort-tri" id="sort-icon-profitYoy">↕</span></th>
           </tr></thead>
           <tbody id="rank-tbody"></tbody>
           <tfoot id="rank-tfoot"></tfoot>
         </table>
+        </div>
       </div>
     </div>
 
@@ -302,12 +306,17 @@ tbody tr:hover .edit-btn{opacity:1}
         <div class="compare-picker">
           <div class="compare-col">
             <h4>期間 A（勾選月份）</h4>
+            <div class="chip-row" id="cmp-a-preset" style="margin-bottom:8px"></div>
             <div class="chip-row" id="cmp-a-months"></div>
           </div>
           <div class="compare-col">
             <h4>期間 B（勾選月份）</h4>
+            <div class="chip-row" id="cmp-b-preset" style="margin-bottom:8px"></div>
             <div class="chip-row" id="cmp-b-months"></div>
           </div>
+        </div>
+        <div style="margin-bottom:14px">
+          <span class="chip preset-chip" onclick="applyCmpPrevYear()">📅 期間B＝期間A去年同期</span>
         </div>
         <div class="small-note" style="font-size:12px;color:var(--gray-500);margin-bottom:10px">會套用目前的「賣場」篩選；比較品牌營業額增減</div>
         <button class="btn btn-primary" onclick="runCompare()">開始比對</button>
@@ -513,9 +522,19 @@ function profitForRecord(r) {
 function pct(rate) { return (rate*100).toFixed(1).replace(/\.0$/,''); }
 
 async function loadRecords() {
-  const { data, error } = await db.from(TABLE).select('*').order('id', { ascending: true });
-  if (error) { alert('讀取資料失敗：' + error.message); RECORDS = []; return; }
-  RECORDS = data;
+  // Supabase/PostgREST 單次 select 預設上限1000筆，資料量超過要分頁抓完，
+  // 不然超過的部分會被無聲截掉（不是錯誤，是安靜省略）
+  const PAGE_SIZE = 1000;
+  let all = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await db.from(TABLE).select('*').order('id', { ascending: true }).range(from, from + PAGE_SIZE - 1);
+    if (error) { alert('讀取資料失敗：' + error.message); RECORDS = []; return; }
+    all = all.concat(data);
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+  RECORDS = all;
 }
 
 async function refreshData() {
@@ -569,8 +588,8 @@ function renderFilterBar() {
   document.getElementById('month-preset-filter').innerHTML = presets
     .map(([key, label]) => `<span class="chip preset-chip" onclick="selectMonthPreset('${key}')">${label}</span>`).join('');
 }
-function selectMonthPreset(preset) {
-  const months = allMonths();
+// 共用：把「當月/上個月/上半年/下半年/今年/去年」轉成實際月份清單（只保留資料庫裡真的有的月份）
+function presetMonths(preset, availableMonths) {
   const now = new Date();
   const y = now.getFullYear();
   let want = [];
@@ -584,11 +603,15 @@ function selectMonthPreset(preset) {
   } else if (preset === 'h2') {
     want = [7,8,9,10,11,12].map(m => `${y}-${String(m).padStart(2,'0')}`);
   } else if (preset === 'this-year') {
-    want = months.filter(m => m.startsWith(`${y}-`));
+    want = availableMonths.filter(m => m.startsWith(`${y}-`));
   } else if (preset === 'last-year') {
-    want = months.filter(m => m.startsWith(`${y-1}-`));
+    want = availableMonths.filter(m => m.startsWith(`${y-1}-`));
   }
-  activeMonths = new Set(want.filter(m => months.includes(m)));
+  return want.filter(m => availableMonths.includes(m));
+}
+function selectMonthPreset(preset) {
+  const months = allMonths();
+  activeMonths = new Set(presetMonths(preset, months));
   renderFilterBar(); renderAll();
 }
 function toggleShop(s) {
@@ -632,7 +655,7 @@ function setSort(key) {
   renderAll();
 }
 function updateSortIcons() {
-  ['brand','revenue','profit','margin','yoy'].forEach(k => {
+  ['brand','revenue','profit','margin','yoy','profitYoy'].forEach(k => {
     const el = document.getElementById('sort-icon-' + k);
     if (!el) return;
     if (sortState.key === k) {
@@ -649,7 +672,7 @@ function sortGroups(groups) {
   const mult = dir === 'asc' ? 1 : -1;
   groups.sort((a, b) => {
     if (key === 'brand') return a.brand.localeCompare(b.brand) * mult;
-    if (key === 'yoy') return ((a.yoy ?? -Infinity) - (b.yoy ?? -Infinity)) * mult;
+    if (key === 'yoy' || key === 'profitYoy') return ((a[key] ?? -Infinity) - (b[key] ?? -Infinity)) * mult;
     return (a[key] - b[key]) * mult;
   });
 }
@@ -664,17 +687,25 @@ function toggleYoY() {
   if (!compareYoY && sortState.key === 'yoy') { sortState.key = 'revenue'; sortState.dir = 'desc'; }
   renderAll();
 }
+function yoyCellHtml(v) {
+  if (v == null) return '<span class="table-hint">新品牌</span>';
+  return `<span class="${v>=0?'growth-pos':'growth-neg'}">${v>=0?'▲':'▼'} ${Math.abs(v*100).toFixed(1)}%</span>`;
+}
 function shiftYearBack(m) {
   const [y, mo] = m.split('-');
   return `${parseInt(y) - 1}-${mo}`;
 }
 function computeYoYMap() {
-  if (!compareYoY) return {};
+  if (!compareYoY) return { revenue: {}, profit: {} };
   const shiftedMonths = new Set([...activeMonths].map(shiftYearBack));
   const prevRecs = RECORDS.filter(r => activeShops.has(r.shop) && shiftedMonths.has(r.month));
-  const m = {};
-  for (const r of prevRecs) m[r.brand] = (m[r.brand] || 0) + Number(r.revenue);
-  return m;
+  const revenue = {}, profit = {};
+  for (const r of prevRecs) {
+    revenue[r.brand] = (revenue[r.brand] || 0) + Number(r.revenue);
+    const p = profitForRecord(r);
+    if (p !== null) profit[r.brand] = (profit[r.brand] || 0) + p;
+  }
+  return { revenue, profit };
 }
 
 function computeBrandGroups(records) {
@@ -688,12 +719,14 @@ function computeBrandGroups(records) {
   }
   const yoyMap = computeYoYMap();
   let groups = Object.values(m).map(g => {
-    const prevRevenue = yoyMap[g.brand] || 0;
+    const prevRevenue = yoyMap.revenue[g.brand] || 0;
     const yoy = prevRevenue > 0 ? (g.revenue - prevRevenue) / prevRevenue : (g.revenue > 0 ? null : 0);
+    const prevProfit = yoyMap.profit[g.brand] || 0;
+    const profitYoy = prevProfit > 0 ? (g.profit - prevProfit) / prevProfit : (g.profit > 0 ? null : 0);
     return {
       brand: g.brand, revenue: g.revenue, profit: g.profit, hasUnknown: g.hasUnknown, shopCount: g.shops.size,
       margin: g.revenue > 0 ? g.profit / g.revenue : 0,
-      prevRevenue, yoy
+      prevRevenue, yoy, prevProfit, profitYoy
     };
   });
   sortGroups(groups);
@@ -749,7 +782,7 @@ function renderRankTable() {
   const opts = brands.map(b => `<option value="${esc(b)}">`).join('');
 
   document.getElementById('rank-tbody').innerHTML = groups.length === 0
-    ? `<tr><td colspan="8" class="empty-state">此篩選條件下沒有資料</td></tr>`
+    ? `<tr><td colspan="10" class="empty-state">此篩選條件下沒有資料</td></tr>`
     : groups.map((g,i) => {
       const rk = i+1;
       const rc = rk===1?'r1':rk===2?'r2':rk===3?'r3':'';
@@ -779,7 +812,9 @@ function renderRankTable() {
           <td>NT$ ${fmt(g.profit)}${g.hasUnknown ? ' <span class="badge-warn">部分未設定</span>' : ''}</td>
           <td>${marginPct}%</td>
           <td class="yoy-col">NT$ ${fmt(g.prevRevenue)}</td>
-          <td class="yoy-col">${g.yoy == null ? '<span class="table-hint">新品牌</span>' : `<span class="${g.yoy>=0?'growth-pos':'growth-neg'}">${g.yoy>=0?'▲':'▼'} ${Math.abs(g.yoy*100).toFixed(1)}%</span>`}</td>
+          <td class="yoy-col">${yoyCellHtml(g.yoy)}</td>
+          <td class="yoy-col">NT$ ${fmt(g.prevProfit)}</td>
+          <td class="yoy-col">${yoyCellHtml(g.profitYoy)}</td>
         </tr>`;
     }).join('');
 
@@ -796,8 +831,10 @@ function renderRankFooter(groups) {
   const totalRevenue = groups.reduce((s,g) => s+g.revenue, 0);
   const totalProfit = groups.reduce((s,g) => s+g.profit, 0);
   const totalPrev = groups.reduce((s,g) => s+g.prevRevenue, 0);
+  const totalPrevProfit = groups.reduce((s,g) => s+g.prevProfit, 0);
   const totalMarginPct = totalRevenue > 0 ? (totalProfit/totalRevenue*100).toFixed(1) : '0.0';
   const totalYoy = totalPrev > 0 ? (totalRevenue-totalPrev)/totalPrev : (totalRevenue > 0 ? null : 0);
+  const totalProfitYoy = totalPrevProfit > 0 ? (totalProfit-totalPrevProfit)/totalPrevProfit : (totalProfit > 0 ? null : 0);
   tfoot.innerHTML = `
     <tr>
       <td colspan="2">總計（${groups.length} 個品牌）</td>
@@ -806,7 +843,9 @@ function renderRankFooter(groups) {
       <td>NT$ ${fmt(totalProfit)}</td>
       <td>${totalMarginPct}%</td>
       <td class="yoy-col">NT$ ${fmt(totalPrev)}</td>
-      <td class="yoy-col">${totalYoy == null ? '<span class="table-hint">新品牌</span>' : `<span class="${totalYoy>=0?'growth-pos':'growth-neg'}">${totalYoy>=0?'▲':'▼'} ${Math.abs(totalYoy*100).toFixed(1)}%</span>`}</td>
+      <td class="yoy-col">${yoyCellHtml(totalYoy)}</td>
+      <td class="yoy-col">NT$ ${fmt(totalPrevProfit)}</td>
+      <td class="yoy-col">${yoyCellHtml(totalProfitYoy)}</td>
     </tr>`;
 }
 function startBrandEdit(brand) { editingBrand = brand; renderRankTable(); }
@@ -923,8 +962,31 @@ function renderComparePickers() {
   const chip = (m, group) => `<span class="chip cmp-chip" data-group="${group}" data-month="${m}" onclick="toggleCmpChip(this)">${monthLabel(m)}</span>`;
   document.getElementById('cmp-a-months').innerHTML = months.map(m => chip(m,'a')).join('');
   document.getElementById('cmp-b-months').innerHTML = months.map(m => chip(m,'b')).join('');
+
+  const presets = [
+    ['this-month', '當月'], ['last-month', '上個月'], ['h1', '上半年'], ['h2', '下半年'],
+    ['this-year', '今年'], ['last-year', '去年']
+  ];
+  const presetRow = group => presets.map(([key,label]) => `<span class="chip preset-chip" onclick="selectCmpPreset('${group}','${key}')">${label}</span>`).join('');
+  document.getElementById('cmp-a-preset').innerHTML = presetRow('a');
+  document.getElementById('cmp-b-preset').innerHTML = presetRow('b');
 }
 function toggleCmpChip(el) { el.classList.toggle('active'); }
+function selectCmpPreset(group, preset) {
+  const months = allMonths();
+  const want = new Set(presetMonths(preset, months));
+  document.querySelectorAll(`.cmp-chip[data-group="${group}"]`).forEach(el => {
+    el.classList.toggle('active', want.has(el.dataset.month));
+  });
+}
+function applyCmpPrevYear() {
+  const aMonths = [...document.querySelectorAll('.cmp-chip[data-group="a"].active')].map(e => e.dataset.month);
+  if (!aMonths.length) { alert('請先勾選期間 A 的月份'); return; }
+  const shifted = new Set(aMonths.map(shiftYearBack));
+  document.querySelectorAll('.cmp-chip[data-group="b"]').forEach(el => {
+    el.classList.toggle('active', shifted.has(el.dataset.month));
+  });
+}
 function runCompare() {
   const aMonths = [...document.querySelectorAll('.cmp-chip[data-group="a"].active')].map(e=>e.dataset.month);
   const bMonths = [...document.querySelectorAll('.cmp-chip[data-group="b"].active')].map(e=>e.dataset.month);
