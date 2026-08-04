@@ -24,6 +24,9 @@
 .th-sort:hover{color:var(--primary)}
 .sort-tri{font-size:9px;opacity:.35;margin-left:3px;display:inline-block}
 .sort-tri.active{opacity:1;color:var(--primary)}
+.yoy-col{display:none}
+table.yoy-on .yoy-col{display:table-cell}
+.chip.yoy-toggle.active{background:var(--gray-800);color:white;border-color:var(--gray-800)}
 .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
 .card{background:white;border-radius:var(--radius);padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .card-label{font-size:12px;color:var(--gray-500);margin-bottom:6px;font-weight:500}
@@ -191,7 +194,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v3.4 · Feebit © 2026</div>
+  <div class="sidebar-footer">v3.5 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -200,7 +203,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div style="display:flex;align-items:center;gap:10px">
       <button class="btn-hamburger" onclick="toggleSidebar()">☰</button>
       <span class="topbar-title">📊 品牌趨勢分析</span>
-      <span style="font-size:11px;color:#aaa;font-weight:400;">v3.4</span>
+      <span style="font-size:11px;color:#aaa;font-weight:400;">v3.5</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <button class="btn btn-primary" id="add-data-btn" onclick="openAddModal()" style="display:none">＋ 新增資料</button>
@@ -224,6 +227,12 @@ tbody tr:hover .edit-btn{opacity:1}
           <div class="filter-group-label">月份</div>
           <div class="chip-row" id="month-filter"></div>
         </div>
+        <div class="filter-group">
+          <div class="filter-group-label">比較</div>
+          <div class="chip-row">
+            <span class="chip yoy-toggle" id="yoy-toggle" onclick="toggleYoY()">📅 與去年同期比較</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -246,7 +255,7 @@ tbody tr:hover .edit-btn{opacity:1}
           <h3>品牌銷售排行</h3>
           <span class="table-hint">點擊「編輯」可重新命名／合併品牌，輸入已存在的品牌名稱即可合併；「預估利潤」＝營業額扣除平台抽成與成本後的估算值，係數可到「💰 利潤設定」調整</span>
         </div>
-        <table>
+        <table id="rank-table">
           <thead><tr>
             <th style="width:50px">排名</th>
             <th class="th-sort" onclick="setSort('brand')">品牌 <span class="sort-tri" id="sort-icon-brand">↕</span></th>
@@ -254,6 +263,8 @@ tbody tr:hover .edit-btn{opacity:1}
             <th style="width:240px" class="th-sort" onclick="setSort('revenue')">營業額 <span class="sort-tri" id="sort-icon-revenue">↕</span></th>
             <th style="width:160px" class="th-sort" onclick="setSort('profit')">預估利潤 <span class="sort-tri" id="sort-icon-profit">↕</span></th>
             <th style="width:70px" class="th-sort" onclick="setSort('margin')">利潤率 <span class="sort-tri" id="sort-icon-margin">↕</span></th>
+            <th style="width:140px" class="yoy-col">去年同期</th>
+            <th style="width:90px" class="th-sort yoy-col" onclick="setSort('yoy')">漲跌% <span class="sort-tri" id="sort-icon-yoy">↕</span></th>
           </tr></thead>
           <tbody id="rank-tbody"></tbody>
         </table>
@@ -563,6 +574,7 @@ function filteredRecords() {
 // Sort state（品牌排行表：點欄位標題三角形切換排序）
 // ══════════════════════════════════════════
 let sortState = { key: 'revenue', dir: 'desc' };
+let compareYoY = false;
 function setSort(key) {
   if (sortState.key === key) {
     sortState.dir = sortState.dir === 'desc' ? 'asc' : 'desc';
@@ -573,7 +585,7 @@ function setSort(key) {
   renderAll();
 }
 function updateSortIcons() {
-  ['brand','revenue','profit','margin'].forEach(k => {
+  ['brand','revenue','profit','margin','yoy'].forEach(k => {
     const el = document.getElementById('sort-icon-' + k);
     if (!el) return;
     if (sortState.key === k) {
@@ -588,8 +600,36 @@ function updateSortIcons() {
 function sortGroups(groups) {
   const { key, dir } = sortState;
   const mult = dir === 'asc' ? 1 : -1;
-  groups.sort((a, b) => key === 'brand' ? a.brand.localeCompare(b.brand) * mult : (a[key] - b[key]) * mult);
+  groups.sort((a, b) => {
+    if (key === 'brand') return a.brand.localeCompare(b.brand) * mult;
+    if (key === 'yoy') return ((a.yoy ?? -Infinity) - (b.yoy ?? -Infinity)) * mult;
+    return (a[key] - b[key]) * mult;
+  });
 }
+
+// ══════════════════════════════════════════
+// YoY（與去年同期比較）：比較區間＝目前勾選的月份自動往前推一年
+// ══════════════════════════════════════════
+function toggleYoY() {
+  compareYoY = !compareYoY;
+  document.getElementById('yoy-toggle').classList.toggle('active', compareYoY);
+  document.getElementById('rank-table').classList.toggle('yoy-on', compareYoY);
+  if (!compareYoY && sortState.key === 'yoy') { sortState.key = 'revenue'; sortState.dir = 'desc'; }
+  renderAll();
+}
+function shiftYearBack(m) {
+  const [y, mo] = m.split('-');
+  return `${parseInt(y) - 1}-${mo}`;
+}
+function computeYoYMap() {
+  if (!compareYoY) return {};
+  const shiftedMonths = new Set([...activeMonths].map(shiftYearBack));
+  const prevRecs = RECORDS.filter(r => activeShops.has(r.shop) && shiftedMonths.has(r.month));
+  const m = {};
+  for (const r of prevRecs) m[r.brand] = (m[r.brand] || 0) + Number(r.revenue);
+  return m;
+}
+
 function computeBrandGroups(records) {
   const m = {};
   for (const r of records) {
@@ -599,10 +639,16 @@ function computeBrandGroups(records) {
     if (p === null) m[r.brand].hasUnknown = true; else m[r.brand].profit += p;
     m[r.brand].shops.add(r.shop);
   }
-  let groups = Object.values(m).map(g => ({
-    brand: g.brand, revenue: g.revenue, profit: g.profit, hasUnknown: g.hasUnknown, shopCount: g.shops.size,
-    margin: g.revenue > 0 ? g.profit / g.revenue : 0
-  }));
+  const yoyMap = computeYoYMap();
+  let groups = Object.values(m).map(g => {
+    const prevRevenue = yoyMap[g.brand] || 0;
+    const yoy = prevRevenue > 0 ? (g.revenue - prevRevenue) / prevRevenue : (g.revenue > 0 ? null : 0);
+    return {
+      brand: g.brand, revenue: g.revenue, profit: g.profit, hasUnknown: g.hasUnknown, shopCount: g.shops.size,
+      margin: g.revenue > 0 ? g.profit / g.revenue : 0,
+      prevRevenue, yoy
+    };
+  });
   sortGroups(groups);
   return groups;
 }
@@ -656,7 +702,7 @@ function renderRankTable() {
   const opts = brands.map(b => `<option value="${esc(b)}">`).join('');
 
   document.getElementById('rank-tbody').innerHTML = groups.length === 0
-    ? `<tr><td colspan="6" class="empty-state">此篩選條件下沒有資料</td></tr>`
+    ? `<tr><td colspan="8" class="empty-state">此篩選條件下沒有資料</td></tr>`
     : groups.map((g,i) => {
       const rk = i+1;
       const rc = rk===1?'r1':rk===2?'r2':rk===3?'r3':'';
@@ -685,6 +731,8 @@ function renderRankTable() {
           </td>
           <td>NT$ ${fmt(g.profit)}${g.hasUnknown ? ' <span class="badge-warn">部分未設定</span>' : ''}</td>
           <td>${marginPct}%</td>
+          <td class="yoy-col">NT$ ${fmt(g.prevRevenue)}</td>
+          <td class="yoy-col">${g.yoy == null ? '<span class="table-hint">新品牌</span>' : `<span class="${g.yoy>=0?'growth-pos':'growth-neg'}">${g.yoy>=0?'▲':'▼'} ${Math.abs(g.yoy*100).toFixed(1)}%</span>`}</td>
         </tr>`;
     }).join('');
 
