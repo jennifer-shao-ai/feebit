@@ -35,20 +35,23 @@
     <a class="nav-item" href="index.html"><span class="icon">🏠</span> 首頁</a>
   </div>
   <div class="sidebar-section">
+    <div class="sidebar-label">營運</div>
+    <a class="nav-item" href="finance-dashboard.html"><span class="icon">📊</span> 帳務分析</a>
+    <a class="nav-item" href="brand-trend.html"><span class="icon">📊</span> 品牌趨勢分析</a>
+    <a class="nav-item" href="channel-revenue.html"><span class="icon">🛍️</span> 通路營收分析</a>
+  </div>
+
+  <div class="sidebar-section">
     <div class="sidebar-label">財務</div>
     <a class="nav-item" href="bank-converter.html"><span class="icon">🏦</span> 帳務轉換</a>
     <a class="nav-item" href="accounting-ops.html"><span class="icon">📅</span> 例行帳務作業</a>
-    <a class="nav-item" href="finance-dashboard.html"><span class="icon">📊</span> 帳務分析</a>
     <a class="nav-item" href="coupang-invoice.html"><span class="icon">🧾</span> 酷澎發票轉檔</a>
     <a class="nav-item" href="coupang-reconcile.html"><span class="icon">🔍</span> 酷澎商城對帳</a>
     <a class="nav-item" href="shopee-subsidy.html"><span class="icon">🚚</span> 蝦皮運費補助申請</a>
     <a class="nav-item" href="shopee-converter.html"><span class="icon">🛒</span> 蝦皮撥款轉換</a>
     <a class="nav-item" href="profit-calculator.html"><span class="icon">💰</span> 毛利試算機</a>
     <a class="nav-item" href="brand-sales.html"><span class="icon">📈</span> 品牌銷售分析</a>
-    <a class="nav-item" href="channel-revenue.html"><span class="icon">🛍️</span> 通路營收分析</a>
-    <a class="nav-item" href="brand-trend.html"><span class="icon">📊</span> 品牌趨勢分析</a>
-  </div>
-  <div class="sidebar-section">
+  </div><div class="sidebar-section">
     <div class="sidebar-label">市場分析</div>
     <a class="nav-item" href="market-tracker.html"><span class="icon">🔭</span> 品類競品分析</a>
   </div>
@@ -143,6 +146,14 @@ const SCHEDULES_DATA = [
     status: 'live',
     desc: '呼叫 Supabase API，避免 free tier 因 7 天無活動自動暫停，維持研發筆記、帳務分析等工具的資料庫正常運作。',
     mailbox: '—',
+  },
+  {
+    icon: '🧾',
+    name: 'Google發票轉Ragic請款單',
+    schedule: '每日 07:00-08:00',
+    status: 'test',
+    desc: '自動掃描 Google 電子發票（統一發票）信件，發票號碼從PDF附件檔名擷取，金額用 Drive OCR 讀取PDF內容（讀不到則用預設值165），寫入 Ragic 請款單（ragicpurchasing/6）並附上原始PDF，完成後寄送確認信。',
+    mailbox: 'esuse.adobe@gmail.com',
   },
 ];
 
