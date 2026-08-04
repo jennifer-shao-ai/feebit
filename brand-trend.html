@@ -88,6 +88,7 @@ tbody tr:hover .edit-btn{opacity:1}
 .count-badge{background:var(--gray-100);border-radius:4px;padding:1px 6px;font-size:11px;color:var(--gray-500)}
 .growth-pos{color:var(--success);font-weight:700}
 .growth-neg{color:var(--danger);font-weight:700}
+.yoy-pct{font-size:11px;margin-top:1px;opacity:.85}
 .source-tag{font-size:10px;padding:1px 6px;border-radius:4px;background:var(--gray-100);color:var(--gray-500)}
 .source-tag.manual{background:#ecfdf5;color:#047857}
 /* modal */
@@ -205,7 +206,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v3.11 · Feebit © 2026</div>
+  <div class="sidebar-footer">v3.12 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -214,7 +215,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div style="display:flex;align-items:center;gap:10px">
       <button class="btn-hamburger" onclick="toggleSidebar()">☰</button>
       <span class="topbar-title">📊 品牌趨勢分析</span>
-      <span style="font-size:11px;color:#aaa;font-weight:400;">v3.11</span>
+      <span style="font-size:11px;color:#aaa;font-weight:400;">v3.12</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <button class="btn btn-primary" id="add-data-btn" onclick="openAddModal()" style="display:none">＋ 新增資料</button>
@@ -707,9 +708,14 @@ function triHtml(isActive, dir) {
   if (!isActive) return '<span class="sort-tri">↕</span>';
   return `<span class="sort-tri active">${dir === 'asc' ? '▲' : '▼'}</span>`;
 }
-function yoyCellHtml(v) {
-  if (v == null) return '<span class="table-hint">新品牌</span>';
-  return `<span class="${v>=0?'growth-pos':'growth-neg'}">${v>=0?'▲':'▼'} ${Math.abs(v*100).toFixed(1)}%</span>`;
+// diff：實際增減金額；pct：增減百分比（null＝新品牌，去年同期是0）
+// 兩個一起顯示，因為基期金額很小的時候%數會誇張到失真（例如去年100元、今年2100元＝+2000%），要看金額才知道差異實際有沒有意義
+function yoyCellHtml(diff, pct) {
+  if (pct == null) return '<span class="table-hint">新品牌</span>';
+  const cls = diff >= 0 ? 'growth-pos' : 'growth-neg';
+  const arrow = diff >= 0 ? '▲' : '▼';
+  const sign = diff >= 0 ? '+' : '-';
+  return `<span class="${cls}">${arrow} ${sign}NT$ ${fmt(Math.abs(diff))}</span><div class="yoy-pct ${cls}">${sign}${Math.abs(pct*100).toFixed(1)}%</div>`;
 }
 function shiftYearBack(m) {
   const [y, mo] = m.split('-');
@@ -832,9 +838,9 @@ function renderRankTable() {
           <td class="grp-current-cell">NT$ ${fmt(g.profit)}${g.hasUnknown ? ' <span class="badge-warn">部分未設定</span>' : ''}</td>
           <td class="grp-current-cell">${marginPct}%</td>
           <td class="yoy-col grp-prev-cell">NT$ ${fmt(g.prevRevenue)}</td>
-          <td class="yoy-col">${yoyCellHtml(g.yoy)}</td>
+          <td class="yoy-col">${yoyCellHtml(g.revenue - g.prevRevenue, g.yoy)}</td>
           <td class="yoy-col grp-prev-cell grp-prev-divider">NT$ ${fmt(g.prevProfit)}</td>
-          <td class="yoy-col">${yoyCellHtml(g.profitYoy)}</td>
+          <td class="yoy-col">${yoyCellHtml(g.profit - g.prevProfit, g.profitYoy)}</td>
         </tr>`;
     }).join('');
 
@@ -863,9 +869,9 @@ function renderRankFooter(groups) {
       <td>NT$ ${fmt(totalProfit)}</td>
       <td>${totalMarginPct}%</td>
       <td class="yoy-col">NT$ ${fmt(totalPrev)}</td>
-      <td class="yoy-col">${yoyCellHtml(totalYoy)}</td>
+      <td class="yoy-col">${yoyCellHtml(totalRevenue - totalPrev, totalYoy)}</td>
       <td class="yoy-col grp-prev-divider">NT$ ${fmt(totalPrevProfit)}</td>
-      <td class="yoy-col">${yoyCellHtml(totalProfitYoy)}</td>
+      <td class="yoy-col">${yoyCellHtml(totalProfit - totalPrevProfit, totalProfitYoy)}</td>
     </tr>`;
 }
 function startBrandEdit(brand) { editingBrand = brand; renderRankTable(); }
@@ -1045,7 +1051,7 @@ function renderCompareTable() {
       <td style="font-weight:600">${esc(r.brand)}</td>
       <td>NT$ ${fmt(r.av)}</td>
       <td>NT$ ${fmt(r.bv)}</td>
-      <td class="${r.growth==null?'':(r.growth>=0?'growth-pos':'growth-neg')}">${r.growth==null?'新品牌':(r.growth>=0?'+':'')+(r.growth*100).toFixed(1)+'%'}</td>
+      <td>${yoyCellHtml(r.bv - r.av, r.growth)}</td>
     </tr>`).join('') || `<tr><td colspan="4" class="empty-state">無資料</td></tr>`;
 }
 function runCompare() {
