@@ -205,7 +205,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v3.10 · Feebit © 2026</div>
+  <div class="sidebar-footer">v3.11 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -214,7 +214,7 @@ tbody tr:hover .edit-btn{opacity:1}
     <div style="display:flex;align-items:center;gap:10px">
       <button class="btn-hamburger" onclick="toggleSidebar()">☰</button>
       <span class="topbar-title">📊 品牌趨勢分析</span>
-      <span style="font-size:11px;color:#aaa;font-weight:400;">v3.10</span>
+      <span style="font-size:11px;color:#aaa;font-weight:400;">v3.11</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <button class="btn btn-primary" id="add-data-btn" onclick="openAddModal()" style="display:none">＋ 新增資料</button>
@@ -336,7 +336,7 @@ tbody tr:hover .edit-btn{opacity:1}
       </div>
       <div class="table-wrap" style="margin-top:14px">
         <table>
-          <thead><tr><th>品牌</th><th>期間 A</th><th>期間 B</th><th>增減</th></tr></thead>
+          <thead id="compare-thead"><tr><th>品牌</th><th>期間 A</th><th>期間 B</th><th>增減</th></tr></thead>
           <tbody id="compare-tbody"><tr><td colspan="4" class="empty-state">選好月份後按「開始比對」</td></tr></tbody>
         </table>
       </div>
@@ -352,7 +352,7 @@ tbody tr:hover .edit-btn{opacity:1}
           </div>
         </div>
         <table>
-          <thead><tr>
+          <thead id="data-thead"><tr>
             <th>賣場</th><th>年月</th><th>品牌</th><th style="width:120px">營業額</th><th style="width:70px">來源</th><th style="width:110px">操作</th>
           </tr></thead>
           <tbody id="data-tbody"></tbody>
@@ -442,6 +442,9 @@ let RECORDS = [];
 let editingBrand = null;
 let IS_OWNER = false;
 let crossView = 'revenue';
+let crossSortState = { key: 'total', dir: 'desc' };
+let cmpSortState = { key: 'total', dir: 'desc' };
+let dataSortState = { key: 'month', dir: 'desc' };
 
 // ══════════════════════════════════════════
 // Profit settings（各賣場抽成/扣抵%＋品牌毛利率%，用來估算「預估利潤」）
@@ -700,6 +703,10 @@ function toggleYoY() {
   if (!compareYoY && sortState.key === 'yoy') { sortState.key = 'revenue'; sortState.dir = 'desc'; }
   renderAll();
 }
+function triHtml(isActive, dir) {
+  if (!isActive) return '<span class="sort-tri">↕</span>';
+  return `<span class="sort-tri active">${dir === 'asc' ? '▲' : '▼'}</span>`;
+}
 function yoyCellHtml(v) {
   if (v == null) return '<span class="table-hint">新品牌</span>';
   return `<span class="${v>=0?'growth-pos':'growth-neg'}">${v>=0?'▲':'▼'} ${Math.abs(v*100).toFixed(1)}%</span>`;
@@ -931,6 +938,11 @@ function setCrossView(view) {
   document.querySelectorAll('#cross-view-toggle .chip').forEach(c => c.classList.toggle('active', c.dataset.view === view));
   renderCrossTable();
 }
+function setCrossSort(key) {
+  if (crossSortState.key === key) crossSortState.dir = crossSortState.dir === 'desc' ? 'asc' : 'desc';
+  else { crossSortState.key = key; crossSortState.dir = key === 'brand' ? 'asc' : 'desc'; }
+  renderCrossTable();
+}
 function renderCrossTable() {
   const recs = filteredRecords();
   const shops = [...activeShops].sort();
@@ -945,15 +957,21 @@ function renderCrossTable() {
     const total = Object.values(v.shopMap).reduce((s,x)=>s+x,0);
     return { brand: b, shopMap: v.shopMap, unknownShops: v.unknownShops, total };
   });
-  const { key, dir } = sortState;
+  const { key, dir } = crossSortState;
   const mult = dir === 'asc' ? 1 : -1;
   if (key === 'brand') brandTotals.sort((a,b) => a.brand.localeCompare(b.brand) * mult);
-  else brandTotals.sort((a,b) => (a.total - b.total) * mult);
+  else if (key === 'total') brandTotals.sort((a,b) => (a.total - b.total) * mult);
+  else brandTotals.sort((a,b) => ((a.shopMap[key]||0) - (b.shopMap[key]||0)) * mult);
 
   const thead = document.querySelector('#cross-table thead');
   const tbody = document.querySelector('#cross-table tbody');
   const colLabel = crossView === 'profit' ? '預估利潤' : '營業額';
-  thead.innerHTML = `<tr><th>品牌</th>${shops.map(s=>`<th style="text-align:right">${esc(s)}</th>`).join('')}<th style="text-align:right">${colLabel}合計</th></tr>`;
+  thead.innerHTML = `<tr>
+    <th class="th-sort" data-key="brand">品牌 ${triHtml(key==='brand', dir)}</th>
+    ${shops.map(s=>`<th style="text-align:right" class="th-sort" data-key="${esc(s)}">${esc(s)} ${triHtml(key===s, dir)}</th>`).join('')}
+    <th style="text-align:right" class="th-sort" data-key="total">${colLabel}合計 ${triHtml(key==='total', dir)}</th>
+  </tr>`;
+  thead.querySelectorAll('th[data-key]').forEach(th => { th.onclick = () => setCrossSort(th.dataset.key); });
   tbody.innerHTML = brandTotals.length === 0
     ? `<tr><td colspan="${shops.length+2}" class="empty-state">此篩選條件下沒有資料</td></tr>`
     : brandTotals.map(bt => `
@@ -1000,6 +1018,36 @@ function applyCmpPrevYear() {
     el.classList.toggle('active', shifted.has(el.dataset.month));
   });
 }
+let lastCompareRows = null;
+function setCmpSort(key) {
+  if (cmpSortState.key === key) cmpSortState.dir = cmpSortState.dir === 'desc' ? 'asc' : 'desc';
+  else { cmpSortState.key = key; cmpSortState.dir = key === 'brand' ? 'asc' : 'desc'; }
+  if (lastCompareRows) renderCompareTable();
+}
+function renderCompareTable() {
+  const { key, dir } = cmpSortState;
+  const mult = dir === 'asc' ? 1 : -1;
+  const rows = [...lastCompareRows].sort((a,b) => {
+    if (key === 'brand') return a.brand.localeCompare(b.brand) * mult;
+    if (key === 'growth') return ((a.growth ?? -Infinity) - (b.growth ?? -Infinity)) * mult;
+    if (key === 'total') return ((a.av+a.bv) - (b.av+b.bv)) * mult;
+    return (a[key] - b[key]) * mult;
+  });
+
+  document.getElementById('compare-thead').innerHTML = `<tr>
+    <th class="th-sort" onclick="setCmpSort('brand')">品牌 ${triHtml(key==='brand', dir)}</th>
+    <th class="th-sort" onclick="setCmpSort('av')">期間 A ${triHtml(key==='av', dir)}</th>
+    <th class="th-sort" onclick="setCmpSort('bv')">期間 B ${triHtml(key==='bv', dir)}</th>
+    <th class="th-sort" onclick="setCmpSort('growth')">增減 ${triHtml(key==='growth', dir)}</th>
+  </tr>`;
+  document.getElementById('compare-tbody').innerHTML = rows.map(r => `
+    <tr>
+      <td style="font-weight:600">${esc(r.brand)}</td>
+      <td>NT$ ${fmt(r.av)}</td>
+      <td>NT$ ${fmt(r.bv)}</td>
+      <td class="${r.growth==null?'':(r.growth>=0?'growth-pos':'growth-neg')}">${r.growth==null?'新品牌':(r.growth>=0?'+':'')+(r.growth*100).toFixed(1)+'%'}</td>
+    </tr>`).join('') || `<tr><td colspan="4" class="empty-state">無資料</td></tr>`;
+}
 function runCompare() {
   const aMonths = [...document.querySelectorAll('.cmp-chip[data-group="a"].active')].map(e=>e.dataset.month);
   const bMonths = [...document.querySelectorAll('.cmp-chip[data-group="b"].active')].map(e=>e.dataset.month);
@@ -1013,28 +1061,42 @@ function runCompare() {
   };
   const aData = sumByBrand(aMonths), bData = sumByBrand(bMonths);
   const brands = [...new Set([...Object.keys(aData), ...Object.keys(bData)])];
-  const rows = brands.map(b => {
+  lastCompareRows = brands.map(b => {
     const av = aData[b]||0, bv = bData[b]||0;
     const growth = av ? (bv-av)/av : (bv>0 ? null : 0);
     return { brand:b, av, bv, growth };
-  }).sort((x,y) => (y.av+y.bv)-(x.av+x.bv));
-
-  document.getElementById('compare-tbody').innerHTML = rows.map(r => `
-    <tr>
-      <td style="font-weight:600">${esc(r.brand)}</td>
-      <td>NT$ ${fmt(r.av)}</td>
-      <td>NT$ ${fmt(r.bv)}</td>
-      <td class="${r.growth==null?'':(r.growth>=0?'growth-pos':'growth-neg')}">${r.growth==null?'新品牌':(r.growth>=0?'+':'')+(r.growth*100).toFixed(1)+'%'}</td>
-    </tr>`).join('') || `<tr><td colspan="4" class="empty-state">無資料</td></tr>`;
+  });
+  cmpSortState = { key: 'total', dir: 'desc' };
+  renderCompareTable();
 }
 
 // ══════════════════════════════════════════
 // Render: data management tab
 // ══════════════════════════════════════════
+function setDataSort(key) {
+  if (dataSortState.key === key) dataSortState.dir = dataSortState.dir === 'desc' ? 'asc' : 'desc';
+  else { dataSortState.key = key; dataSortState.dir = (key === 'brand' || key === 'shop') ? 'asc' : 'desc'; }
+  renderDataTable();
+}
 function renderDataTable() {
   const q = (document.getElementById('data-search')?.value || '').toLowerCase();
+  const { key, dir } = dataSortState;
+  const mult = dir === 'asc' ? 1 : -1;
   const list = RECORDS.filter(r => !q || r.brand.toLowerCase().includes(q) || r.shop.toLowerCase().includes(q))
-    .sort((a,b) => b.month.localeCompare(a.month) || a.shop.localeCompare(b.shop));
+    .sort((a,b) => {
+      if (key === 'shop') return a.shop.localeCompare(b.shop) * mult;
+      if (key === 'brand') return a.brand.localeCompare(b.brand) * mult;
+      if (key === 'revenue') return (Number(a.revenue) - Number(b.revenue)) * mult;
+      return (a.month.localeCompare(b.month) || a.shop.localeCompare(b.shop)) * mult;
+    });
+
+  document.getElementById('data-thead').innerHTML = `<tr>
+    <th class="th-sort" onclick="setDataSort('shop')">賣場 ${triHtml(key==='shop', dir)}</th>
+    <th class="th-sort" onclick="setDataSort('month')">年月 ${triHtml(key==='month', dir)}</th>
+    <th class="th-sort" onclick="setDataSort('brand')">品牌 ${triHtml(key==='brand', dir)}</th>
+    <th style="width:120px" class="th-sort" onclick="setDataSort('revenue')">營業額 ${triHtml(key==='revenue', dir)}</th>
+    <th style="width:70px">來源</th><th style="width:110px">操作</th>
+  </tr>`;
 
   document.getElementById('data-tbody').innerHTML = list.length === 0
     ? `<tr><td colspan="6" class="empty-state">沒有符合的資料</td></tr>`
