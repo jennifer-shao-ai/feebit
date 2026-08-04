@@ -55,7 +55,7 @@
 /* ── Converter Banner ── */
 .converter-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
   margin-bottom: 28px;
 }
@@ -88,6 +88,12 @@
 }
 .converter-banner.cb-purple:hover {
   box-shadow: 0 6px 20px rgba(124,58,237,.3);
+}
+.converter-banner.cb-slate {
+  background: linear-gradient(135deg, #334155 0%, #64748b 100%);
+}
+.converter-banner.cb-slate:hover {
+  box-shadow: 0 6px 20px rgba(51,65,85,.3);
 }
 .converter-banner-left {
   display: flex;
@@ -122,6 +128,7 @@
 }
 .cb-green .btn-converter { color: #065f46; }
 .cb-purple .btn-converter { color: #4c1d95; }
+.cb-slate .btn-converter { color: #334155; }
 
 /* ── Section Divider ── */
 .section-divider {
@@ -472,7 +479,7 @@
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-  <div class="sidebar-footer">v4.0 · Feebit © 2026</div>
+  <div class="sidebar-footer">v4.1 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -483,7 +490,7 @@
       <button class="btn-hamburger" onclick="openSidebar()">☰</button>
       <span class="topbar-title">例行帳務作業</span>
       <span class="topbar-badge">財務工具</span>
-      <span style="font-size:11px;color:var(--gray-400);margin-left:4px">v4.0</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:4px">v4.1</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <button class="btn-init-db" id="db-init-btn" onclick="openDbModal()" title="首次使用需建立 SOP 連結資料表">⚙️ SOP資料表</button>
@@ -535,6 +542,16 @@
           <div class="converter-banner-text">
             <h3>外部發票紀錄</h3>
             <p>發票開立紀錄總表</p>
+          </div>
+        </div>
+        <div class="btn-converter">開啟 →</div>
+      </a>
+      <a class="converter-banner cb-slate" href="smb://192.168.1.251/飛比特美妝/B.資料共用區(擁有者才可刪除)/F.公司相關文件/對帳單">
+        <div class="converter-banner-left">
+          <div class="converter-banner-icon">🗄️</div>
+          <div class="converter-banner-text">
+            <h3>對帳單歸檔資料夾</h3>
+            <p>公司內部網路磁碟機（SMB）</p>
           </div>
         </div>
         <div class="btn-converter">開啟 →</div>
