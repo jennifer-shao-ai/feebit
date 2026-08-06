@@ -34,6 +34,7 @@
     <a class="nav-item" href="coupang-reconcile.html"><span class="icon">🔍</span> 酷澎商城對帳</a>
     <a class="nav-item" href="shopee-subsidy.html"><span class="icon">🚚</span> 蝦皮運費補助申請</a>
     <a class="nav-item" href="shopee-converter.html"><span class="icon">🛒</span> 蝦皮撥款轉換</a>
+    <a class="nav-item" href="invoice-stamp.html"><span class="icon">🖋️</span> 發票蓋章工具</a>
     <a class="nav-item" href="profit-calculator.html"><span class="icon">💰</span> 毛利試算機</a>
     <a class="nav-item" href="brand-sales.html"><span class="icon">📈</span> 品牌銷售分析</a>
   </div><div class="sidebar-section">
@@ -142,6 +143,8 @@ const TOOLS_DATA = [
   { icon:'📈', name:'Chart.js', category:'AI / 開發', desc:'帳務分析頁面的前端圖表套件，圓餅圖、月收支趨勢、年度淨利視覺化', url:'https://www.chartjs.org', related:['帳務分析','圖表','視覺化'] },
   { icon:'📄', name:'SheetJS (xlsx)', category:'AI / 開發', desc:'酷澎發票轉檔、酷澎商城對帳、商品篩選工具的 Excel 讀寫套件，支援 .xlsx/.xls 格式', url:'https://sheetjs.com', related:['Excel','酷澎','商品篩選'] },
   { icon:'📋', name:'PapaParse', category:'AI / 開發', desc:'酷澎商城對帳 CSV 解析套件，快速處理大型 CSV 並自動偵測欄位格式', url:'https://www.papaparse.com', related:['CSV','酷澎對帳'] },
+  { icon:'📄', name:'pdf-lib', category:'AI / 開發', desc:'發票蓋章工具的 PDF 讀寫套件，在瀏覽器端把印章圖片嵌入 PDF 並輸出蓋章後檔案，全程不上傳伺服器', url:'https://pdf-lib.js.org', related:['PDF','發票蓋章'] },
+  { icon:'👁️', name:'PDF.js', category:'AI / 開發', desc:'發票蓋章工具的 PDF 預覽渲染套件，用於畫面上顯示待蓋章文件並拖曳調整印章位置', url:'https://mozilla.github.io/pdf.js', related:['PDF','發票蓋章'] },
   { icon:'✨', name:'Gamma', category:'AI / 開發', desc:'AI 簡報、提案文件、活動頁面快速生成，與 Claude AI 串接', url:'https://gamma.app', related:['AI','簡報','文件'] },
 ];
 const container = document.getElementById('tools-list');
