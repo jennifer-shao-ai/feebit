@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>發票蓋章工具 · 飛比特營運工具箱</title>
+<link rel="icon" href="favicon.svg">
+<script>if(location.search.includes("share"))document.documentElement.classList.add("standalone");</script>
+<link rel="stylesheet" href="style.css">
+<style>
+.upload-zone{border:2px dashed var(--gray-300);border-radius:var(--radius);padding:24px;text-align:center;cursor:pointer;transition:all .2s;background:#fff}
+.upload-zone.drag-over{border-color:var(--primary);background:var(--primary-light)}
+.upload-zone .uz-icon{font-size:32px;margin-bottom:4px}
+.upload-zone p{color:var(--gray-600);font-size:13px;margin-top:4px}
+.upload-zone .uz-hint{font-size:11px;color:var(--gray-400);margin-top:4px}
+
+.stamp-cached-row{display:flex;align-items:center;gap:14px;padding:10px 14px;background:var(--gray-50);border-radius:var(--radius);margin-bottom:14px}
+.stamp-cached-row img{width:56px;height:56px;object-fit:contain;background:#fff;border:1px solid var(--gray-200);border-radius:6px}
+.stamp-cached-row .info{flex:1;font-size:12px;color:var(--gray-600);line-height:1.5}
+.stamp-cached-row .info strong{color:var(--gray-800);font-size:13px}
+
+.step-title{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;margin-bottom:14px}
+.step-num{width:22px;height:22px;border-radius:50%;background:var(--primary);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.step-title.done .step-num{background:var(--success)}
+
+#pdf-preview-wrap{position:relative;display:inline-block;margin:0 auto;max-width:100%;overflow:auto;border:1px solid var(--gray-200);border-radius:6px;background:#525659;padding:0}
+#pdf-canvas{display:block;max-width:none}
+#stamp-overlay{position:absolute;cursor:move;border:1.5px dashed var(--primary);box-sizing:border-box;touch-action:none}
+#stamp-overlay img{width:100%;height:100%;display:block;pointer-events:none;user-select:none;opacity:.88}
+.resize-handle{position:absolute;right:-7px;bottom:-7px;width:15px;height:15px;background:var(--primary);border:2px solid #fff;border-radius:50%;cursor:nwse-resize;touch-action:none}
+
+.page-nav{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:12px;color:var(--gray-600)}
+.page-nav input{width:50px;padding:4px 6px;border:1px solid var(--gray-200);border-radius:5px;font-size:12px;text-align:center}
+
+.action-row{display:flex;gap:10px;align-items:center;margin-top:16px;flex-wrap:wrap}
+.file-label{font-size:12px;color:var(--gray-500)}
+
+#loading-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999;align-items:center;justify-content:center;flex-direction:column;gap:16px}
+#loading-overlay.show{display:flex}
+.spinner{width:38px;height:38px;border:4px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-msg{color:#fff;font-size:14px;font-weight:600}
+
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--gray-800);color:#fff;padding:11px 20px;border-radius:8px;font-size:13px;z-index:1000;transition:transform .25s;white-space:nowrap;pointer-events:none}
+#toast.show{transform:translateX(-50%) translateY(0)}
+#toast.success{background:var(--success)}
+#toast.error{background:var(--danger)}
+
+.disabled-note{font-size:12px;color:var(--gray-400)}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div class="sidebar-logo">
+    <div class="brand">飛比特 Feebit</div>
+    <div class="sub">營運工具箱</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">總覽</div>
+    <a class="nav-item" href="index.html"><span class="icon">🏠</span> 首頁</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">營運</div>
+    <a class="nav-item" href="finance-dashboard.html"><span class="icon">📊</span> 帳務分析</a>
+    <a class="nav-item" href="brand-trend.html"><span class="icon">📊</span> 品牌趨勢分析</a>
+    <a class="nav-item" href="channel-revenue.html"><span class="icon">🛍️</span> 通路營收分析</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">財務</div>
+    <a class="nav-item" href="bank-converter.html"><span class="icon">🏦</span> 帳務轉換</a>
+    <a class="nav-item" href="journal-voucher.html"><span class="icon">📒</span> 分錄帳轉換</a>
+    <a class="nav-item" href="accounting-ops.html"><span class="icon">📅</span> 例行帳務作業</a>
+    <a class="nav-item" href="coupang-invoice.html"><span class="icon">🧾</span> 酷澎發票轉檔</a>
+    <a class="nav-item" href="coupang-reconcile.html"><span class="icon">🔍</span> 酷澎商城對帳</a>
+    <a class="nav-item" href="shopee-subsidy.html"><span class="icon">🚚</span> 蝦皮運費補助申請</a>
+    <a class="nav-item" href="shopee-converter.html"><span class="icon">🛒</span> 蝦皮撥款轉換</a>
+    <a class="nav-item active" href="invoice-stamp.html"><span class="icon">🖋️</span> 發票蓋章工具</a>
+    <a class="nav-item" href="profit-calculator.html"><span class="icon">💰</span> 毛利試算機</a>
+    <a class="nav-item" href="brand-sales.html"><span class="icon">📈</span> 品牌銷售分析</a>
+  </div><div class="sidebar-section">
+    <div class="sidebar-label">市場分析</div>
+    <a class="nav-item" href="market-tracker.html"><span class="icon">🔭</span> 品類競品分析</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">行銷</div>
+    <a class="nav-item" href="product-image-gen.html"><span class="icon">🎨</span> 商品圖生成</a>
+    <div class="nav-item soon"><span class="icon">📢</span> 廣告文案<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">客服</div>
+    <div class="nav-item soon"><span class="icon">💬</span> 客服回覆<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">業務</div>
+    <a class="nav-item" href="purchase-order.html"><span class="icon">📄</span> 採購單轉換</a>
+    <div class="nav-item soon"><span class="icon">🤝</span> 廠商談判<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">人事</div>
+    <a class="nav-item" href="attendance.html"><span class="icon">🗓️</span> 考勤查驗</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">庫存</div>
+    <a class="nav-item" href="stock-analysis.html"><span class="icon">📦</span> 庫存訂貨分析</a>
+    <a class="nav-item" href="slow-mover-alert.html"><span class="icon">🔴</span> 滯銷品警示</a>
+    <a class="nav-item" href="feebit-inventory-filter.html"><span class="icon">🏪</span> 商品篩選工具</a>
+    <a class="nav-item" href="reorder-suggestions.html"><span class="icon">🔄</span> 庫存訂貨建議</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">研發</div>
+    <a class="nav-item" href="research-notes.html"><span class="icon">📚</span> 研發筆記</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">法規</div>
+    <a class="nav-item" href="fda-registration.html"><span class="icon">🧪</span> 化粧品登錄轉換</a>
+    <a class="nav-item" href="ingredient-checker.html"><span class="icon">🧫</span> 食品成分比對</a>
+    <a class="nav-item" href="http://127.0.0.1:5050" target="_blank"><span class="icon">📋</span> PIF Builder</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">生活</div>
+    <a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span> 旅行規劃</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">自動化</div>
+    <a class="nav-item" href="schedule-notifications.html"><span class="icon">⏰</span> 自動排程通知</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">系統</div>
+    <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
+  </div>
+  <div class="sidebar-footer">v1.0 · Feebit © 2026</div>
+</div>
+
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<!-- MAIN -->
+<div id="main">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="hamburger" onclick="openSidebar()">☰</button>
+      <span class="topbar-title">發票蓋章工具</span>
+      <span class="topbar-badge">v1.0</span>
+    </div>
+  </div>
+
+  <div class="page">
+
+    <div class="alert alert-success">
+      🔒 全程在瀏覽器內處理：印章圖片與 PDF 都不會上傳到任何伺服器，只存在你的電腦與本機瀏覽器裡。<strong>一定要按下「蓋章並下載」按鈕才會真正蓋章</strong>，上傳檔案本身不會自動蓋章。
+    </div>
+
+    <!-- 步驟 1：印章 -->
+    <div class="card">
+      <div class="step-title" id="step1-title"><span class="step-num">1</span> 發票章圖片</div>
+
+      <div id="stamp-cached-row" class="stamp-cached-row" style="display:none">
+        <img id="stamp-thumb" src="" alt="發票章">
+        <div class="info">
+          <strong>已載入發票章</strong><br>
+          已儲存在此瀏覽器（不會上傳），下次開啟這個工具會自動帶入，除非你清除或更換。
+        </div>
+        <button class="btn btn-outline" onclick="document.getElementById('stamp-input').click()">更換</button>
+        <button class="btn btn-outline" onclick="clearStampCache()">清除</button>
+      </div>
+
+      <div id="stamp-upload-zone" class="upload-zone"
+           ondragover="dragOver(event,this)" ondragleave="dragLeave(event,this)" ondrop="dropStamp(event)"
+           onclick="document.getElementById('stamp-input').click()">
+        <div class="uz-icon">🖋️</div>
+        <p><strong>拖曳發票章圖片到這裡</strong>，或點擊選擇</p>
+        <p class="uz-hint">支援 PNG（建議透明背景）／JPG，例如「發票章.png」</p>
+      </div>
+      <input type="file" id="stamp-input" accept="image/png,image/jpeg" style="display:none" onchange="handleStampSelect(event)">
+    </div>
+
+    <!-- 步驟 2：PDF -->
+    <div class="card">
+      <div class="step-title" id="step2-title"><span class="step-num">2</span> 未蓋章的 PDF</div>
+
+      <div id="pdf-upload-zone" class="upload-zone"
+           ondragover="dragOver(event,this)" ondragleave="dragLeave(event,this)" ondrop="dropPdf(event)"
+           onclick="document.getElementById('pdf-input').click()">
+        <div class="uz-icon">📄</div>
+        <p><strong>拖曳費用確認單 / 請款單 PDF 到這裡</strong>，或點擊選擇</p>
+        <p class="uz-hint">上傳後可拖曳印章調整位置與大小，位置會自動記住</p>
+      </div>
+      <input type="file" id="pdf-input" accept="application/pdf" style="display:none" onchange="handlePdfSelect(event)">
+
+      <div id="preview-area" style="display:none;margin-top:16px">
+        <div class="page-nav" id="page-nav" style="display:none">
+          第 <input type="number" id="page-num" value="1" min="1" onchange="onPageChange()"> 頁 ／ 共 <span id="page-count">1</span> 頁
+        </div>
+        <div id="pdf-preview-wrap">
+          <canvas id="pdf-canvas"></canvas>
+          <div id="stamp-overlay">
+            <img id="stamp-overlay-img" src="" alt="印章">
+            <div class="resize-handle" id="resize-handle"></div>
+          </div>
+        </div>
+        <div class="action-row">
+          <button class="btn btn-outline" onclick="resetStampPosition()">重設印章位置</button>
+          <span class="file-label">拖曳移動、右下角圓點拖曳縮放</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 步驟 3：蓋章下載 -->
+    <div class="card">
+      <div class="step-title" id="step3-title"><span class="step-num">3</span> 蓋章並下載</div>
+      <div class="action-row">
+        <button class="btn btn-primary" id="stamp-btn" onclick="applyStampAndDownload()" disabled>🖋️ 蓋章並下載</button>
+        <span class="file-label" id="pdf-file-label"></span>
+      </div>
+      <p class="disabled-note" id="disabled-note">請先完成上方兩個步驟（上傳印章、上傳 PDF）</p>
+    </div>
+
+  </div>
+</div>
+
+<div id="loading-overlay"><div class="spinner"></div><div class="loading-msg" id="loading-msg">處理中…</div></div>
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+
+const LS_STAMP = 'invoiceStampTool_stampImg';
+const LS_POS   = 'invoiceStampTool_position';
+
+// 預設印章位置（依實際「費用確認單」範本量測，甲方簽署欄位置）
+const DEFAULT_FRAC = { x0f: 0.28457661290322583, x1f: 0.41995967741935486, yTopf: 0.6343028229255774, yBotf: 0.7189193042486456 };
+
+let stampDataUrl = null;
+let stampNaturalW = 0, stampNaturalH = 0;
+let pdfBytes = null;          // 原始 PDF bytes，供 pdf-lib 使用
+let pdfjsDoc = null;
+let currentPageNum = 1;
+let pageWidthPt = 0, pageHeightPt = 0; // 目前頁面的 PDF points 尺寸
+let currentFrac = null;       // 目前印章位置（相對頁面的比例）
+let pdfFileName = 'document.pdf';
+
+function toast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show' + (type ? ' ' + type : '');
+  setTimeout(() => { t.className = ''; }, 2600);
+}
+function showLoading(msg) { document.getElementById('loading-msg').textContent = msg || '處理中…'; document.getElementById('loading-overlay').classList.add('show'); }
+function hideLoading() { document.getElementById('loading-overlay').classList.remove('show'); }
+
+function dragOver(e, el) { e.preventDefault(); el.classList.add('drag-over'); }
+function dragLeave(e, el) { e.preventDefault(); el.classList.remove('drag-over'); }
+
+// ── 步驟 1：印章 ──
+function dropStamp(e) {
+  e.preventDefault(); e.currentTarget.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f) loadStampFile(f);
+}
+function handleStampSelect(e) {
+  const f = e.target.files[0];
+  if (f) loadStampFile(f);
+}
+function loadStampFile(file) {
+  if (!/^image\/(png|jpeg)$/.test(file.type)) { toast('請上傳 PNG 或 JPG 圖片', 'error'); return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    setStamp(reader.result, true);
+  };
+  reader.readAsDataURL(file);
+}
+function setStamp(dataUrl, persist) {
+  stampDataUrl = dataUrl;
+  const img = new Image();
+  img.onload = () => {
+    stampNaturalW = img.naturalWidth;
+    stampNaturalH = img.naturalHeight;
+  };
+  img.src = dataUrl;
+  document.getElementById('stamp-thumb').src = dataUrl;
+  document.getElementById('stamp-cached-row').style.display = 'flex';
+  document.getElementById('stamp-overlay-img').src = dataUrl;
+  if (persist) { try { localStorage.setItem(LS_STAMP, dataUrl); } catch (e) {} }
+  document.getElementById('step1-title').classList.add('done');
+  updateStampButtonState();
+  if (pdfjsDoc) positionOverlayFromFrac(currentFrac || DEFAULT_FRAC);
+}
+function clearStampCache() {
+  localStorage.removeItem(LS_STAMP);
+  stampDataUrl = null;
+  document.getElementById('stamp-cached-row').style.display = 'none';
+  document.getElementById('step1-title').classList.remove('done');
+  updateStampButtonState();
+  toast('已清除已儲存的印章');
+}
+
+// ── 步驟 2：PDF ──
+function dropPdf(e) {
+  e.preventDefault(); e.currentTarget.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f) loadPdfFile(f);
+}
+function handlePdfSelect(e) {
+  const f = e.target.files[0];
+  if (f) loadPdfFile(f);
+}
+async function loadPdfFile(file) {
+  if (file.type !== 'application/pdf') { toast('請上傳 PDF 檔案', 'error'); return; }
+  pdfFileName = file.name;
+  showLoading('讀取 PDF 中…');
+  try {
+    const buf = await file.arrayBuffer();
+    pdfBytes = new Uint8Array(buf);
+    pdfjsDoc = await pdfjsLib.getDocument({ data: pdfBytes.slice() }).promise;
+    document.getElementById('page-count').textContent = pdfjsDoc.numPages;
+    document.getElementById('page-nav').style.display = pdfjsDoc.numPages > 1 ? 'flex' : 'none';
+    document.getElementById('page-num').value = 1;
+    document.getElementById('page-num').max = pdfjsDoc.numPages;
+    currentPageNum = 1;
+
+    // 載入這份 PDF 記住的印章位置，沒有就用預設值
+    let savedFrac = null;
+    try { savedFrac = JSON.parse(localStorage.getItem(LS_POS) || 'null'); } catch (e) {}
+    currentFrac = savedFrac || DEFAULT_FRAC;
+
+    await renderPage(1);
+    document.getElementById('preview-area').style.display = 'block';
+    document.getElementById('pdf-file-label').textContent = '已載入：' + pdfFileName;
+    document.getElementById('step2-title').classList.add('done');
+    updateStampButtonState();
+  } catch (err) {
+    console.error(err);
+    toast('PDF 讀取失敗，請確認檔案未損毀', 'error');
+  } finally {
+    hideLoading();
+  }
+}
+
+async function onPageChange() {
+  const n = parseInt(document.getElementById('page-num').value, 10);
+  if (!n || n < 1 || n > pdfjsDoc.numPages) return;
+  currentPageNum = n;
+  await renderPage(n);
+}
+
+async function renderPage(n) {
+  const page = await pdfjsDoc.getPage(n);
+  const viewportBase = page.getViewport({ scale: 1 });
+  pageWidthPt = viewportBase.width;
+  pageHeightPt = viewportBase.height;
+
+  const targetWidth = Math.min(760, document.querySelector('.page').clientWidth - 8);
+  const scale = targetWidth / pageWidthPt;
+  const viewport = page.getViewport({ scale });
+
+  const canvas = document.getElementById('pdf-canvas');
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  document.getElementById('pdf-preview-wrap').style.width = viewport.width + 'px';
+
+  const ctx = canvas.getContext('2d');
+  await page.render({ canvasContext: ctx, viewport }).promise;
+
+  positionOverlayFromFrac(currentFrac || DEFAULT_FRAC);
+}
+
+function positionOverlayFromFrac(frac) {
+  const canvas = document.getElementById('pdf-canvas');
+  const overlay = document.getElementById('stamp-overlay');
+  const x = frac.x0f * canvas.width;
+  const w = (frac.x1f - frac.x0f) * canvas.width;
+  const yTop = frac.yTopf * canvas.height;
+  const h = (frac.yBotf - frac.yTopf) * canvas.height;
+  overlay.style.left = x + 'px';
+  overlay.style.top = yTop + 'px';
+  overlay.style.width = w + 'px';
+  overlay.style.height = h + 'px';
+  overlay.style.display = 'block';
+}
+
+function resetStampPosition() {
+  currentFrac = Object.assign({}, DEFAULT_FRAC);
+  positionOverlayFromFrac(currentFrac);
+  saveFracFromOverlay();
+  toast('已重設為預設印章位置');
+}
+
+function saveFracFromOverlay() {
+  const canvas = document.getElementById('pdf-canvas');
+  const overlay = document.getElementById('stamp-overlay');
+  const left = parseFloat(overlay.style.left);
+  const top = parseFloat(overlay.style.top);
+  const w = parseFloat(overlay.style.width);
+  const h = parseFloat(overlay.style.height);
+  currentFrac = {
+    x0f: left / canvas.width,
+    x1f: (left + w) / canvas.width,
+    yTopf: top / canvas.height,
+    yBotf: (top + h) / canvas.height
+  };
+  try { localStorage.setItem(LS_POS, JSON.stringify(currentFrac)); } catch (e) {}
+}
+
+// ── 拖曳移動 / 縮放 ──
+(function setupOverlayInteraction() {
+  const overlay = document.getElementById('stamp-overlay');
+  const handle = document.getElementById('resize-handle');
+  const wrap = document.getElementById('pdf-preview-wrap');
+  let mode = null; // 'move' | 'resize'
+  let startX, startY, startLeft, startTop, startW, startH;
+
+  overlay.addEventListener('pointerdown', (e) => {
+    if (e.target === handle) return;
+    mode = 'move';
+    startX = e.clientX; startY = e.clientY;
+    startLeft = parseFloat(overlay.style.left) || 0;
+    startTop = parseFloat(overlay.style.top) || 0;
+    overlay.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+
+  handle.addEventListener('pointerdown', (e) => {
+    mode = 'resize';
+    startX = e.clientX; startY = e.clientY;
+    startW = parseFloat(overlay.style.width) || 40;
+    startH = parseFloat(overlay.style.height) || 40;
+    handle.setPointerCapture(e.pointerId);
+    e.stopPropagation();
+    e.preventDefault();
+  });
+
+  overlay.addEventListener('pointermove', (e) => {
+    if (mode !== 'move') return;
+    const canvas = document.getElementById('pdf-canvas');
+    const dx = e.clientX - startX, dy = e.clientY - startY;
+    let left = startLeft + dx, top = startTop + dy;
+    const w = parseFloat(overlay.style.width), h = parseFloat(overlay.style.height);
+    left = Math.max(0, Math.min(canvas.width - w, left));
+    top = Math.max(0, Math.min(canvas.height - h, top));
+    overlay.style.left = left + 'px';
+    overlay.style.top = top + 'px';
+  });
+
+  handle.addEventListener('pointermove', (e) => {
+    if (mode !== 'resize') return;
+    const ratio = stampNaturalH && stampNaturalW ? stampNaturalH / stampNaturalW : (startH / startW);
+    const dx = e.clientX - startX;
+    let newW = Math.max(24, startW + dx);
+    let newH = newW * ratio;
+    overlay.style.width = newW + 'px';
+    overlay.style.height = newH + 'px';
+  });
+
+  function endInteraction(e) {
+    if (mode) { saveFracFromOverlay(); }
+    mode = null;
+  }
+  overlay.addEventListener('pointerup', endInteraction);
+  overlay.addEventListener('pointercancel', endInteraction);
+  handle.addEventListener('pointerup', endInteraction);
+  handle.addEventListener('pointercancel', endInteraction);
+})();
+
+// ── 步驟 3：蓋章並下載 ──
+function updateStampButtonState() {
+  const ready = !!stampDataUrl && !!pdfBytes;
+  document.getElementById('stamp-btn').disabled = !ready;
+  document.getElementById('disabled-note').style.display = ready ? 'none' : 'block';
+  if (ready) document.getElementById('step3-title').classList.add('done');
+}
+
+async function dataUrlToBytes(dataUrl) {
+  const res = await fetch(dataUrl);
+  const buf = await res.arrayBuffer();
+  return new Uint8Array(buf);
+}
+
+async function applyStampAndDownload() {
+  if (!stampDataUrl || !pdfBytes) return;
+  saveFracFromOverlay();
+  showLoading('蓋章中…');
+  try {
+    const { PDFDocument } = PDFLib;
+    const pdfDoc = await PDFDocument.load(pdfBytes);
+    const stampBytes = await dataUrlToBytes(stampDataUrl);
+    const isPng = stampDataUrl.startsWith('data:image/png');
+    const stampImg = isPng ? await pdfDoc.embedPng(stampBytes) : await pdfDoc.embedJpg(stampBytes);
+
+    const page = pdfDoc.getPage(currentPageNum - 1);
+    const { width: PW, height: PH } = page.getSize();
+
+    const x = currentFrac.x0f * PW;
+    const w = (currentFrac.x1f - currentFrac.x0f) * PW;
+    const yTop = (1 - currentFrac.yTopf) * PH;
+    const yBot = (1 - currentFrac.yBotf) * PH;
+    const h = yTop - yBot;
+
+    page.drawImage(stampImg, { x, y: yBot, width: w, height: h });
+
+    const outBytes = await pdfDoc.save();
+    const blob = new Blob([outBytes], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const baseName = pdfFileName.replace(/\.pdf$/i, '');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = baseName + '_已蓋章.pdf';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    toast('已蓋章並下載完成', 'success');
+  } catch (err) {
+    console.error(err);
+    toast('蓋章失敗：' + err.message, 'error');
+  } finally {
+    hideLoading();
+  }
+}
+
+// ── 初始化：帶入本機已儲存的印章 ──
+(function init() {
+  try {
+    const cached = localStorage.getItem(LS_STAMP);
+    if (cached) setStamp(cached, false);
+  } catch (e) {}
+})();
+
+window.addEventListener('resize', () => { if (pdfjsDoc) renderPage(currentPageNum); });
+</script>
+</body>
+</html>
