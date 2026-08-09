@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meta顧客名單轉換 · 飛比特營運工具箱</title>
+<link rel="icon" href="favicon.svg">
+<script>if(location.search.includes("share"))document.documentElement.classList.add("standalone");</script>
+<link rel="stylesheet" href="style.css">
+<style>
+.upload-zone{border:2px dashed var(--gray-300);border-radius:var(--radius);padding:28px 24px;text-align:center;cursor:pointer;transition:all .2s;background:#fff}
+.upload-zone.drag-over{border-color:var(--primary);background:var(--primary-light)}
+.upload-zone .uz-icon{font-size:36px;margin-bottom:6px}
+.upload-zone p{color:var(--gray-600);font-size:13px;margin-top:4px}
+.upload-zone .uz-hint{font-size:11px;color:var(--gray-400);margin-top:4px}
+
+.file-list{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.file-row{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:13px}
+.file-row .fr-name{flex:1;word-break:break-all}
+.file-row .fr-count{color:var(--gray-500);font-size:12px;white-space:nowrap}
+.file-row .fr-remove{cursor:pointer;color:var(--gray-400);font-size:16px;line-height:1;padding:2px 4px}
+.file-row .fr-remove:hover{color:var(--danger)}
+
+.result-card{margin-top:16px}
+.result-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.result-head .rh-title{font-size:14px;font-weight:700}
+.result-head .rh-sub{font-size:12px;color:var(--gray-500)}
+
+.preview-table{width:100%;border-collapse:collapse;font-size:12px}
+.preview-table th{background:var(--gray-100);padding:6px 8px;text-align:left;font-size:11px;font-weight:600;color:var(--gray-600);border-bottom:1px solid var(--gray-200);white-space:nowrap}
+.preview-table td{padding:6px 8px;border-bottom:1px solid var(--gray-100);white-space:nowrap}
+
+.summary-box{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:14px}
+.summary-item{background:var(--gray-50);border-radius:8px;padding:10px 16px;min-width:110px}
+.summary-item .si-num{font-size:20px;font-weight:700;color:var(--primary)}
+.summary-item .si-label{font-size:11px;color:var(--gray-500);margin-top:2px}
+
+.warn-box{background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:10px 14px;font-size:12px;color:#9a3412;margin-bottom:14px}
+.action-bar{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;align-items:center}
+.status-hint{font-size:12px;color:var(--gray-500)}
+
+#loading-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999;align-items:center;justify-content:center;flex-direction:column;gap:16px}
+#loading-overlay.show{display:flex}
+.spinner{width:38px;height:38px;border:4px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-msg{color:#fff;font-size:14px;font-weight:600}
+
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--gray-800);color:#fff;padding:11px 20px;border-radius:8px;font-size:13px;z-index:1000;transition:transform .25s;white-space:nowrap;pointer-events:none}
+#toast.show{transform:translateX(-50%) translateY(0)}
+#toast.success{background:var(--success)}
+#toast.error{background:var(--danger)}
+.btn-sm{padding:4px 10px;font-size:11px;border-radius:5px}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div class="sidebar-logo">
+    <div class="brand">飛比特 Feebit</div>
+    <div class="sub">營運工具箱</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">總覽</div>
+    <a class="nav-item" href="index.html"><span class="icon">🏠</span> 首頁</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">營運</div>
+    <a class="nav-item" href="finance-dashboard.html"><span class="icon">📊</span> 帳務分析</a>
+    <a class="nav-item" href="brand-trend.html"><span class="icon">📊</span> 品牌趨勢分析</a>
+    <a class="nav-item" href="channel-revenue.html"><span class="icon">🛍️</span> 通路營收分析</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">財務</div>
+    <a class="nav-item" href="bank-converter.html"><span class="icon">🏦</span> 帳務轉換</a>
+    <a class="nav-item" href="journal-voucher.html"><span class="icon">📗</span> 分錄帳轉換</a>
+    <a class="nav-item" href="accounting-ops.html"><span class="icon">📅</span> 例行帳務作業</a>
+    <a class="nav-item" href="coupang-invoice.html"><span class="icon">🧾</span> 酷澎發票轉檔</a>
+    <a class="nav-item" href="coupang-reconcile.html"><span class="icon">🔍</span> 酷澎商城對帳</a>
+    <a class="nav-item" href="shopee-subsidy.html"><span class="icon">🚚</span> 蝦皮運費補助申請</a>
+    <a class="nav-item" href="shopee-converter.html"><span class="icon">🛒</span> 蝦皮撥款轉換</a>
+    <a class="nav-item" href="invoice-stamp.html"><span class="icon">🖋️</span> 發票蓋章工具</a>
+    <a class="nav-item" href="profit-calculator.html"><span class="icon">💰</span> 毛利試算機</a>
+    <a class="nav-item" href="brand-sales.html"><span class="icon">📈</span> 品牌銷售分析</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">市場分析</div>
+    <a class="nav-item" href="market-tracker.html"><span class="icon">🔭</span> 品類競品分析</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">行銷</div>
+    <a class="nav-item" href="product-image-gen.html"><span class="icon">🎨</span> 商品圖生成</a>
+    <a class="nav-item active" href="meta-audience.html"><span class="icon">🎯</span> Meta顧客名單轉換</a>
+    <div class="nav-item soon"><span class="icon">📢</span> 廣告文案<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">客服</div>
+    <div class="nav-item soon"><span class="icon">💬</span> 客服回覆<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">業務</div>
+    <a class="nav-item" href="purchase-order.html"><span class="icon">📄</span> 採購單轉換</a>
+    <div class="nav-item soon"><span class="icon">🤝</span> 廠商談判<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">人事</div>
+    <a class="nav-item" href="attendance.html"><span class="icon">🗓️</span> 考勤查驗</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">庫存</div>
+    <a class="nav-item" href="stock-analysis.html"><span class="icon">📦</span> 庫存訂貨分析</a>
+    <a class="nav-item" href="slow-mover-alert.html"><span class="icon">🔴</span> 滯銷品警示</a>
+    <a class="nav-item" href="feebit-inventory-filter.html"><span class="icon">🏪</span> 商品篩選工具</a>
+    <a class="nav-item" href="reorder-suggestions.html"><span class="icon">🔄</span> 庫存訂貨建議</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">研發</div>
+    <a class="nav-item" href="research-notes.html"><span class="icon">📚</span> 研發筆記</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">法規</div>
+    <a class="nav-item" href="fda-registration.html"><span class="icon">🧪</span> 化粧品登錄轉換</a>
+    <a class="nav-item" href="ingredient-checker.html"><span class="icon">🧫</span> 食品成分比對</a>
+    <a class="nav-item" href="http://127.0.0.1:5050" target="_blank"><span class="icon">📋</span> PIF Builder</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">生活</div>
+    <a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span> 旅行規劃</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">自動化</div>
+    <a class="nav-item" href="schedule-notifications.html"><span class="icon">⏰</span> 自動排程通知</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">系統</div>
+    <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
+  </div>
+  <div class="sidebar-footer">v1.0 · Feebit © 2026</div>
+</div>
+
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<!-- MAIN -->
+<div id="main">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="hamburger" onclick="openSidebar()">☰</button>
+      <span class="topbar-title">Meta顧客名單轉換</span>
+      <span class="topbar-badge">v1.0</span>
+    </div>
+  </div>
+
+  <div class="page">
+
+    <div class="card">
+      <div class="card-title">上傳蝦皮顧客名單（CustomerGroupReport .xls / .xlsx，可一次多份）</div>
+      <div id="upload-zone" class="upload-zone"
+           ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)"
+           onclick="document.getElementById('file-input').click()">
+        <div class="uz-icon">📥</div>
+        <p><strong>拖曳檔案到此處</strong>，或點擊選擇</p>
+        <p class="uz-hint">支援 Excel（.xlsx / .xls），可一次選多份，逐一轉換成 Meta Value-Based Audience 格式</p>
+        <input type="file" id="file-input" accept=".xlsx,.xls" multiple style="display:none" onchange="handleFileSelect(event)">
+      </div>
+      <div id="file-list" class="file-list"></div>
+      <div class="action-bar">
+        <button class="btn btn-primary" onclick="convertAll()">開始轉換</button>
+        <button class="btn btn-outline" onclick="clearFiles()">清空</button>
+        <span id="convert-hint" class="status-hint"></span>
+      </div>
+    </div>
+
+    <div class="warn-box">
+      ⚠️ 這份名單沒有消費金額欄位，輸出的 <code>value</code> 欄位會留空——是「顧客配對名單」而非真正的 Value-Based Audience。若之後有訂單金額明細，可再升級加入 value。
+    </div>
+
+    <div id="results"></div>
+
+    <div id="merge-card" class="card result-card" style="display:none">
+      <div class="result-head">
+        <span class="rh-title">合併下載</span>
+        <span class="rh-sub" id="merge-sub"></span>
+      </div>
+      <div class="action-bar" style="margin-top:0">
+        <button class="btn btn-success" onclick="downloadMerged(false)">下載合併全部 CSV</button>
+        <button class="btn btn-primary" onclick="downloadMerged(true)">下載合併去重 CSV（依 email）</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Loading -->
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-msg" id="loading-msg">處理中...</div>
+</div>
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const HEADER = ['email','email','email','phone','phone','phone','madid','fn','ln','zip','ct','st','country','dob','doby','gen','age','uid','value'];
+const CJK_RE = /^[一-鿿]{2,4}$/;
+const PAREN_RE = /[\(（][^)）]*[\)）]/g;
+
+let pendingFiles = [];   // File objects waiting to be converted
+let convertedFiles = []; // { name, rows: [ {...} ] }
+
+function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-overlay').classList.add('show'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('show'); }
+
+function showLoading(msg) {
+  document.getElementById('loading-msg').textContent = msg || '處理中...';
+  document.getElementById('loading-overlay').classList.add('show');
+}
+function hideLoading() { document.getElementById('loading-overlay').classList.remove('show'); }
+
+function toast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show' + (type ? ' ' + type : '');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.className = '', 3000);
+}
+
+function esc(s) { return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── 檔案選取 ──
+function handleDragOver(e) { e.preventDefault(); document.getElementById('upload-zone').classList.add('drag-over'); }
+function handleDragLeave() { document.getElementById('upload-zone').classList.remove('drag-over'); }
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('drag-over');
+  addFiles(e.dataTransfer.files);
+}
+function handleFileSelect(e) { addFiles(e.target.files); document.getElementById('file-input').value = ''; }
+
+function addFiles(fileList) {
+  for (const f of fileList) {
+    if (!/\.(xlsx|xls)$/i.test(f.name)) continue;
+    if (!pendingFiles.some(p => p.name === f.name && p.size === f.size)) pendingFiles.push(f);
+  }
+  renderFileList();
+}
+function removeFile(idx) { pendingFiles.splice(idx, 1); renderFileList(); }
+function clearFiles() {
+  pendingFiles = []; convertedFiles = [];
+  renderFileList();
+  document.getElementById('results').innerHTML = '';
+  document.getElementById('merge-card').style.display = 'none';
+  document.getElementById('convert-hint').textContent = '';
+}
+function renderFileList() {
+  const c = document.getElementById('file-list');
+  if (!pendingFiles.length) { c.innerHTML = ''; return; }
+  c.innerHTML = pendingFiles.map((f, i) => `
+    <div class="file-row">
+      <span class="fr-name">📄 ${esc(f.name)}</span>
+      <span class="fr-remove" onclick="removeFile(${i})">✕</span>
+    </div>`).join('');
+}
+
+// ── 姓名拆分 ──
+function splitName(name) {
+  if (!name) return { fn: '', ln: '' };
+  const cleaned = String(name).replace(PAREN_RE, '').trim();
+  if (!cleaned) return { fn: '', ln: '' };
+  if (CJK_RE.test(cleaned)) return { fn: cleaned.slice(1), ln: cleaned[0] };
+  if (/\s/.test(cleaned)) {
+    const tokens = cleaned.split(/\s+/);
+    return { fn: tokens[0], ln: tokens.slice(1).join(' ') };
+  }
+  return { fn: '', ln: cleaned };
+}
+
+// ── 電話格式化（台灣手機門號，補 +886，去掉開頭 0）──
+function formatPhone(v) {
+  if (v === undefined || v === null || v === '') return '';
+  let s = String(v).trim().replace(/\.0$/, '').replace(/\D/g, '');
+  if (!s) return '';
+  if (s.startsWith('0')) s = s.slice(1);
+  return '+886' + s;
+}
+
+function formatGender(g) {
+  if (g === '女') return 'F';
+  if (g === '男') return 'M';
+  return '';
+}
+
+// ── 生日 DD-MM-YYYY → dob/doby/age ──
+function parseDob(dobStr, today) {
+  if (!dobStr) return { dob: '', doby: '', age: '' };
+  const s = String(dobStr).trim();
+  const m = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (!m) return { dob: '', doby: '', age: '' };
+  const [, dd, mm, yyyy] = m;
+  const d = parseInt(dd, 10), mo = parseInt(mm, 10), y = parseInt(yyyy, 10);
+  let age = today.getFullYear() - y;
+  if (today.getMonth() + 1 < mo || (today.getMonth() + 1 === mo && today.getDate() < d)) age--;
+  return { dob: s, doby: String(y), age: String(age) };
+}
+
+// ── 讀取單一 Excel 檔並轉換 ──
+function convertWorkbookRows(rows) {
+  const today = new Date();
+  return rows.map(r => {
+    const { fn, ln } = splitName(r['全名']);
+    const phoneRaw = (r['會員綁定手機號碼'] !== undefined && r['會員綁定手機號碼'] !== '') ? r['會員綁定手機號碼'] : r['聯絡電話'];
+    const phone = formatPhone(phoneRaw);
+    const { dob, doby, age } = parseDob(r['生日'], today);
+    const gen = formatGender(r['性別']);
+    const email = r['電郵'] || '';
+    return { email, phone, fn, ln, country: 'TW', dob, doby, gen, age };
+  });
+}
+
+function rowToCsvArray(row) {
+  return [
+    row.email, '', '',
+    row.phone, '', '',
+    '',
+    row.fn, row.ln,
+    '', '', '', row.country,
+    row.dob, row.doby, row.gen, row.age,
+    '', ''
+  ];
+}
+
+function csvEscape(v) {
+  const s = String(v == null ? '' : v);
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+function rowsToCsv(rows) {
+  const lines = [HEADER.map(csvEscape).join(',')];
+  rows.forEach(row => lines.push(rowToCsvArray(row).map(csvEscape).join(',')));
+  return '﻿' + lines.join('\n');
+}
+
+function downloadCsv(filename, content) {
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ── 主轉換流程 ──
+async function convertAll() {
+  if (!pendingFiles.length) { toast('請先選擇檔案', 'error'); return; }
+  showLoading('轉換中...');
+  convertedFiles = [];
+  for (const f of pendingFiles) {
+    try {
+      const rows = await readWorkbook(f);
+      const converted = convertWorkbookRows(rows);
+      convertedFiles.push({ name: f.name, rows: converted });
+    } catch (e) {
+      toast(`${f.name} 轉換失敗：${e.message}`, 'error');
+    }
+  }
+  hideLoading();
+  renderResults();
+}
+
+function readWorkbook(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        resolve(XLSX.utils.sheet_to_json(ws, { defval: '', raw: false }));
+      } catch (err) { reject(err); }
+    };
+    r.onerror = () => reject(new Error('讀取檔案失敗'));
+    r.readAsArrayBuffer(file);
+  });
+}
+
+function renderResults() {
+  const c = document.getElementById('results');
+  if (!convertedFiles.length) { c.innerHTML = ''; document.getElementById('merge-card').style.display = 'none'; return; }
+
+  let html = '';
+  convertedFiles.forEach((cf, idx) => {
+    const preview = cf.rows.slice(0, 5);
+    html += `
+    <div class="card result-card">
+      <div class="result-head">
+        <span class="rh-title">${esc(cf.name)}</span>
+        <span class="rh-sub">共 ${cf.rows.length} 筆</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="preview-table">
+          <thead><tr><th>email</th><th>phone</th><th>fn</th><th>ln</th><th>country</th><th>dob</th><th>doby</th><th>gen</th><th>age</th></tr></thead>
+          <tbody>
+            ${preview.map(r => `<tr>
+              <td>${esc(r.email)}</td><td>${esc(r.phone)}</td><td>${esc(r.fn)}</td><td>${esc(r.ln)}</td>
+              <td>${esc(r.country)}</td><td>${esc(r.dob)}</td><td>${esc(r.doby)}</td><td>${esc(r.gen)}</td><td>${esc(r.age)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div class="action-bar">
+        <button class="btn btn-success btn-sm" onclick="downloadOne(${idx})">下載這份 CSV</button>
+      </div>
+    </div>`;
+  });
+  c.innerHTML = html;
+
+  const total = convertedFiles.reduce((s, cf) => s + cf.rows.length, 0);
+  document.getElementById('merge-sub').textContent = `共 ${convertedFiles.length} 份檔案，合計 ${total} 筆`;
+  document.getElementById('merge-card').style.display = '';
+  document.getElementById('convert-hint').textContent = `已轉換 ${convertedFiles.length} 份檔案`;
+}
+
+function downloadOne(idx) {
+  const cf = convertedFiles[idx];
+  const base = cf.name.replace(/\.(xlsx|xls)$/i, '');
+  downloadCsv(`${base}_meta_audience.csv`, rowsToCsv(cf.rows));
+}
+
+function downloadMerged(dedup) {
+  let rows = convertedFiles.flatMap(cf => cf.rows);
+  if (dedup) {
+    const seen = new Set();
+    rows = rows.filter(r => {
+      if (!r.email) return true; // 沒 email 的全部保留
+      if (seen.has(r.email)) return false;
+      seen.add(r.email);
+      return true;
+    });
+  }
+  downloadCsv(dedup ? 'merged_meta_audience_dedup.csv' : 'merged_meta_audience_all.csv', rowsToCsv(rows));
+  toast(`已下載 ${rows.length} 筆`, 'success');
+}
+</script>
+</body>
+</html>
