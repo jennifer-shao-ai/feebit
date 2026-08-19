@@ -819,8 +819,10 @@ async function downloadSelectedZipForGpt() {
   const files = []
   for (let i = 0; i < selected.length; i++) {
     const img = selected[i]
-    const dataUrl = img.dataUrl || img.src
-    if (!dataUrl.startsWith('data:')) continue
+    let dataUrl = img.dataUrl || img.src
+    if (!dataUrl.startsWith('data:')) {
+      try { dataUrl = await proxyImage(img.src) } catch (_) { continue }
+    }
     const ext = dataUrl.split(';')[0].split('/')[1] || 'jpg'
     files.push({ name: `商品圖_${i+1}.${ext}`, dataUrl })
   }
