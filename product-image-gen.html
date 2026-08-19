@@ -881,7 +881,7 @@ function loadBookmarkletImages(urls, title) {
 
 function loadFromUrlParams() {
   const params = new URLSearchParams(window.location.search)
-  window.history.replaceState({}, '', window.location.pathname)
+  window.history.replaceState({}, '', window.location.pathname + (params.has('share') ? '?share' : ''))
 
   // Waiting mode: bookmarklet opened this page, images coming via postMessage
   if (params.get('from') === 'bookmarklet') {
