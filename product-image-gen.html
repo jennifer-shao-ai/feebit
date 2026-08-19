@@ -915,11 +915,12 @@ window.addEventListener('message', function(e) {
 // ── Set bookmarklet href ──
 function initBookmarklet() {
   const toolUrl = window.location.origin + window.location.pathname
+  const shareSuffix = document.body.classList.contains('pig-public') ? '&share' : ''
   // Step 1: open tool window immediately (must be in user-click context to bypass popup blocker)
   // Step 2: silently auto-scroll page to load all lazy images
   // Step 3: capture main + detail images, send via postMessage to already-open tool window
   const bm = `javascript:(function(){
-var TOOL='${toolUrl}?from=bookmarklet';
+var TOOL='${toolUrl}?from=bookmarklet${shareSuffix}';
 var w=window.open(TOOL,'_blank');
 function toFull(s){if(!s)return '';s=s.trim();if(s.startsWith('http'))return s;if(s.startsWith('//'))return 'https:'+s;return '';}
 function isOk(u){return u&&u.includes('alicdn.com')&&!u.match(/\\.gif$/i)&&!u.match(/_\\d+x\\d+\\.[a-z]/i);}
