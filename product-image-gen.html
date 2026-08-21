@@ -824,7 +824,7 @@ async function downloadSelectedZipForGpt() {
       try { dataUrl = await proxyImage(img.src) } catch (_) { continue }
     }
     const ext = dataUrl.split(';')[0].split('/')[1] || 'jpg'
-    files.push({ name: `商品圖_${i+1}.${ext}`, dataUrl })
+    files.push({ name: `商品圖_${i+1}.${ext}`, src: dataUrl })
   }
   if (!files.length) { alert('無可下載的商品圖'); return }
   await buildAndDownloadZip(files, '商品圖_GPT上傳用.zip')
