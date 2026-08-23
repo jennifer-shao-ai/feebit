@@ -31,11 +31,12 @@ async function main() {
     const code = String(row['產品代號'] || id).trim();
     if (!code) continue;
     products[code] = {
-      name:  (row['產品名稱'] || '').trim(),
-      ean:   (row['EAN13碼']  || '').trim(),
+      name:   (row['產品名稱'] || '').trim(),
+      ean:    (row['EAN13碼']  || '').trim(),
       qty,
-      price: (row['建議售價'] || '').trim(),
-      cost:  (row['成本單價'] || '').trim()
+      price:  (row['建議售價'] || '').trim(),
+      cost:   (row['成本單價'] || '').trim(),
+      status: (row['販售狀態'] || '').trim()
     };
     count++;
   }
