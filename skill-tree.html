@@ -191,6 +191,16 @@
   color: var(--gray-600); font-weight: 500;
 }
 .st-modal-close:hover { background: var(--gray-100); }
+.st-modal-link {
+  display: none;
+  text-align: center;
+  width: 100%; padding: 9px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  background: var(--gray-800); color: #a5f3fc;
+  font-size: 13px; font-weight: 600; text-decoration: none;
+}
+.st-modal-link:hover { opacity: 0.85; }
 
 @media (max-width: 640px) {
   .st-stats { grid-template-columns: repeat(3,1fr); gap: 8px; }
@@ -335,6 +345,7 @@
       <span id="modal-cmd"></span>
       <button class="st-copy-btn" onclick="copyCmd()" title="複製指令">📋</button>
     </div>
+    <a class="st-modal-link" id="modal-link" href="#" target="_blank" rel="noopener">🔗 開啟 Notion 頁面 →</a>
     <button class="st-modal-close" onclick="document.getElementById('st-modal').classList.remove('show')">關閉</button>
   </div>
 </div>
@@ -377,6 +388,7 @@ const SKILLS = [
   { icon:'🔎', name:'/github-review', cat:'AI Skill', ver:'skill', desc:'GitHub 頁面審查，部署前確認頁面正確性', cmd:'/github-review' },
   { icon:'💾', name:'/tool-save',     cat:'AI Skill', ver:'skill', desc:'儲存新工具記錄到 TOOLS.md 工具目錄', cmd:'/tool-save' },
   { icon:'🔧', name:'/tool',          cat:'AI Skill', ver:'skill', desc:'查找並載入工具詳細資料，開始工具相關任務', cmd:'/tool' },
+  { icon:'🤖', name:'/team-roster',   cat:'AI Skill', ver:'skill', desc:'建立或更新 AI 團隊職務說明書，新工具歸類給對應 AI 同事', cmd:'/team-roster', link:'https://app.notion.com/p/3aec0daeef578107b1e6e32bb7790fd3' },
   // ── 自動化 ──
   { icon:'🟢', name:'供應商建檔 LINE Bot',    cat:'自動化', ver:'Worker', desc:'展場掃名片 → Claude 辨識 → 自動建 Ragic 供應商記錄', url:null, info:'Cloudflare Worker · feebit-line-bot.esuse-adobe.workers.dev' },
   { icon:'🛍️', name:'淘寶訂單匯出外掛',      cat:'自動化', ver:'外掛',   desc:'Chrome 外掛一鍵抓取淘寶訂單，自動翻頁並送至 Apps Script', url:null, info:'Chrome Extension · ~/Desktop/淘寶訂單匯出/' },
@@ -494,6 +506,9 @@ function openModal(idx) {
   document.getElementById('modal-tag').innerHTML = `<span class="skill-card-tag tag-${key}">${s.cat}</span>`;
   document.getElementById('modal-desc').textContent = s.desc;
   document.getElementById('modal-cmd').textContent = s.cmd;
+  const linkEl = document.getElementById('modal-link');
+  if (s.link) { linkEl.href = s.link; linkEl.style.display = 'block'; }
+  else { linkEl.style.display = 'none'; }
   document.getElementById('st-modal').classList.add('show');
 }
 function closeModal(e) {
