@@ -9,7 +9,12 @@
 <link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-.container{max-width:1280px;margin:0 auto}
+.container{max-width:1720px;margin:0 auto}
+.name-cell .n-zh{font-weight:600}
+.name-cell .n-en{font-size:11.5px;color:var(--gray-400);margin-top:1px}
+#result-table{table-layout:fixed}
+#result-table td,#result-table th{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#result-table td.name-cell{white-space:normal}
 .search-bar{background:white;border-radius:var(--radius);padding:16px 18px;margin-bottom:18px;box-shadow:0 1px 3px rgba(0,0,0,.08);display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 .search-bar input[type=text]{flex:1;min-width:220px}
 .status-chip{padding:5px 12px;border-radius:20px;border:1px solid var(--gray-300);background:white;font-size:12.5px;cursor:pointer;user-select:none;color:var(--gray-700)}
@@ -56,20 +61,16 @@
     <div class="brand">飛比特 Feebit</div>
     <div class="sub">營運工具箱</div>
   </div>
-
   <div class="sidebar-section">
     <div class="sidebar-label">總覽</div>
     <a class="nav-item" href="index.html"><span class="icon">🏠</span> 首頁</a>
-    <a class="nav-item" href="skill-tree.html"><span class="icon">🌳</span> 技能樹</a>
   </div>
-
   <div class="sidebar-section">
     <div class="sidebar-label">營運</div>
     <a class="nav-item" href="finance-dashboard.html"><span class="icon">📊</span> 帳務分析</a>
     <a class="nav-item" href="brand-trend.html"><span class="icon">📊</span> 品牌趨勢分析</a>
     <a class="nav-item" href="channel-revenue.html"><span class="icon">🛍️</span> 通路營收分析</a>
   </div>
-
   <div class="sidebar-section">
     <div class="sidebar-label">財務</div>
     <a class="nav-item" href="bank-converter.html"><span class="icon">🏦</span> 帳務轉換</a>
@@ -82,37 +83,31 @@
     <a class="nav-item" href="invoice-stamp.html"><span class="icon">🖋️</span> 發票蓋章工具</a>
     <a class="nav-item" href="profit-calculator.html"><span class="icon">💰</span> 毛利試算機</a>
     <a class="nav-item active" href="cost-database.html"><span class="icon">💾</span> 商品成本資料庫</a>
-    <a class="nav-item" href="brand-sales.html"><span class="icon">📈</span> 品牌銷售轉換</a>
+    <a class="nav-item" href="brand-sales.html"><span class="icon">📈</span> 品牌銷售分析</a>
   </div>
-
   <div class="sidebar-section">
     <div class="sidebar-label">市場分析</div>
     <a class="nav-item" href="market-tracker.html"><span class="icon">🔭</span> 品類競品分析</a>
   </div>
-
   <div class="sidebar-section">
     <div class="sidebar-label">行銷</div>
     <a class="nav-item" href="product-image-gen.html"><span class="icon">🎨</span> 商品圖生成</a>
     <a class="nav-item" href="meta-audience.html"><span class="icon">🎯</span> Meta顧客名單轉換</a>
     <div class="nav-item soon"><span class="icon">📢</span> 廣告文案<span class="soon-tag">即將推出</span></div>
   </div>
-
   <div class="sidebar-section">
     <div class="sidebar-label">客服</div>
     <div class="nav-item soon"><span class="icon">💬</span> 客服回覆<span class="soon-tag">即將推出</span></div>
   </div>
-
   <div class="sidebar-section">
     <div class="sidebar-label">業務</div>
     <a class="nav-item" href="purchase-order.html"><span class="icon">📄</span> 採購單轉換</a>
     <div class="nav-item soon"><span class="icon">🤝</span> 廠商談判<span class="soon-tag">即將推出</span></div>
   </div>
-
   <div class="sidebar-section">
     <div class="sidebar-label">人事</div>
     <a class="nav-item" href="attendance.html"><span class="icon">🗓️</span> 考勤查驗</a>
   </div>
-
   <div class="sidebar-section">
     <div class="sidebar-label">庫存</div>
     <a class="nav-item" href="stock-analysis.html"><span class="icon">📦</span> 庫存訂貨分析</a>
@@ -120,34 +115,27 @@
     <a class="nav-item" href="feebit-inventory-filter.html"><span class="icon">🏪</span> 商品篩選工具</a>
     <a class="nav-item" href="reorder-suggestions.html"><span class="icon">🔄</span> 庫存訂貨建議</a>
   </div>
-
   <div class="sidebar-section">
     <div class="sidebar-label">研發</div>
     <a class="nav-item" href="research-notes.html"><span class="icon">📚</span> 研發筆記</a>
   </div>
-
   <div class="sidebar-section">
     <div class="sidebar-label">法規</div>
     <a class="nav-item" href="fda-registration.html"><span class="icon">🧪</span> 化粧品登錄轉換</a>
     <a class="nav-item" href="ingredient-checker.html"><span class="icon">🧫</span> 食品成分比對</a>
-    <a class="nav-item" href="http://127.0.0.1:5050" target="_blank"><span class="icon">📋</span> PIF Builder</a>
   </div>
-
   <div class="sidebar-section">
     <div class="sidebar-label">生活</div>
     <a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span> 旅行規劃</a>
   </div>
-
   <div class="sidebar-section">
     <div class="sidebar-label">自動化</div>
     <a class="nav-item" href="schedule-notifications.html"><span class="icon">⏰</span> 自動排程通知</a>
   </div>
-
   <div class="sidebar-section">
     <div class="sidebar-label">系統</div>
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
-
   <div class="sidebar-footer">v1.0 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
@@ -187,8 +175,10 @@
         <div class="table-wrapper">
         <table id="result-table">
           <thead><tr>
-            <th>品牌</th><th>商品名稱</th><th>條碼</th><th>分類</th>
-            <th>目前成本</th><th>供應商數</th><th>狀態</th>
+            <th style="width:110px">品牌</th><th>商品名稱</th><th style="width:120px">條碼</th><th style="width:90px">分類</th>
+            <th style="width:90px">目前成本</th><th style="width:100px">建議售價<br><span style="font-weight:400;text-transform:none;font-size:10px">(30%毛利)</span></th>
+            <th style="width:90px">官網售價</th><th style="width:90px">蝦皮商城</th>
+            <th style="width:60px">供應商數</th><th style="width:80px">狀態</th>
           </tr></thead>
           <tbody id="result-tbody"></tbody>
         </table>
@@ -339,7 +329,7 @@ async function doSearch(page){
   const q = document.getElementById('search-input').value.trim();
   const statuses = [...document.querySelectorAll('.status-chip.active')].map(c=>c.dataset.status);
   const tbody = document.getElementById('result-tbody');
-  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">搜尋中…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--gray-400)">搜尋中…</td></tr>';
 
   let query = db.from('products').select('id,brand,name,barcode,category,status,needs_review,default_supplier_id', {count:'exact'})
     .range(currentPage*PAGE_SIZE, currentPage*PAGE_SIZE + PAGE_SIZE - 1);
@@ -347,18 +337,19 @@ async function doSearch(page){
   if (q) query = query.or(`name.ilike.%${q}%,brand.ilike.%${q}%,barcode.eq.${q},ragic_item_no.eq.${q}`);
 
   const { data, error, count } = await query;
-  if (error){ tbody.innerHTML = `<tr><td colspan="7" style="color:var(--danger)">搜尋失敗：${error.message}</td></tr>`; return; }
+  if (error){ tbody.innerHTML = `<tr><td colspan="10" style="color:var(--danger)">搜尋失敗：${error.message}</td></tr>`; return; }
 
   const totalPages = Math.max(1, Math.ceil(count/PAGE_SIZE));
   document.getElementById('result-count').innerHTML = `共 ${count} 筆　第 ${currentPage+1}／${totalPages} 頁
     ${currentPage>0?`<button class="btn btn-outline" style="padding:2px 10px;font-size:12px" onclick="doSearch(${currentPage-1})">‹ 上一頁</button>`:''}
     ${currentPage<totalPages-1?`<button class="btn btn-outline" style="padding:2px 10px;font-size:12px" onclick="doSearch(${currentPage+1})">下一頁 ›</button>`:''}`;
-  if (!data.length){ tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:30px">沒有符合的商品</td></tr>'; return; }
+  if (!data.length){ tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--gray-400);padding:30px">沒有符合的商品</td></tr>'; return; }
 
   const ids = data.map(p=>p.id);
-  const [{data:costs}, {data:sups}] = await Promise.all([
+  const [{data:costs}, {data:sups}, {data:prices}] = await Promise.all([
     db.from('cost_snapshots').select('product_id,cost_twd_untaxed,supplier_id,calculated_at').in('product_id', ids).order('calculated_at',{ascending:false}),
-    db.from('product_suppliers').select('product_id').in('product_id', ids)
+    db.from('product_suppliers').select('product_id').in('product_id', ids),
+    db.from('channel_prices').select('product_id,platform,campaign_period,price').in('product_id', ids).in('platform', ['官網','蝦皮商城']),
   ]);
   const costMap = {}; // product_id -> latest matching default supplier or first
   const supCount = {};
@@ -370,17 +361,30 @@ async function doSearch(page){
     const preferred = list.find(c=>c.supplier_id === p.default_supplier_id) || list[0];
     costMap[p.id] = preferred ? preferred.cost_twd_untaxed : null;
   });
+  const officialPriceMap = {}, shopeePriceMap = {};
+  (prices||[]).forEach(cp=>{
+    if (cp.platform==='官網') officialPriceMap[cp.product_id] = cp.price;
+    if (cp.platform==='蝦皮商城' && cp.campaign_period==='常態') shopeePriceMap[cp.product_id] = cp.price;
+    else if (cp.platform==='蝦皮商城' && !(cp.product_id in shopeePriceMap)) shopeePriceMap[cp.product_id] = cp.price;
+  });
 
-  tbody.innerHTML = data.map(p=>`
+  tbody.innerHTML = data.map(p=>{
+    const cost = costMap[p.id];
+    const suggested = cost!=null ? cost/(1-0.30) : null;
+    return `
     <tr class="clickable-row" onclick="openDetail('${p.id}')">
       <td>${p.brand||'—'}</td>
-      <td>${p.name}</td>
+      <td class="name-cell"><div class="n-zh">${p.name}</div>${p.name_en?`<div class="n-en">${p.name_en}</div>`:''}</td>
       <td>${p.barcode||'—'}</td>
       <td>${p.category||'—'}</td>
-      <td>${fmtMoney(costMap[p.id])}</td>
+      <td>${fmtMoney(cost)}</td>
+      <td>${fmtMoney(suggested)}</td>
+      <td>${fmtMoney(officialPriceMap[p.id])}</td>
+      <td>${fmtMoney(shopeePriceMap[p.id])}</td>
       <td>${supCount[p.id]||0}</td>
       <td><span class="status-pill st-${p.status}">${statusLabel(p.status)}</span>${p.needs_review?'<span class="review-flag">待確認</span>':''}</td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 }
 function statusLabel(s){ return {active:'上架中',discontinued:'停產',hidden:'隱藏'}[s]||s; }
 
