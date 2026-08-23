@@ -51,7 +51,7 @@
     <a class="nav-item" href="shopee-converter.html"><span class="icon">🛒</span> 蝦皮撥款轉換</a>
     <a class="nav-item" href="invoice-stamp.html"><span class="icon">🖋️</span> 發票蓋章工具</a>
     <a class="nav-item" href="profit-calculator.html"><span class="icon">💰</span> 毛利試算機</a>
-    <a class="nav-item" href="brand-sales.html"><span class="icon">📈</span> 品牌銷售轉換</a>
+    <a class="nav-item" href="brand-sales.html"><span class="icon">📈</span> 品牌銷售分析</a>
   </div><div class="sidebar-section">
     <div class="sidebar-label">市場分析</div>
     <a class="nav-item" href="market-tracker.html"><span class="icon">🔭</span> 品類競品分析</a>
@@ -102,8 +102,6 @@
   </div>
   <div class="sidebar-section">
     <div class="sidebar-label">系統</div>
-    <a class="nav-item" href="skill-tree.html"><span class="icon">🌳</span> 技能樹</a>
-
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
   <div class="sidebar-footer">v1.0 · Feebit © 2026</div>
@@ -152,6 +150,14 @@ const SCHEDULES_DATA = [
     mailbox: '—',
   },
   {
+    icon: '📋',
+    name: 'Feebit 每日待辦整理',
+    schedule: '週一至週五 08:30',
+    status: 'live',
+    desc: '整合 Asana 到期/逾期/本週任務、Gmail 未讀需回覆信件、Slack 未讀需行動訊息、Notion 工作紀錄區與知識庫待辦，產出待辦清單並建立 Gmail 草稿。Gmail 來源附信件連結可直接點開；需回覆項目附完整回覆草稿（含注意事項，涉及品牌附分析）；另列出近兩週內有標示日期的星號/重要信件。',
+    mailbox: 'esuse.adobe@gmail.com',
+  },
+  {
     icon: '🧾',
     name: 'Google發票轉Ragic請款單',
     schedule: '每日 07:00-08:00',
@@ -162,6 +168,7 @@ const SCHEDULES_DATA = [
 ];
 
 const LOG_DATA = [
+  { date: '2026-08-23', text: 'Feebit 每日待辦整理新增：Gmail 項目附信件連結、需回覆信件/訊息擴充為完整回覆草稿（含注意事項與品牌分析）、新增星號/重要信件近兩週相關日期區塊' },
   { date: '2026-07-24', text: '預購商品追蹤系統修正狀態防倒退判斷（改用關鍵字比對已出貨/已取消/已退回），避免手動修正的訂單狀態被backfill蓋回待發貨' },
   { date: '2026-07-24', text: '預購商品追蹤系統貨況顏色系統整理：新增「已有進貨單尚未到貨」藍字提示、「查無此商品」改紫字、有庫存同時有進貨單時加灰字附註' },
   { date: '2026-07-24', text: '預購商品追蹤系統通知信箱正式改為 info@lala-v.com' },
