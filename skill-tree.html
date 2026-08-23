@@ -201,17 +201,28 @@
 </head>
 <body>
 <div id="sidebar">
-  <div class="sidebar-logo"><div class="brand">飛比特 Feebit</div><div class="sub">營運工具箱</div></div>
-  <div class="sidebar-section"><div class="sidebar-label">總覽</div><a class="nav-item" href="index.html"><span class="icon">🏠</span> 首頁</a></div>
+  <div class="sidebar-logo">
+    <div class="brand">飛比特 Feebit</div>
+    <div class="sub">營運工具箱</div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">總覽</div>
+    <a class="nav-item" href="index.html"><span class="icon">🏠</span> 首頁</a>
+    <a class="nav-item active" href="skill-tree.html"><span class="icon">🌳</span> 技能樹</a>
+  </div>
+
   <div class="sidebar-section">
     <div class="sidebar-label">營運</div>
     <a class="nav-item" href="finance-dashboard.html"><span class="icon">📊</span> 帳務分析</a>
+    <a class="nav-item" href="brand-trend.html"><span class="icon">📊</span> 品牌趨勢分析</a>
     <a class="nav-item" href="channel-revenue.html"><span class="icon">🛍️</span> 通路營收分析</a>
   </div>
 
   <div class="sidebar-section">
     <div class="sidebar-label">財務</div>
     <a class="nav-item" href="bank-converter.html"><span class="icon">🏦</span> 帳務轉換</a>
+    <a class="nav-item" href="journal-voucher.html"><span class="icon">📗</span> 分錄帳轉換</a>
     <a class="nav-item" href="accounting-ops.html"><span class="icon">📅</span> 例行帳務作業</a>
     <a class="nav-item" href="coupang-invoice.html"><span class="icon">🧾</span> 酷澎發票轉檔</a>
     <a class="nav-item" href="coupang-reconcile.html"><span class="icon">🔍</span> 酷澎商城對帳</a>
@@ -219,31 +230,73 @@
     <a class="nav-item" href="shopee-converter.html"><span class="icon">🛒</span> 蝦皮撥款轉換</a>
     <a class="nav-item" href="invoice-stamp.html"><span class="icon">🖋️</span> 發票蓋章工具</a>
     <a class="nav-item" href="profit-calculator.html"><span class="icon">💰</span> 毛利試算機</a>
-    <a class="nav-item" href="brand-sales.html"><span class="icon">📈</span> 品牌銷售分析</a>
-  </div><div class="sidebar-section"><div class="sidebar-label">市場分析</div><a class="nav-item" href="market-tracker.html"><span class="icon">🔭</span> 品類競品分析</a></div>
-  <div class="sidebar-section"><div class="sidebar-label">行銷</div><div class="nav-item soon"><span class="icon">📢</span> 廣告文案<span class="soon-tag">即將推出</span></div></div>
-  <div class="sidebar-section"><div class="sidebar-label">客服</div><div class="nav-item soon"><span class="icon">💬</span> 客服回覆<span class="soon-tag">即將推出</span></div></div>
-  <div class="sidebar-section"><div class="sidebar-label">業務</div>
+    <a class="nav-item" href="cost-database.html"><span class="icon">💾</span> 商品成本資料庫</a>
+    <a class="nav-item" href="brand-sales.html"><span class="icon">📈</span> 品牌銷售轉換</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">市場分析</div>
+    <a class="nav-item" href="market-tracker.html"><span class="icon">🔭</span> 品類競品分析</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">行銷</div>
+    <a class="nav-item" href="product-image-gen.html"><span class="icon">🎨</span> 商品圖生成</a>
+    <a class="nav-item" href="meta-audience.html"><span class="icon">🎯</span> Meta顧客名單轉換</a>
+    <div class="nav-item soon"><span class="icon">📢</span> 廣告文案<span class="soon-tag">即將推出</span></div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">客服</div>
+    <div class="nav-item soon"><span class="icon">💬</span> 客服回覆<span class="soon-tag">即將推出</span></div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">業務</div>
     <a class="nav-item" href="purchase-order.html"><span class="icon">📄</span> 採購單轉換</a>
     <div class="nav-item soon"><span class="icon">🤝</span> 廠商談判<span class="soon-tag">即將推出</span></div>
   </div>
-  <div class="sidebar-section"><div class="sidebar-label">人事</div><a class="nav-item" href="attendance.html"><span class="icon">🗓️</span> 考勤查驗</a></div>
-  <div class="sidebar-section"><div class="sidebar-label">庫存</div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">人事</div>
+    <a class="nav-item" href="attendance.html"><span class="icon">🗓️</span> 考勤查驗</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">庫存</div>
     <a class="nav-item" href="stock-analysis.html"><span class="icon">📦</span> 庫存訂貨分析</a>
     <a class="nav-item" href="slow-mover-alert.html"><span class="icon">🔴</span> 滯銷品警示</a>
     <a class="nav-item" href="feebit-inventory-filter.html"><span class="icon">🏪</span> 商品篩選工具</a>
     <a class="nav-item" href="reorder-suggestions.html"><span class="icon">🔄</span> 庫存訂貨建議</a>
   </div>
-  <div class="sidebar-section"><div class="sidebar-label">研發</div><a class="nav-item" href="research-notes.html"><span class="icon">📚</span> 研發筆記</a></div>
-  <div class="sidebar-section"><div class="sidebar-label">法規</div>
-    <a class="nav-item" href="fda-registration.html"><span class="icon">🧪</span> 化粧品登錄</a>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">研發</div>
+    <a class="nav-item" href="research-notes.html"><span class="icon">📚</span> 研發筆記</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">法規</div>
+    <a class="nav-item" href="fda-registration.html"><span class="icon">🧪</span> 化粧品登錄轉換</a>
+    <a class="nav-item" href="ingredient-checker.html"><span class="icon">🧫</span> 食品成分比對</a>
     <a class="nav-item" href="http://127.0.0.1:5050" target="_blank"><span class="icon">📋</span> PIF Builder</a>
   </div>
-  <div class="sidebar-section"><div class="sidebar-label">生活</div><a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span> 旅行規劃</a></div>
-  <div class="sidebar-section"><div class="sidebar-label">系統</div>
-    <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
-    <a class="nav-item active" href="skill-tree.html"><span class="icon">🌳</span> 技能樹</a>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">生活</div>
+    <a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span> 旅行規劃</a>
   </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">自動化</div>
+    <a class="nav-item" href="schedule-notifications.html"><span class="icon">⏰</span> 自動排程通知</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">系統</div>
+    <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
+  </div>
+
   <div class="sidebar-footer">v1.0 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
@@ -289,6 +342,8 @@
 <script>
 const SKILLS = [
   // ── 財務帳務 ──
+  { icon:'💾', name:'商品成本資料庫',   cat:'財務帳務', ver:'v1.0', desc:'品牌／條碼查詢成本、多供應商比價、成本歷史、匯率模擬器', url:'cost-database.html' },
+  { icon:'📗', name:'分錄帳轉換',       cat:'財務帳務', ver:'v1.0', desc:'帳務轉換產出的分類明細，依四階科目自動產生月度分錄帳', url:'journal-voucher.html' },
   { icon:'🏦', name:'帳務轉換',         cat:'財務帳務', ver:'v2.4', desc:'彰化銀行交易明細轉 Ragic 格式，支援拆帳與手動分類', url:'bank-converter.html' },
   { icon:'📅', name:'例行帳務作業',     cat:'財務帳務', ver:'v3.3', desc:'日常帳務處理流程，定期對帳與結帳作業', url:'accounting-ops.html' },
   { icon:'📊', name:'帳務分析',         cat:'財務帳務', ver:'v2.3', desc:'財務報表視覺化，月收支趨勢與年度淨利圖表', url:'finance-dashboard.html' },
