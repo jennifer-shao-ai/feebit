@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>商品成本資料庫 · 飛比特</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+.container{max-width:1280px;margin:0 auto}
+.search-bar{background:white;border-radius:var(--radius);padding:16px 18px;margin-bottom:18px;box-shadow:0 1px 3px rgba(0,0,0,.08);display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.search-bar input[type=text]{flex:1;min-width:220px}
+.status-chip{padding:5px 12px;border-radius:20px;border:1px solid var(--gray-300);background:white;font-size:12.5px;cursor:pointer;user-select:none;color:var(--gray-700)}
+.status-chip.active{background:var(--primary);color:white;border-color:var(--primary)}
+.result-count{font-size:12px;color:var(--gray-400);margin-bottom:10px}
+.status-pill{font-size:10.5px;padding:2px 8px;border-radius:10px;font-weight:600}
+.status-pill.st-active{background:#dcfce7;color:#166534}
+.status-pill.st-discontinued{background:#fef3c7;color:#92400e}
+.status-pill.st-hidden{background:var(--gray-200);color:var(--gray-600)}
+.review-flag{font-size:10.5px;padding:2px 8px;border-radius:10px;background:#fee2e2;color:#991b1b;margin-left:6px}
+.clickable-row{cursor:pointer}
+.detail-section{margin-bottom:20px}
+.detail-section h4{font-size:13px;font-weight:700;color:var(--gray-600);margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em}
+.supplier-row.is-default{background:#eff6ff}
+.supplier-row.is-default td:first-child::before{content:"★ ";color:var(--primary)}
+.cost-timeline{list-style:none;padding:0}
+.cost-timeline li{padding:8px 0;border-bottom:1px solid var(--gray-50);font-size:13px;display:flex;justify-content:space-between}
+.cost-timeline .ct-cost{font-weight:700}
+.cost-timeline .ct-date{color:var(--gray-400);font-size:12px}
+.big-modal{width:760px}
+.kv-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+.kv-card{background:var(--gray-50);border-radius:8px;padding:12px 14px}
+.kv-card .kv-label{font-size:11px;color:var(--gray-500)}
+.kv-card .kv-value{font-size:18px;font-weight:800;margin-top:2px}
+.similar-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.similar-item{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--gray-50);border-radius:8px;font-size:13px}
+.similar-item .si-name{font-weight:600}
+.similar-item .si-meta{color:var(--gray-500);font-size:12px}
+.similar-item .si-prices{text-align:right;font-size:12px;color:var(--gray-600)}
+.admin-gate{background:white;border-radius:var(--radius);padding:40px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.admin-gate input{max-width:280px;margin:6px auto;display:block}
+.param-table td:last-child{text-align:right}
+.badge-live{background:#dcfce7;color:#166534;font-size:10px;padding:1px 6px;border-radius:4px;margin-left:6px}
+.sim-result{background:#eff6ff;border-radius:8px;padding:14px 16px;margin-top:14px;font-size:13px}
+.sim-movers{margin-top:10px;max-height:260px;overflow-y:auto}
+.close-x{position:absolute;top:16px;right:18px;cursor:pointer;font-size:18px;color:var(--gray-400);background:none;border:none}
+.modal{position:relative}
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <div class="sidebar-logo">
+    <div class="brand">飛比特 Feebit</div>
+    <div class="sub">營運工具箱</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">總覽</div>
+    <a class="nav-item" href="index.html"><span class="icon">🏠</span> 首頁</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">營運</div>
+    <a class="nav-item" href="finance-dashboard.html"><span class="icon">📊</span> 帳務分析</a>
+    <a class="nav-item" href="brand-trend.html"><span class="icon">📊</span> 品牌趨勢分析</a>
+    <a class="nav-item" href="channel-revenue.html"><span class="icon">🛍️</span> 通路營收分析</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">財務</div>
+    <a class="nav-item" href="bank-converter.html"><span class="icon">🏦</span> 帳務轉換</a>
+    <a class="nav-item" href="journal-voucher.html"><span class="icon">📗</span> 分錄帳轉換</a>
+    <a class="nav-item" href="accounting-ops.html"><span class="icon">📅</span> 例行帳務作業</a>
+    <a class="nav-item" href="coupang-invoice.html"><span class="icon">🧾</span> 酷澎發票轉檔</a>
+    <a class="nav-item" href="coupang-reconcile.html"><span class="icon">🔍</span> 酷澎商城對帳</a>
+    <a class="nav-item" href="shopee-subsidy.html"><span class="icon">🚚</span> 蝦皮運費補助申請</a>
+    <a class="nav-item" href="shopee-converter.html"><span class="icon">🛒</span> 蝦皮撥款轉換</a>
+    <a class="nav-item" href="invoice-stamp.html"><span class="icon">🖋️</span> 發票蓋章工具</a>
+    <a class="nav-item" href="profit-calculator.html"><span class="icon">💰</span> 毛利試算機</a>
+    <a class="nav-item active" href="cost-database.html"><span class="icon">💾</span> 商品成本資料庫</a>
+    <a class="nav-item" href="brand-sales.html"><span class="icon">📈</span> 品牌銷售分析</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">市場分析</div>
+    <a class="nav-item" href="market-tracker.html"><span class="icon">🔭</span> 品類競品分析</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">行銷</div>
+    <a class="nav-item" href="product-image-gen.html"><span class="icon">🎨</span> 商品圖生成</a>
+    <a class="nav-item" href="meta-audience.html"><span class="icon">🎯</span> Meta顧客名單轉換</a>
+    <div class="nav-item soon"><span class="icon">📢</span> 廣告文案<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">客服</div>
+    <div class="nav-item soon"><span class="icon">💬</span> 客服回覆<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">業務</div>
+    <a class="nav-item" href="purchase-order.html"><span class="icon">📄</span> 採購單轉換</a>
+    <div class="nav-item soon"><span class="icon">🤝</span> 廠商談判<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">人事</div>
+    <a class="nav-item" href="attendance.html"><span class="icon">🗓️</span> 考勤查驗</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">庫存</div>
+    <a class="nav-item" href="stock-analysis.html"><span class="icon">📦</span> 庫存訂貨分析</a>
+    <a class="nav-item" href="slow-mover-alert.html"><span class="icon">🔴</span> 滯銷品警示</a>
+    <a class="nav-item" href="feebit-inventory-filter.html"><span class="icon">🏪</span> 商品篩選工具</a>
+    <a class="nav-item" href="reorder-suggestions.html"><span class="icon">🔄</span> 庫存訂貨建議</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">研發</div>
+    <a class="nav-item" href="research-notes.html"><span class="icon">📚</span> 研發筆記</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">法規</div>
+    <a class="nav-item" href="fda-registration.html"><span class="icon">🧪</span> 化粧品登錄轉換</a>
+    <a class="nav-item" href="ingredient-checker.html"><span class="icon">🧫</span> 食品成分比對</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">生活</div>
+    <a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span> 旅行規劃</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">自動化</div>
+    <a class="nav-item" href="schedule-notifications.html"><span class="icon">⏰</span> 自動排程通知</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">系統</div>
+    <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
+  </div>
+  <div class="sidebar-footer">v1.0 · Feebit © 2026</div>
+</div>
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<div id="main">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="btn-hamburger" onclick="toggleSidebar()">☰</button>
+      <span class="topbar-title">💾 商品成本資料庫</span>
+      <span style="font-size:11px;color:#aaa;font-weight:400;">v1.0</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span id="admin-status" style="font-size:11px;color:var(--gray-400)"></span>
+    </div>
+  </div>
+  <div class="page">
+  <div class="container">
+
+    <div class="tabs">
+      <div class="tab active" data-tab="search-tab" onclick="switchTab(this)">商品查詢</div>
+      <div class="tab" data-tab="new-tab" onclick="switchTab(this)">＋ 新增商品</div>
+      <div class="tab" data-tab="sim-tab" onclick="switchTab(this)">💱 匯率模擬器</div>
+      <div class="tab" data-tab="admin-tab" onclick="switchTab(this)">⚙️ 系統設定</div>
+    </div>
+
+    <!-- TAB: 商品查詢 -->
+    <div id="search-tab" class="tab-content active">
+      <div class="search-bar">
+        <input type="text" id="search-input" placeholder="搜尋品牌／商品名稱／條碼／貨號…">
+        <span class="status-chip active" data-status="active" onclick="toggleStatusChip(this)">上架中</span>
+        <span class="status-chip" data-status="discontinued" onclick="toggleStatusChip(this)">停產</span>
+        <span class="status-chip" data-status="hidden" onclick="toggleStatusChip(this)">隱藏</span>
+        <button class="btn btn-primary" onclick="doSearch()">搜尋</button>
+      </div>
+      <div class="result-count" id="result-count"></div>
+      <div class="card" style="padding:0">
+        <div class="table-wrapper">
+        <table id="result-table">
+          <thead><tr>
+            <th>品牌</th><th>商品名稱</th><th>條碼</th><th>分類</th>
+            <th>目前成本</th><th>供應商數</th><th>狀態</th>
+          </tr></thead>
+          <tbody id="result-tbody"></tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: 新增商品 -->
+    <div id="new-tab" class="tab-content">
+      <div class="card" style="max-width:620px">
+        <h2 style="margin-bottom:16px">新增商品</h2>
+        <div class="form-group"><label>品牌</label><input type="text" id="np-brand"></div>
+        <div class="form-group"><label>分類</label><input type="text" id="np-category"></div>
+        <div class="form-group"><label>商品名稱</label><input type="text" id="np-name"></div>
+        <div class="form-group"><label>國際條碼</label><input type="text" id="np-barcode"></div>
+        <div class="form-group"><label>貨號</label><input type="text" id="np-ragic"></div>
+        <div class="form-group"><label>供應商</label><input type="text" id="np-supplier" placeholder="選填"></div>
+        <div style="display:flex;gap:10px">
+          <div class="form-group" style="flex:1"><label>進貨價</label><input type="text" id="np-price" inputmode="decimal" oninput="onCostInput()"></div>
+          <div class="form-group" style="flex:1"><label>幣別</label>
+            <select id="np-currency" onchange="onCostInput()">
+              <option value="TWD">TWD</option><option value="USD">USD</option>
+              <option value="JPY">JPY</option><option value="CNY">CNY</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group"><label>成本（未稅台幣，可手動覆蓋自動試算值）</label><input type="text" id="np-cost" inputmode="decimal" oninput="onCostInput()"></div>
+        <button class="btn btn-primary" onclick="submitNewProduct()">建立商品</button>
+        <span id="new-product-msg" style="margin-left:10px;font-size:13px"></span>
+      </div>
+      <div class="card" id="similar-card" style="max-width:620px;display:none;margin-top:16px">
+        <h2 style="margin-bottom:6px">相似金額商品</h2>
+        <div style="font-size:12px;color:var(--gray-500)">同品牌／分類，成本落在 ±15% 範圍內</div>
+        <div class="similar-list" id="similar-list"></div>
+      </div>
+    </div>
+
+    <!-- TAB: 匯率模擬器 -->
+    <div id="sim-tab" class="tab-content">
+      <div class="card" style="max-width:520px">
+        <h2 style="margin-bottom:16px">假設匯率／關稅係數</h2>
+        <div class="form-group"><label>美金匯率（韓國商品用）</label><input type="text" id="sim-usd"></div>
+        <div class="form-group"><label>日圓匯率</label><input type="text" id="sim-jpy"></div>
+        <div class="form-group"><label>人民幣匯率</label><input type="text" id="sim-cny"></div>
+        <div class="form-group"><label>運＋關稅係數</label><input type="text" id="sim-tariff"></div>
+        <button class="btn btn-outline" onclick="loadCurrentParams()">載入目前參數</button>
+        <button class="btn btn-primary" onclick="runSimulation()">預覽影響</button>
+      </div>
+      <div id="sim-result-wrap"></div>
+    </div>
+
+    <!-- TAB: 系統設定 -->
+    <div id="admin-tab" class="tab-content">
+      <div id="admin-gate" class="admin-gate">
+        <p style="margin-bottom:14px;color:var(--gray-600)">這裡管理匯率／關稅／毛利階梯／平台抽成方案，牽動全部商品成本，需要管理員登入</p>
+        <input type="email" id="admin-email" placeholder="管理員 email" value="esuse.adobe@gmail.com">
+        <input type="password" id="admin-password" placeholder="密碼">
+        <button class="btn btn-primary" onclick="adminLogin()" style="margin-top:10px">登入</button>
+        <div id="admin-login-err" style="color:var(--danger);font-size:12px;margin-top:8px"></div>
+      </div>
+      <div id="admin-panel" style="display:none">
+        <div class="card">
+          <h2 style="margin-bottom:12px">全域參數</h2>
+          <table class="param-table"><thead><tr><th>參數</th><th>目前值</th></tr></thead>
+            <tbody id="param-tbody"></tbody>
+          </table>
+          <div style="display:flex;gap:8px;margin-top:14px;align-items:flex-end">
+            <div class="form-group" style="margin-bottom:0"><label>參數</label>
+              <select id="param-key">
+                <option value="exchange_rate_USD">美金匯率（韓國商品用）</option>
+                <option value="exchange_rate_JPY">日圓匯率</option>
+                <option value="exchange_rate_CNY">人民幣匯率</option>
+                <option value="tariff_coefficient">運＋關稅係數</option>
+                <option value="tax_rate">稅金</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0"><label>新值</label><input type="text" id="param-value"></div>
+            <button class="btn btn-primary" onclick="addParam()">更新</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2 style="margin-bottom:12px">毛利率階梯</h2>
+          <table class="param-table"><thead><tr><th>標籤</th><th>毛利率</th></tr></thead>
+            <tbody id="margin-tbody"></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h2 style="margin-bottom:12px">平台抽成方案</h2>
+          <table><thead><tr><th>平台</th><th>檔期</th><th>生效日</th><th>總抽成%</th></tr></thead>
+            <tbody id="commission-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  </div>
+</div>
+
+<!-- 商品詳情 Modal -->
+<div class="modal-backdrop" id="detail-modal" style="display:none">
+  <div class="modal big-modal">
+    <button class="close-x" onclick="closeDetail()">✕</button>
+    <div id="detail-body">載入中…</div>
+  </div>
+</div>
+
+<script>
+const SB_URL = 'https://eavrayumrtkbfolimjiq.supabase.co';
+const SB_ANON_KEY = 'sb_publishable_zpZ39RlF8eRDZHYPuosXdg_mQWXl52x';
+const db = window.supabase.createClient(SB_URL, SB_ANON_KEY);
+
+let adminClient = null; // 另一組登入態，只在管理員成功登入後才有值
+
+function switchTab(el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById(el.dataset.tab).classList.add('active');
+}
+
+function toggleStatusChip(el){
+  el.classList.toggle('active');
+}
+
+function fmtMoney(v){
+  if (v===null||v===undefined||v==='') return '—';
+  return Number(v).toLocaleString('zh-TW',{maximumFractionDigits:1});
+}
+function fmtDate(v){
+  if(!v) return '—';
+  return String(v).slice(0,10);
+}
+
+// ── 商品查詢 ──
+async function doSearch(){
+  const q = document.getElementById('search-input').value.trim();
+  const statuses = [...document.querySelectorAll('.status-chip.active')].map(c=>c.dataset.status);
+  const tbody = document.getElementById('result-tbody');
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">搜尋中…</td></tr>';
+
+  let query = db.from('products').select('id,brand,name,barcode,category,status,needs_review,default_supplier_id').limit(200);
+  if (statuses.length) query = query.in('status', statuses);
+  if (q) query = query.or(`name.ilike.%${q}%,brand.ilike.%${q}%,barcode.eq.${q},ragic_item_no.eq.${q}`);
+
+  const { data, error } = await query;
+  if (error){ tbody.innerHTML = `<tr><td colspan="7" style="color:var(--danger)">搜尋失敗：${error.message}</td></tr>`; return; }
+
+  document.getElementById('result-count').textContent = `共 ${data.length} 筆`;
+  if (!data.length){ tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:30px">沒有符合的商品</td></tr>'; return; }
+
+  const ids = data.map(p=>p.id);
+  const [{data:costs}, {data:sups}] = await Promise.all([
+    db.from('cost_snapshots').select('product_id,cost_twd_untaxed,supplier_id,calculated_at').in('product_id', ids).order('calculated_at',{ascending:false}),
+    db.from('product_suppliers').select('product_id').in('product_id', ids)
+  ]);
+  const costMap = {}; // product_id -> latest matching default supplier or first
+  const supCount = {};
+  (sups||[]).forEach(s=> supCount[s.product_id] = (supCount[s.product_id]||0)+1 );
+  const byProduct = {};
+  (costs||[]).forEach(c=>{ (byProduct[c.product_id] = byProduct[c.product_id]||[]).push(c); });
+  data.forEach(p=>{
+    const list = byProduct[p.id] || [];
+    const preferred = list.find(c=>c.supplier_id === p.default_supplier_id) || list[0];
+    costMap[p.id] = preferred ? preferred.cost_twd_untaxed : null;
+  });
+
+  tbody.innerHTML = data.map(p=>`
+    <tr class="clickable-row" onclick="openDetail('${p.id}')">
+      <td>${p.brand||'—'}</td>
+      <td>${p.name}</td>
+      <td>${p.barcode||'—'}</td>
+      <td>${p.category||'—'}</td>
+      <td>${fmtMoney(costMap[p.id])}</td>
+      <td>${supCount[p.id]||0}</td>
+      <td><span class="status-pill st-${p.status}">${statusLabel(p.status)}</span>${p.needs_review?'<span class="review-flag">待確認</span>':''}</td>
+    </tr>`).join('');
+}
+function statusLabel(s){ return {active:'上架中',discontinued:'停產',hidden:'隱藏'}[s]||s; }
+
+document.getElementById('search-input').addEventListener('keydown', e=>{ if(e.key==='Enter') doSearch(); });
+
+// ── 商品詳情 ──
+async function openDetail(id){
+  document.getElementById('detail-modal').style.display='flex';
+  const body = document.getElementById('detail-body');
+  body.innerHTML = '載入中…';
+
+  const [{data:p}, {data:sups}, {data:costs}, {data:pos}, {data:prices}] = await Promise.all([
+    db.from('products').select('*').eq('id', id).single(),
+    db.from('product_suppliers').select('*, suppliers(name)').eq('product_id', id),
+    db.from('cost_snapshots').select('*, suppliers(name)').eq('product_id', id).order('calculated_at',{ascending:false}),
+    db.from('purchase_order_history').select('*, suppliers(name)').eq('product_id', id).order('order_date',{ascending:false}),
+    db.from('channel_prices').select('*').eq('product_id', id),
+  ]);
+
+  const currentCost = costs.find(c=>c.supplier_id===p.default_supplier_id) || costs[0];
+  const lastOrder = pos[0];
+
+  body.innerHTML = `
+    <h2 style="margin-bottom:4px">${p.name}</h2>
+    <div style="color:var(--gray-500);font-size:13px;margin-bottom:16px">${p.brand||''} ${p.category?('· '+p.category):''} · 條碼 ${p.barcode||'—'} · 貨號 ${p.ragic_item_no||'—'}</div>
+
+    <div class="kv-cards">
+      <div class="kv-card"><div class="kv-label">目前成本（未稅）</div><div class="kv-value">${fmtMoney(currentCost&&currentCost.cost_twd_untaxed)}</div></div>
+      <div class="kv-card"><div class="kv-label">供應商數</div><div class="kv-value">${sups.length}</div></div>
+      <div class="kv-card"><div class="kv-label">上次訂購</div><div class="kv-value" style="font-size:14px">${lastOrder?fmtDate(lastOrder.order_date):'無紀錄'}</div></div>
+    </div>
+
+    <div class="detail-section">
+      <h4>狀態</h4>
+      <select id="detail-status" onchange="updateStatus('${p.id}', this.value)">
+        <option value="active" ${p.status==='active'?'selected':''}>上架中</option>
+        <option value="discontinued" ${p.status==='discontinued'?'selected':''}>停產</option>
+        <option value="hidden" ${p.status==='hidden'?'selected':''}>隱藏</option>
+      </select>
+      <span id="status-msg" style="font-size:12px;color:var(--success);margin-left:8px"></span>
+    </div>
+
+    <div class="detail-section">
+      <h4>供應商比較</h4>
+      ${sups.length ? `<table><thead><tr><th>供應商</th><th>單價</th><th>幣別</th><th>生效日</th></tr></thead><tbody>
+        ${sups.map(s=>`<tr class="supplier-row ${s.supplier_id===p.default_supplier_id?'is-default':''}">
+          <td>${s.suppliers?.name||'—'}</td><td>${fmtMoney(s.unit_price)}</td><td>${s.currency||'—'}</td><td>${fmtDate(s.effective_from)}</td>
+        </tr>`).join('')}
+      </tbody></table>` : '<div style="color:var(--gray-400);font-size:13px">尚無供應商資料</div>'}
+    </div>
+
+    <div class="detail-section">
+      <h4>成本歷史</h4>
+      ${costs.length ? `<ul class="cost-timeline">
+        ${costs.map(c=>`<li><span>${c.suppliers?.name||'（未指定供應商）'}</span><span class="ct-cost">${fmtMoney(c.cost_twd_untaxed)} <span class="ct-date">${fmtDate(c.calculated_at)}</span></span></li>`).join('')}
+      </ul>` : '<div style="color:var(--gray-400);font-size:13px">尚無成本紀錄</div>'}
+    </div>
+
+    <div class="detail-section">
+      <h4>採購紀錄（同步自 Ragic）</h4>
+      ${pos.length ? `<table><thead><tr><th>日期</th><th>供應商</th><th>數量</th><th>狀態</th></tr></thead><tbody>
+        ${pos.slice(0,10).map(o=>`<tr><td>${fmtDate(o.order_date)}</td><td>${o.suppliers?.name||'—'}</td><td>${fmtMoney(o.quantity)}</td><td>${o.status||'—'}</td></tr>`).join('')}
+      </tbody></table>` : '<div style="color:var(--gray-400);font-size:13px">尚無採購紀錄（Ragic 未比對到或尚未同步）</div>'}
+    </div>
+
+    <div class="detail-section">
+      <h4>通路售價</h4>
+      ${prices.length ? `<table><thead><tr><th>通路</th><th>檔期</th><th>價格</th></tr></thead><tbody>
+        ${prices.map(cp=>`<tr><td>${cp.platform}</td><td>${cp.campaign_period||'—'}</td><td>${fmtMoney(cp.price)}</td></tr>`).join('')}
+      </tbody></table>` : '<div style="color:var(--gray-400);font-size:13px">尚無通路售價資料</div>'}
+    </div>
+  `;
+}
+function closeDetail(){ document.getElementById('detail-modal').style.display='none'; }
+
+async function updateStatus(id, status){
+  const { error } = await db.from('products').update({status}).eq('id', id);
+  const msg = document.getElementById('status-msg');
+  msg.textContent = error ? '更新失敗' : '已更新';
+  if (!error) doSearch();
+}
+
+// ── 新增商品 ──
+let costInputTimer = null;
+function onCostInput(){
+  clearTimeout(costInputTimer);
+  costInputTimer = setTimeout(computeAndSuggest, 350);
+}
+async function computeAndSuggest(){
+  const price = parseFloat(document.getElementById('np-price').value);
+  const currency = document.getElementById('np-currency').value;
+  let cost = parseFloat(document.getElementById('np-cost').value);
+
+  if (!cost && price){
+    const rates = await getCurrentRates();
+    let rate = 1;
+    if (currency==='USD') rate = rates.exchange_rate_USD || 32;
+    else if (currency==='JPY') rate = rates.exchange_rate_JPY || 0.2185;
+    else if (currency==='CNY') rate = rates.exchange_rate_CNY || 4.7;
+    else rate = 1;
+    cost = price * rate * (rates.tariff_coefficient || 1.16);
+    document.getElementById('np-cost').value = cost.toFixed(1);
+  }
+  if (!cost) { document.getElementById('similar-card').style.display='none'; return; }
+
+  const brand = document.getElementById('np-brand').value.trim();
+  const category = document.getElementById('np-category').value.trim();
+  if (!brand && !category) { document.getElementById('similar-card').style.display='none'; return; }
+
+  const low = cost*0.85, high = cost*1.15;
+  let q = db.from('products').select('id,name,brand,category').limit(20);
+  if (brand) q = q.eq('brand', brand); else q = q.eq('category', category);
+  const { data: candidates } = await q;
+  if (!candidates || !candidates.length){ document.getElementById('similar-card').style.display='none'; return; }
+
+  const ids = candidates.map(c=>c.id);
+  const { data: costs } = await db.from('cost_snapshots').select('product_id,cost_twd_untaxed').in('product_id', ids);
+  const latestCost = {};
+  (costs||[]).forEach(c=>{ latestCost[c.product_id] = c.cost_twd_untaxed; });
+  const matched = candidates.filter(c => latestCost[c.id] >= low && latestCost[c.id] <= high);
+
+  if (!matched.length){ document.getElementById('similar-card').style.display='none'; return; }
+
+  const { data: prices } = await db.from('channel_prices').select('*').in('product_id', matched.map(m=>m.id));
+  const priceByProduct = {};
+  (prices||[]).forEach(p=>{ (priceByProduct[p.product_id]=priceByProduct[p.product_id]||[]).push(p); });
+
+  document.getElementById('similar-card').style.display='block';
+  document.getElementById('similar-list').innerHTML = matched.map(m=>{
+    const pl = priceByProduct[m.id]||[];
+    const reg = pl.find(p=>p.platform==='官網');
+    const sale = pl.find(p=>p.platform==='蝦皮商城');
+    return `<div class="similar-item">
+      <div><div class="si-name">${m.name}</div><div class="si-meta">成本 ${fmtMoney(latestCost[m.id])}</div></div>
+      <div class="si-prices">原價 ${reg?fmtMoney(reg.price):'—'}<br>特價 ${sale?fmtMoney(sale.price):'—'}</div>
+    </div>`;
+  }).join('');
+}
+
+async function getCurrentRates(){
+  const { data } = await db.from('global_parameters').select('param_key,param_value')
+    .lte('effective_from', new Date().toISOString().slice(0,10))
+    .order('effective_from',{ascending:false});
+  const out = {};
+  (data||[]).forEach(r=>{ if(!(r.param_key in out)) out[r.param_key]=r.param_value; });
+  return {
+    exchange_rate_USD: out.exchange_rate_USD, // 目前參數表沒有USD單獨欄位時 fallback
+    exchange_rate_JPY: out.exchange_rate_JPY,
+    exchange_rate_CNY: out.exchange_rate_CNY,
+    tariff_coefficient: out.tariff_coefficient,
+  };
+}
+
+async function submitNewProduct(){
+  const brand = document.getElementById('np-brand').value.trim() || null;
+  const category = document.getElementById('np-category').value.trim() || null;
+  const name = document.getElementById('np-name').value.trim();
+  const barcode = document.getElementById('np-barcode').value.trim() || null;
+  const ragic = document.getElementById('np-ragic').value.trim() || null;
+  const supplierName = document.getElementById('np-supplier').value.trim();
+  const price = parseFloat(document.getElementById('np-price').value) || null;
+  const currency = document.getElementById('np-currency').value;
+  const cost = parseFloat(document.getElementById('np-cost').value) || null;
+  const msg = document.getElementById('new-product-msg');
+
+  if (!name){ msg.textContent = '請輸入商品名稱'; msg.style.color='var(--danger)'; return; }
+
+  const { data: prod, error: perr } = await db.from('products').insert({
+    brand, category, name, barcode, ragic_item_no: ragic, status: 'active',
+    needs_review: !barcode || !ragic,
+  }).select().single();
+  if (perr){ msg.textContent = '建立失敗：'+perr.message; msg.style.color='var(--danger)'; return; }
+
+  let supplierId = null;
+  if (supplierName){
+    const { data: existing } = await db.from('suppliers').select('id').eq('name', supplierName).maybeSingle();
+    if (existing) supplierId = existing.id;
+    else {
+      const { data: newSup } = await db.from('suppliers').insert({name: supplierName}).select().single();
+      supplierId = newSup?.id;
+    }
+    if (supplierId && price){
+      await db.from('product_suppliers').insert({
+        product_id: prod.id, supplier_id: supplierId, unit_price: price, currency,
+        effective_from: new Date().toISOString().slice(0,10),
+      });
+      await db.from('products').update({default_supplier_id: supplierId}).eq('id', prod.id);
+    }
+  }
+
+  if (cost){
+    const rates = await getCurrentRates();
+    let rate = 1;
+    if (currency==='USD') rate = rates.exchange_rate_USD || 32;
+    else if (currency==='JPY') rate = rates.exchange_rate_JPY || 0.2185;
+    else if (currency==='CNY') rate = rates.exchange_rate_CNY || 4.7;
+    await db.from('cost_snapshots').insert({
+      product_id: prod.id, supplier_id: supplierId, purchase_price: price, currency,
+      exchange_rate_used: rate, tariff_coefficient_used: rates.tariff_coefficient || 1.16,
+      cost_twd_untaxed: cost, source: 'manual',
+    });
+  }
+
+  msg.textContent = '建立成功';
+  msg.style.color = 'var(--success)';
+  ['np-brand','np-category','np-name','np-barcode','np-ragic','np-supplier','np-price','np-cost'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('similar-card').style.display='none';
+}
+
+// ── 匯率模擬器 ──
+async function loadCurrentParams(){
+  const rates = await getCurrentRates();
+  document.getElementById('sim-usd').value = rates.exchange_rate_USD || '';
+  document.getElementById('sim-jpy').value = rates.exchange_rate_JPY || '';
+  document.getElementById('sim-cny').value = rates.exchange_rate_CNY || '';
+  document.getElementById('sim-tariff').value = rates.tariff_coefficient || '';
+}
+
+async function runSimulation(){
+  const newUsd = parseFloat(document.getElementById('sim-usd').value);
+  const newJpy = parseFloat(document.getElementById('sim-jpy').value);
+  const newCny = parseFloat(document.getElementById('sim-cny').value);
+  const newTariff = parseFloat(document.getElementById('sim-tariff').value);
+  const wrap = document.getElementById('sim-result-wrap');
+  wrap.innerHTML = '<div class="sim-result">計算中…</div>';
+
+  const { data: costs } = await db.from('cost_snapshots').select('product_id,currency,purchase_price,cost_twd_untaxed,exchange_rate_used,products(name)').order('calculated_at',{ascending:false}).limit(5000);
+  const latestByProduct = {};
+  (costs||[]).forEach(c=>{ if(!(c.product_id in latestByProduct)) latestByProduct[c.product_id]=c; });
+
+  let affected = 0, totalOld=0, totalNew=0;
+  const movers = [];
+  Object.values(latestByProduct).forEach(c=>{
+    if (!c.purchase_price || !c.currency) return;
+    let rate = c.exchange_rate_used;
+    if (c.currency==='USD' && newUsd) rate = newUsd;
+    else if (c.currency==='JPY' && newJpy) rate = newJpy;
+    else if (c.currency==='CNY' && newCny) rate = newCny;
+    else return; // 只模擬有指定新匯率的幣別
+    const tariff = newTariff || c.tariff_coefficient_used || 1.16;
+    const newCost = c.purchase_price * rate * tariff;
+    const diff = newCost - c.cost_twd_untaxed;
+    if (Math.abs(diff) < 0.01) return;
+    affected++; totalOld += c.cost_twd_untaxed; totalNew += newCost;
+    movers.push({name: c.products?.name||'—', old: c.cost_twd_untaxed, new: newCost, diff});
+  });
+  movers.sort((a,b)=>Math.abs(b.diff)-Math.abs(a.diff));
+
+  const pctChange = totalOld ? ((totalNew-totalOld)/totalOld*100).toFixed(1) : 0;
+  wrap.innerHTML = `
+    <div class="sim-result">
+      <strong>${affected}</strong> 個商品受影響，總成本變化 <strong>${pctChange}%</strong>（僅預覽，未寫入資料庫）
+      <div class="sim-movers"><table><thead><tr><th>商品</th><th>原成本</th><th>新成本</th><th>差異</th></tr></thead><tbody>
+        ${movers.slice(0,30).map(m=>`<tr><td>${m.name}</td><td>${fmtMoney(m.old)}</td><td>${fmtMoney(m.new)}</td><td style="color:${m.diff>0?'var(--danger)':'var(--success)'}">${m.diff>0?'+':''}${fmtMoney(m.diff)}</td></tr>`).join('')}
+      </tbody></table></div>
+      <button class="btn btn-primary" style="margin-top:12px" onclick="applySimulation(${newUsd||'null'}, ${newJpy||'null'}, ${newCny||'null'}, ${newTariff||'null'})">套用（需要管理員登入）</button>
+    </div>`;
+}
+
+async function applySimulation(newUsd, newJpy, newCny, newTariff){
+  if (!adminClient){ alert('請先到「系統設定」分頁用管理員帳號登入，才能套用新匯率'); return; }
+  const today = new Date().toISOString().slice(0,10);
+  const updates = [];
+  if (newUsd) updates.push({param_key:'exchange_rate_USD', param_label:'美金匯率(韓國商品用)', param_value:newUsd, effective_from: today});
+  if (newJpy) updates.push({param_key:'exchange_rate_JPY', param_label:'日圓匯率', param_value:newJpy, effective_from: today});
+  if (newCny) updates.push({param_key:'exchange_rate_CNY', param_label:'人民幣匯率', param_value:newCny, effective_from: today});
+  if (newTariff) updates.push({param_key:'tariff_coefficient', param_label:'運＋關稅係數', param_value:newTariff, effective_from: today});
+  if (!updates.length){ alert('沒有可套用的變動'); return; }
+  const { error } = await adminClient.from('global_parameters').insert(updates);
+  if (error){ alert('套用失敗：'+error.message); return; }
+  alert('已套用新參數，之後新增的成本快照會使用新匯率計算');
+}
+
+// ── 系統設定 / 管理員登入 ──
+async function adminLogin(){
+  const email = document.getElementById('admin-email').value.trim();
+  const password = document.getElementById('admin-password').value;
+  const errEl = document.getElementById('admin-login-err');
+  errEl.textContent = '';
+  const client = window.supabase.createClient(SB_URL, SB_ANON_KEY);
+  const { data, error } = await client.auth.signInWithPassword({email, password});
+  if (error){ errEl.textContent = '登入失敗：'+error.message; return; }
+  adminClient = client;
+  document.getElementById('admin-gate').style.display='none';
+  document.getElementById('admin-panel').style.display='block';
+  document.getElementById('admin-status').textContent = '⚙️ 管理員：'+email;
+  loadAdminPanel();
+}
+
+async function loadAdminPanel(){
+  const { data: params } = await adminClient.from('global_parameters').select('*').order('param_key').order('effective_from',{ascending:false});
+  const latest = {};
+  (params||[]).forEach(p=>{ if(!(p.param_key in latest)) latest[p.param_key]=p; });
+  document.getElementById('param-tbody').innerHTML = Object.values(latest).map(p=>
+    `<tr><td>${p.param_label||p.param_key}</td><td>${p.param_value} <span style="color:var(--gray-400);font-size:11px">(生效 ${fmtDate(p.effective_from)})</span></td></tr>`
+  ).join('');
+
+  const { data: tiers } = await adminClient.from('margin_tiers').select('*').order('sort_order');
+  document.getElementById('margin-tbody').innerHTML = (tiers||[]).map(t=>
+    `<tr><td>${t.tier_label}</td><td>${(t.margin_pct*100).toFixed(0)}%</td></tr>`
+  ).join('');
+
+  const { data: rates } = await adminClient.from('channel_commission_rates').select('*, commission_fee_items(fee_value,fee_type)').order('effective_from',{ascending:false}).limit(30);
+  document.getElementById('commission-tbody').innerHTML = (rates||[]).map(r=>{
+    const total = (r.commission_fee_items||[]).filter(f=>f.fee_type==='percentage').reduce((s,f)=>s+f.fee_value,0);
+    return `<tr><td>${r.platform}</td><td>${r.campaign_period||'—'}</td><td>${fmtDate(r.effective_from)}</td><td>${(total*100).toFixed(1)}%</td></tr>`;
+  }).join('');
+}
+
+async function addParam(){
+  if (!adminClient) return;
+  const key = document.getElementById('param-key').value;
+  const value = parseFloat(document.getElementById('param-value').value);
+  if (!value && value !== 0){ alert('請輸入數值'); return; }
+  const labels = {exchange_rate_USD:'美金匯率(韓國商品用)',exchange_rate_JPY:'日圓匯率',exchange_rate_CNY:'人民幣匯率',tariff_coefficient:'運＋關稅係數',tax_rate:'稅金'};
+  const { error } = await adminClient.from('global_parameters').insert({
+    param_key: key, param_label: labels[key], param_value: value, effective_from: new Date().toISOString().slice(0,10)
+  });
+  if (error){ alert('更新失敗：'+error.message); return; }
+  document.getElementById('param-value').value='';
+  loadAdminPanel();
+}
+
+// 初始載入
+doSearch();
+</script>
+</body>
+</html>
