@@ -99,8 +99,21 @@ td.muted { color:var(--gray-400); font-size:12px; }
 /* 可排序欄位 */
 th.sortable { cursor:pointer; user-select:none; }
 th.sortable:hover { background:var(--gray-100); }
-th.sort-asc::after  { content:' ▲'; font-size:9px; color:var(--primary); }
-th.sort-desc::after { content:' ▼'; font-size:9px; color:var(--primary); }
+th.sortable::after  { content:' ⇅'; font-size:9px; color:var(--gray-300); }
+th.sortable.sort-asc::after  { content:' ▲'; font-size:9px; color:var(--primary); }
+th.sortable.sort-desc::after { content:' ▼'; font-size:9px; color:var(--primary); }
+
+.tab-badge.gray { background:var(--gray-100); color:var(--gray-600); }
+
+/* 排除狀態商品標示 */
+.status-tag { display:inline-block; padding:1px 6px; border-radius:8px; font-size:10px; font-weight:600; margin-left:4px; white-space:nowrap; }
+.status-tag.paused  { background:#fef3c7; color:#92400e; }
+.status-tag.soldout { background:#fee2e2; color:#991b1b; }
+
+/* 排除篩選列 */
+.filter-card { background:white; border-radius:var(--radius); padding:12px 16px; margin-bottom:16px; box-shadow:0 1px 3px rgba(0,0,0,.08); font-size:12px; color:var(--gray-600); display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+.filter-card .filter-note { color:var(--gray-500); }
+.filter-card label { display:inline-flex; align-items:center; gap:5px; cursor:pointer; color:var(--gray-800); }
 </style>
 </head>
 <body>
@@ -231,6 +244,13 @@ th.sort-desc::after { content:' ▼'; font-size:9px; color:var(--primary); }
   <!-- banner -->
   <div id="status-banner" class="status-banner banner-info" style="display:none;"></div>
 
+  <!-- 排除狀態篩選 -->
+  <div class="filter-card" id="filter-card" style="display:none;">
+    <span class="filter-note">已依「販售狀態」排除已停產／套組商品，如需一併檢視以下狀態可勾選：</span>
+    <label><input type="checkbox" id="chk-show-paused" onchange="onFilterChange()"> 顯示暫停販售</label>
+    <label><input type="checkbox" id="chk-show-soldout" onchange="onFilterChange()"> 顯示售完為止</label>
+  </div>
+
   <!-- 統計 -->
   <div class="stats-row" id="stats-row" style="display:none;">
     <div class="stat-card urgent">
@@ -257,10 +277,27 @@ th.sort-desc::after { content:' ▼'; font-size:9px; color:var(--primary); }
 
   <!-- Tabs -->
   <div class="tabs" id="main-tabs" style="display:none;">
+    <button class="tab-btn"        id="tab-all"        onclick="switchTab('all')">全部 <span class="tab-badge gray"  id="badge-all">0</span></button>
     <button class="tab-btn active" id="tab-urgent"    onclick="switchTab('urgent')">緊急補貨 <span class="tab-badge red"   id="badge-urgent">0</span></button>
     <button class="tab-btn"        id="tab-warning"   onclick="switchTab('warning')">一般補貨 <span class="tab-badge warn"  id="badge-warning">0</span></button>
     <button class="tab-btn"        id="tab-planning"  onclick="switchTab('planning')">預備訂貨 <span class="tab-badge blue"  id="badge-planning">0</span></button>
     <button class="tab-btn"        id="tab-sufficient" onclick="switchTab('sufficient')">庫存充足 <span class="tab-badge green" id="badge-sufficient">0</span></button>
+  </div>
+
+  <!-- 全部 Panel -->
+  <div id="panel-all" style="display:none;">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">全部待補貨清單（緊急＋一般＋預備）</div>
+        <input class="search-input" id="q-all" placeholder="搜尋商品..." oninput="renderPanel('all')">
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead id="thead-all"></thead>
+          <tbody id="tb-all"><tr><td colspan="9" class="empty-cell">等待資料載入...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <!-- 緊急補貨 Panel -->
@@ -268,20 +305,11 @@ th.sort-desc::after { content:' ▼'; font-size:9px; color:var(--primary); }
     <div class="card">
       <div class="card-header">
         <div class="card-title">緊急補貨清單（剩餘 &lt;1 個月）</div>
-        <input class="search-input" id="q-urgent" placeholder="搜尋商品..." oninput="renderUrgent()">
+        <input class="search-input" id="q-urgent" placeholder="搜尋商品..." oninput="renderPanel('urgent')">
       </div>
       <div class="table-wrapper">
         <table>
-          <thead><tr>
-            <th>商品名稱</th><th>代號</th>
-            <th style="text-align:right;">現有庫存</th>
-            <th style="text-align:right;">月銷量</th>
-            <th style="text-align:right;">剩餘月份</th>
-            <th>酷澎訂單</th>
-            <th style="text-align:right;">補1個月量</th>
-            <th style="text-align:right;">補3個月量</th>
-            <th style="text-align:right;">補6個月量</th>
-          </tr></thead>
+          <thead id="thead-urgent"></thead>
           <tbody id="tb-urgent"><tr><td colspan="9" class="empty-cell">等待資料載入...</td></tr></tbody>
         </table>
       </div>
@@ -293,20 +321,11 @@ th.sort-desc::after { content:' ▼'; font-size:9px; color:var(--primary); }
     <div class="card">
       <div class="card-header">
         <div class="card-title">一般補貨清單（剩餘 1–3 個月）</div>
-        <input class="search-input" id="q-warning" placeholder="搜尋商品..." oninput="renderWarning()">
+        <input class="search-input" id="q-warning" placeholder="搜尋商品..." oninput="renderPanel('warning')">
       </div>
       <div class="table-wrapper">
         <table>
-          <thead><tr>
-            <th>商品名稱</th><th>代號</th>
-            <th style="text-align:right;">現有庫存</th>
-            <th style="text-align:right;">月銷量</th>
-            <th style="text-align:right;">剩餘月份</th>
-            <th>酷澎訂單</th>
-            <th style="text-align:right;">補1個月量</th>
-            <th style="text-align:right;">補3個月量</th>
-            <th style="text-align:right;">補6個月量</th>
-          </tr></thead>
+          <thead id="thead-warning"></thead>
           <tbody id="tb-warning"><tr><td colspan="9" class="empty-cell">等待資料載入...</td></tr></tbody>
         </table>
       </div>
@@ -318,19 +337,11 @@ th.sort-desc::after { content:' ▼'; font-size:9px; color:var(--primary); }
     <div class="card">
       <div class="card-header">
         <div class="card-title">預備訂貨清單（剩餘 3–6 個月）</div>
-        <input class="search-input" id="q-planning" placeholder="搜尋商品..." oninput="renderPlanning()">
+        <input class="search-input" id="q-planning" placeholder="搜尋商品..." oninput="renderPanel('planning')">
       </div>
       <div class="table-wrapper">
         <table>
-          <thead><tr>
-            <th>商品名稱</th><th>代號</th>
-            <th style="text-align:right;">現有庫存</th>
-            <th style="text-align:right;">月銷量</th>
-            <th style="text-align:right;">剩餘月份</th>
-            <th>酷澎訂單</th>
-            <th style="text-align:right;">補3個月量</th>
-            <th style="text-align:right;">補6個月量</th>
-          </tr></thead>
+          <thead id="thead-planning"></thead>
           <tbody id="tb-planning"><tr><td colspan="8" class="empty-cell">等待資料載入...</td></tr></tbody>
         </table>
       </div>
@@ -342,17 +353,11 @@ th.sort-desc::after { content:' ▼'; font-size:9px; color:var(--primary); }
     <div class="card">
       <div class="card-header">
         <div class="card-title">庫存充足（剩餘 &gt;6 個月，無需補貨）</div>
-        <input class="search-input" id="q-sufficient" placeholder="搜尋商品..." oninput="renderSufficient()">
+        <input class="search-input" id="q-sufficient" placeholder="搜尋商品..." oninput="renderPanel('sufficient')">
       </div>
       <div class="table-wrapper">
         <table>
-          <thead><tr>
-            <th>商品名稱</th><th>代號</th>
-            <th style="text-align:right;">現有庫存</th>
-            <th style="text-align:right;">月銷量</th>
-            <th style="text-align:right;">剩餘月份</th>
-            <th>酷澎訂單</th>
-          </tr></thead>
+          <thead id="thead-sufficient"></thead>
           <tbody id="tb-sufficient"><tr><td colspan="6" class="empty-cell">等待資料載入...</td></tr></tbody>
         </table>
       </div>
@@ -367,6 +372,10 @@ const MAX_SNAPS = 26;
 
 let db = null;
 let result = null;  // { urgent, warning, planning, sufficient, noData }
+
+// 販售狀態：已停產／套組一律排除；暫停販售／售完為止可用勾選框顯示
+const STATUS_ALWAYS_EXCLUDE = ['已停產', '套組'];
+const filterState = { showPaused: false, showSoldOut: false };
 
 // ── 主流程 ──────────────────────────────────────────────
 async function init() {
@@ -402,12 +411,13 @@ async function init() {
   }
 
   showLoading('計算訂貨建議...');
-  result = analyze(db.snapshots, db.receipts || {});
+  result = analyze(db.snapshots, db.receipts || {}, filterState);
   hideLoading();
 
   renderStats();
   document.getElementById('stats-row').style.display = '';
   document.getElementById('main-tabs').style.display = '';
+  document.getElementById('filter-card').style.display = '';
 
   const urgentCount = result.urgent.length;
   if (urgentCount > 0) {
@@ -418,15 +428,26 @@ async function init() {
     setBanner('success', `✅ 目前無緊急補貨需求，庫存整體狀況良好`);
   }
 
-  document.getElementById('badge-urgent').textContent    = result.urgent.length;
-  document.getElementById('badge-warning').textContent   = result.warning.length;
-  document.getElementById('badge-planning').textContent  = result.planning.length;
-  document.getElementById('badge-sufficient').textContent = result.sufficient.length;
+  updateBadges();
+  renderAllPanels();
+}
 
-  renderUrgent();
-  renderWarning();
-  renderPlanning();
-  renderSufficient();
+// ── 排除狀態勾選框變更 ────────────────────────────────
+function onFilterChange() {
+  filterState.showPaused  = document.getElementById('chk-show-paused').checked;
+  filterState.showSoldOut = document.getElementById('chk-show-soldout').checked;
+  result = analyze(db.snapshots, db.receipts || {}, filterState);
+  renderStats();
+  updateBadges();
+  renderAllPanels();
+}
+
+function updateBadges() {
+  setText('badge-all',        result.urgent.length + result.warning.length + result.planning.length);
+  setText('badge-urgent',     result.urgent.length);
+  setText('badge-warning',    result.warning.length);
+  setText('badge-planning',   result.planning.length);
+  setText('badge-sufficient', result.sufficient.length);
 }
 
 // ── 輔助：取某商品在日期區間內的已結案進貨量 ────────────────────
@@ -437,7 +458,9 @@ function receivedInPeriod(receipts, code, afterDate, throughDate) {
 }
 
 // ── 分析核心 ─────────────────────────────────────────────
-function analyze(snaps, receipts = {}) {
+function analyze(snaps, receipts = {}, opts = {}) {
+  const showPaused  = !!opts.showPaused;
+  const showSoldOut = !!opts.showSoldOut;
   const sorted = [...snaps].sort((a, b) => a.date.localeCompare(b.date));
   const totalDays = (new Date(sorted.at(-1).date) - new Date(sorted[0].date)) / 86400000;
 
@@ -465,6 +488,11 @@ function analyze(snaps, receipts = {}) {
     const currentQty = info.qty;
     if (currentQty <= 0) continue;
 
+    const status = info.status || '';
+    if (STATUS_ALWAYS_EXCLUDE.includes(status)) continue;
+    if (status === '暫停販售' && !showPaused) continue;
+    if (status === '售完為止' && !showSoldOut) continue;
+
     const totalSales = salesMap[code] ?? 0;
     const activePeriods = activePeriodMap[code] ?? 0;
     // 需至少 2 期有銷量，避免單次爆量拉高月銷估算
@@ -482,7 +510,7 @@ function analyze(snaps, receipts = {}) {
 
     const monthsRemaining = parseFloat((currentQty / monthlyQty).toFixed(1));
     const item = {
-      code, name: info.name, qty: currentQty, monthlyQty, monthsRemaining,
+      code, name: info.name, qty: currentQty, monthlyQty, monthsRemaining, status,
       order1m: Math.max(0, Math.round(monthlyQty * 1 - currentQty)),
       order3m: Math.max(0, Math.round(monthlyQty * 3 - currentQty)),
       order6m: Math.max(0, Math.round(monthlyQty * 6 - currentQty)),
@@ -524,6 +552,12 @@ function orderQty(n, cls) {
   return `<span class="${cls}">${n.toLocaleString()}</span>`;
 }
 
+function statusBadge(status) {
+  if (status === '暫停販售') return `<span class="status-tag paused">暫停販售</span>`;
+  if (status === '售完為止') return `<span class="status-tag soldout">售完為止</span>`;
+  return '';
+}
+
 function coupangCell(code) {
   const co = (db.coupangOrders || {})[code];
   if (!co) return '<td>—</td>';
@@ -542,83 +576,142 @@ function coupangCell(code) {
   </td>`;
 }
 
-function makeReorderRow(it, showOrder1m = true) {
-  return `<tr>
-    <td class="wrap">${esc(it.name)}</td>
-    <td class="muted">${esc(it.code)}</td>
-    <td style="text-align:right;font-weight:600;">${it.qty.toLocaleString()}</td>
-    <td style="text-align:right;">${it.monthlyQty.toLocaleString()}</td>
-    <td style="text-align:right;">${monthsBadge(it.monthsRemaining)}</td>
-    ${coupangCell(it.code)}
-    ${showOrder1m ? `<td style="text-align:right;">${orderQty(it.order1m, 'qty-urgent')}</td>` : ''}
-    <td style="text-align:right;">${orderQty(it.order3m, 'qty-warn')}</td>
-    <td style="text-align:right;">${orderQty(it.order6m, 'qty-plan')}</td>
-  </tr>`;
+// ── 欄位定義（每欄可自訂排序） ────────────────────────
+const COL_NAME = { key: 'name', label: '商品名稱', sortable: true,
+  render: it => `<td class="wrap">${esc(it.name)} ${statusBadge(it.status)}</td>` };
+const COL_CODE = { key: 'code', label: '代號', sortable: true,
+  render: it => `<td class="muted">${esc(it.code)}</td>` };
+const COL_QTY = { key: 'qty', label: '現有庫存', sortable: true, align: 'right',
+  render: it => `<td style="text-align:right;font-weight:600;">${it.qty.toLocaleString()}</td>` };
+const COL_MQTY = { key: 'monthlyQty', label: '月銷量', sortable: true, align: 'right',
+  render: it => `<td style="text-align:right;">${it.monthlyQty.toLocaleString()}</td>` };
+const COL_MREM = { key: 'monthsRemaining', label: '剩餘月份', sortable: true, align: 'right',
+  render: it => `<td style="text-align:right;">${monthsBadge(it.monthsRemaining)}</td>` };
+const COL_COUPANG = { key: null, label: '酷澎訂單', sortable: false,
+  render: it => coupangCell(it.code) };
+const COL_O1 = { key: 'order1m', label: '補1個月量', sortable: true, align: 'right',
+  render: it => `<td style="text-align:right;">${orderQty(it.order1m, 'qty-urgent')}</td>` };
+const COL_O3 = { key: 'order3m', label: '補3個月量', sortable: true, align: 'right',
+  render: it => `<td style="text-align:right;">${orderQty(it.order3m, 'qty-warn')}</td>` };
+const COL_O6 = { key: 'order6m', label: '補6個月量', sortable: true, align: 'right',
+  render: it => `<td style="text-align:right;">${orderQty(it.order6m, 'qty-plan')}</td>` };
+
+const FULL_COLS = [COL_NAME, COL_CODE, COL_QTY, COL_MQTY, COL_MREM, COL_COUPANG, COL_O1, COL_O3, COL_O6];
+const PLAN_COLS = [COL_NAME, COL_CODE, COL_QTY, COL_MQTY, COL_MREM, COL_COUPANG, COL_O3, COL_O6];
+const SUFF_COLS = [COL_NAME, COL_CODE, COL_QTY, COL_MQTY, COL_MREM, COL_COUPANG];
+
+const PANELS = {
+  all: {
+    cols: FULL_COLS,
+    data: () => [...result.urgent, ...result.warning, ...result.planning],
+    empty: n => n === 0 ? '目前無待補貨商品 ✅' : '無符合條件商品',
+  },
+  urgent: {
+    cols: FULL_COLS,
+    data: () => result.urgent,
+    empty: n => n === 0 ? '目前無緊急補貨商品 ✅' : '無符合條件商品',
+  },
+  warning: {
+    cols: FULL_COLS,
+    data: () => result.warning,
+    empty: n => n === 0 ? '目前無一般補貨商品' : '無符合條件商品',
+  },
+  planning: {
+    cols: PLAN_COLS,
+    data: () => result.planning,
+    empty: n => n === 0 ? '目前無預備訂貨商品' : '無符合條件商品',
+  },
+  sufficient: {
+    cols: SUFF_COLS,
+    data: () => result.sufficient,
+    empty: () => '無符合條件商品',
+    limit: 300,
+  },
+};
+
+// 各分頁目前的排序狀態
+const sortState = {
+  all:        { key: 'monthsRemaining', dir: 'asc' },
+  urgent:     { key: 'monthsRemaining', dir: 'asc' },
+  warning:    { key: 'monthsRemaining', dir: 'asc' },
+  planning:   { key: 'monthsRemaining', dir: 'asc' },
+  sufficient: { key: 'monthlyQty',      dir: 'desc' },
+};
+
+function sortItems(items, key, dir) {
+  const sorted = [...items];
+  sorted.sort((a, b) => {
+    const av = a[key], bv = b[key];
+    let cmp;
+    if (typeof av === 'string') cmp = av.localeCompare(bv, undefined, { numeric: true });
+    else cmp = (av ?? 0) - (bv ?? 0);
+    return dir === 'asc' ? cmp : -cmp;
+  });
+  return sorted;
 }
 
-function renderUrgent() {
-  if (!result) return;
-  const q = document.getElementById('q-urgent').value.toLowerCase();
-  let items = result.urgent;
-  if (q) items = items.filter(i => i.name.toLowerCase().includes(q) || i.code.toLowerCase().includes(q));
-  const tbody = document.getElementById('tb-urgent');
-  if (!items.length) { tbody.innerHTML = `<tr><td colspan="8" class="empty-cell">${result.urgent.length === 0 ? '目前無緊急補貨商品 ✅' : '無符合條件商品'}</td></tr>`; return; }
-  tbody.innerHTML = items.map(it => makeReorderRow(it, true)).join('');
-}
-
-function renderWarning() {
-  if (!result) return;
-  const q = document.getElementById('q-warning').value.toLowerCase();
-  let items = result.warning;
-  if (q) items = items.filter(i => i.name.toLowerCase().includes(q) || i.code.toLowerCase().includes(q));
-  const tbody = document.getElementById('tb-warning');
-  if (!items.length) { tbody.innerHTML = `<tr><td colspan="8" class="empty-cell">${result.warning.length === 0 ? '目前無一般補貨商品' : '無符合條件商品'}</td></tr>`; return; }
-  tbody.innerHTML = items.map(it => makeReorderRow(it, true)).join('');
-}
-
-function renderPlanning() {
-  if (!result) return;
-  const q = document.getElementById('q-planning').value.toLowerCase();
-  let items = result.planning;
-  if (q) items = items.filter(i => i.name.toLowerCase().includes(q) || i.code.toLowerCase().includes(q));
-  const tbody = document.getElementById('tb-planning');
-  if (!items.length) { tbody.innerHTML = `<tr><td colspan="8" class="empty-cell">${result.planning.length === 0 ? '目前無預備訂貨商品' : '無符合條件商品'}</td></tr>`; return; }
-  tbody.innerHTML = items.map(it => `<tr>
-    <td class="wrap">${esc(it.name)}</td>
-    <td class="muted">${esc(it.code)}</td>
-    <td style="text-align:right;font-weight:600;">${it.qty.toLocaleString()}</td>
-    <td style="text-align:right;">${it.monthlyQty.toLocaleString()}</td>
-    <td style="text-align:right;">${monthsBadge(it.monthsRemaining)}</td>
-    ${coupangCell(it.code)}
-    <td style="text-align:right;">${orderQty(it.order3m, 'qty-warn')}</td>
-    <td style="text-align:right;">${orderQty(it.order6m, 'qty-plan')}</td>
-  </tr>`).join('');
-}
-
-function renderSufficient() {
-  if (!result) return;
-  const q = document.getElementById('q-sufficient').value.toLowerCase();
-  let items = result.sufficient;
-  if (q) items = items.filter(i => i.name.toLowerCase().includes(q) || i.code.toLowerCase().includes(q));
-  const tbody = document.getElementById('tb-sufficient');
-  if (!items.length) { tbody.innerHTML = `<tr><td colspan="5" class="empty-cell">無符合條件商品</td></tr>`; return; }
-  // 只顯示前 300 筆，避免渲染過慢
-  tbody.innerHTML = items.slice(0, 300).map(it => `<tr>
-    <td class="wrap">${esc(it.name)}</td>
-    <td class="muted">${esc(it.code)}</td>
-    <td style="text-align:right;font-weight:600;">${it.qty.toLocaleString()}</td>
-    <td style="text-align:right;">${it.monthlyQty.toLocaleString()}</td>
-    <td style="text-align:right;">${monthsBadge(it.monthsRemaining)}</td>
-    ${coupangCell(it.code)}
-  </tr>`).join('');
-  if (items.length > 300) {
-    tbody.innerHTML += `<tr><td colspan="6" class="empty-cell" style="color:var(--gray-400);">僅顯示前 300 筆（共 ${items.length} 筆）</td></tr>`;
+function setSort(panel, key) {
+  const st = sortState[panel];
+  if (st.key === key) {
+    st.dir = st.dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    st.key = key;
+    st.dir = (key === 'name' || key === 'code') ? 'asc' : 'desc';
   }
+  renderPanel(panel);
+}
+
+function buildThead(panel, cols) {
+  const st = sortState[panel];
+  const cells = cols.map(c => {
+    const style = c.align ? ` style="text-align:${c.align};"` : '';
+    if (!c.sortable) return `<th${style}>${c.label}</th>`;
+    const cls = ['sortable'];
+    if (st.key === c.key) cls.push(st.dir === 'asc' ? 'sort-asc' : 'sort-desc');
+    return `<th class="${cls.join(' ')}"${style} onclick="setSort('${panel}','${c.key}')">${c.label}</th>`;
+  }).join('');
+  return `<tr>${cells}</tr>`;
+}
+
+function rowHtml(it, cols) {
+  return `<tr>${cols.map(c => c.render(it)).join('')}</tr>`;
+}
+
+function renderPanel(panel) {
+  if (!result) return;
+  const cfg = PANELS[panel];
+  document.getElementById(`thead-${panel}`).innerHTML = buildThead(panel, cfg.cols);
+
+  const rawItems = cfg.data();
+  const qEl = document.getElementById(`q-${panel}`);
+  const q = (qEl?.value || '').toLowerCase();
+  let items = q
+    ? rawItems.filter(i => i.name.toLowerCase().includes(q) || i.code.toLowerCase().includes(q))
+    : rawItems;
+
+  const st = sortState[panel];
+  items = sortItems(items, st.key, st.dir);
+
+  const tbody = document.getElementById(`tb-${panel}`);
+  if (!items.length) {
+    tbody.innerHTML = `<tr><td colspan="${cfg.cols.length}" class="empty-cell">${cfg.empty(rawItems.length)}</td></tr>`;
+    return;
+  }
+
+  const limited = cfg.limit ? items.slice(0, cfg.limit) : items;
+  tbody.innerHTML = limited.map(it => rowHtml(it, cfg.cols)).join('');
+  if (cfg.limit && items.length > cfg.limit) {
+    tbody.innerHTML += `<tr><td colspan="${cfg.cols.length}" class="empty-cell" style="color:var(--gray-400);">僅顯示前 ${cfg.limit} 筆（共 ${items.length} 筆）</td></tr>`;
+  }
+}
+
+function renderAllPanels() {
+  Object.keys(PANELS).forEach(renderPanel);
 }
 
 // ── Tab 切換 ──────────────────────────────────────────
 function switchTab(tab) {
-  ['urgent','warning','planning','sufficient'].forEach(t => {
+  ['all','urgent','warning','planning','sufficient'].forEach(t => {
     document.getElementById(`panel-${t}`).style.display = t === tab ? '' : 'none';
     document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
   });
