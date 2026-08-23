@@ -155,7 +155,10 @@
   <div class="page">
 
     <div class="card">
-      <div class="card-title">上傳蝦皮顧客名單（CustomerGroupReport .xls / .xlsx，可一次多份）</div>
+      <div class="card-title">上傳官網顧客名單（CustomerGroupReport .xls / .xlsx，可一次多份）</div>
+      <div class="action-bar" style="margin-top:0;margin-bottom:12px">
+        <a class="btn btn-outline" href="https://admin.shoplineapp.com/admin/feebit/customer_group/63b52d5a1f4fc80022fd7571?subPage=1&limit=24&page=1" target="_blank" rel="noopener">📥 點我下載官網名單</a>
+      </div>
       <div id="upload-zone" class="upload-zone"
            ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)"
            onclick="document.getElementById('file-input').click()">
@@ -186,6 +189,9 @@
       <div class="action-bar" style="margin-top:0">
         <button class="btn btn-success" onclick="downloadMerged(false)">下載合併全部 CSV</button>
         <button class="btn btn-primary" onclick="downloadMerged(true)">下載合併去重 CSV（依 email）</button>
+      </div>
+      <div class="action-bar">
+        <a class="btn btn-outline" href="https://adsmanager.facebook.com/adsmanager/audiences?global_scope_id=2833514986691769&business_id=2833514986691769&act=560003437509559&redirect_session_id=94c4397c-664d-4150-95d0-defa088ecb1f#" target="_blank" rel="noopener">🎯 點我至Meta廣告平台後台 匯入受眾</a>
       </div>
     </div>
 
