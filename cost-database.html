@@ -78,7 +78,7 @@
     <a class="nav-item" href="invoice-stamp.html"><span class="icon">🖋️</span> 發票蓋章工具</a>
     <a class="nav-item" href="profit-calculator.html"><span class="icon">💰</span> 毛利試算機</a>
     <a class="nav-item active" href="cost-database.html"><span class="icon">💾</span> 商品成本資料庫</a>
-    <a class="nav-item" href="brand-sales.html"><span class="icon">📈</span> 品牌銷售轉換</a>
+    <a class="nav-item" href="brand-sales.html"><span class="icon">📈</span> 品牌銷售分析</a>
   </div>
   <div class="sidebar-section">
     <div class="sidebar-label">市場分析</div>
@@ -129,8 +129,6 @@
   </div>
   <div class="sidebar-section">
     <div class="sidebar-label">系統</div>
-    <a class="nav-item" href="skill-tree.html"><span class="icon">🌳</span> 技能樹</a>
-
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
   <div class="sidebar-footer">v1.0 · Feebit © 2026</div>
@@ -185,9 +183,16 @@
     <div id="new-tab" class="tab-content">
       <div class="card" style="max-width:620px">
         <h2 style="margin-bottom:16px">新增商品</h2>
-        <div class="form-group"><label>品牌</label><input type="text" id="np-brand"></div>
-        <div class="form-group"><label>分類</label><input type="text" id="np-category"></div>
-        <div class="form-group"><label>商品名稱</label><input type="text" id="np-name"></div>
+        <div class="form-group"><label>品牌</label>
+          <input type="text" id="np-brand" list="brand-options" placeholder="選現有品牌或直接輸入新品牌">
+          <datalist id="brand-options"></datalist>
+        </div>
+        <div class="form-group"><label>分類</label>
+          <input type="text" id="np-category" list="category-options" placeholder="選現有分類或直接輸入新分類">
+          <datalist id="category-options"></datalist>
+        </div>
+        <div class="form-group"><label>中文品名</label><input type="text" id="np-name"></div>
+        <div class="form-group"><label>英文品名</label><input type="text" id="np-name-en" placeholder="選填"></div>
         <div class="form-group"><label>國際條碼</label><input type="text" id="np-barcode"></div>
         <div class="form-group"><label>貨號</label><input type="text" id="np-ragic"></div>
         <div class="form-group"><label>供應商</label><input type="text" id="np-supplier" placeholder="選填"></div>
@@ -309,20 +314,28 @@ function fmtDate(v){
 }
 
 // ── 商品查詢 ──
-async function doSearch(){
+const PAGE_SIZE = 100;
+let currentPage = 0;
+
+async function doSearch(page){
+  currentPage = page || 0;
   const q = document.getElementById('search-input').value.trim();
   const statuses = [...document.querySelectorAll('.status-chip.active')].map(c=>c.dataset.status);
   const tbody = document.getElementById('result-tbody');
   tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">搜尋中…</td></tr>';
 
-  let query = db.from('products').select('id,brand,name,barcode,category,status,needs_review,default_supplier_id').limit(200);
+  let query = db.from('products').select('id,brand,name,barcode,category,status,needs_review,default_supplier_id', {count:'exact'})
+    .range(currentPage*PAGE_SIZE, currentPage*PAGE_SIZE + PAGE_SIZE - 1);
   if (statuses.length) query = query.in('status', statuses);
   if (q) query = query.or(`name.ilike.%${q}%,brand.ilike.%${q}%,barcode.eq.${q},ragic_item_no.eq.${q}`);
 
-  const { data, error } = await query;
+  const { data, error, count } = await query;
   if (error){ tbody.innerHTML = `<tr><td colspan="7" style="color:var(--danger)">搜尋失敗：${error.message}</td></tr>`; return; }
 
-  document.getElementById('result-count').textContent = `共 ${data.length} 筆`;
+  const totalPages = Math.max(1, Math.ceil(count/PAGE_SIZE));
+  document.getElementById('result-count').innerHTML = `共 ${count} 筆　第 ${currentPage+1}／${totalPages} 頁
+    ${currentPage>0?`<button class="btn btn-outline" style="padding:2px 10px;font-size:12px" onclick="doSearch(${currentPage-1})">‹ 上一頁</button>`:''}
+    ${currentPage<totalPages-1?`<button class="btn btn-outline" style="padding:2px 10px;font-size:12px" onclick="doSearch(${currentPage+1})">下一頁 ›</button>`:''}`;
   if (!data.length){ tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:30px">沒有符合的商品</td></tr>'; return; }
 
   const ids = data.map(p=>p.id);
@@ -362,16 +375,19 @@ async function openDetail(id){
   const body = document.getElementById('detail-body');
   body.innerHTML = '載入中…';
 
-  const [{data:p}, {data:sups}, {data:costs}, {data:pos}, {data:prices}] = await Promise.all([
+  const [{data:p}, {data:sups}, {data:costs}, {data:pos}, {data:prices}, commissionMap, {data:tiers}] = await Promise.all([
     db.from('products').select('*').eq('id', id).single(),
     db.from('product_suppliers').select('*, suppliers(name)').eq('product_id', id),
     db.from('cost_snapshots').select('*, suppliers(name)').eq('product_id', id).order('calculated_at',{ascending:false}),
     db.from('purchase_order_history').select('*, suppliers(name)').eq('product_id', id).order('order_date',{ascending:false}),
     db.from('channel_prices').select('*').eq('product_id', id),
+    getCommissionTotals(),
+    db.from('margin_tiers').select('*').eq('is_active', true).order('sort_order'),
   ]);
 
   const currentCost = costs.find(c=>c.supplier_id===p.default_supplier_id) || costs[0];
   const lastOrder = pos[0];
+  const costForProfit = currentCost ? currentCost.cost_twd_untaxed : null;
 
   body.innerHTML = `
     <h2 style="margin-bottom:4px">${p.name}</h2>
@@ -417,12 +433,51 @@ async function openDetail(id){
     </div>
 
     <div class="detail-section">
-      <h4>通路售價</h4>
-      ${prices.length ? `<table><thead><tr><th>通路</th><th>檔期</th><th>價格</th></tr></thead><tbody>
-        ${prices.map(cp=>`<tr><td>${cp.platform}</td><td>${cp.campaign_period||'—'}</td><td>${fmtMoney(cp.price)}</td></tr>`).join('')}
+      <h4>通路售價／抽成後利潤</h4>
+      ${prices.length ? `<table><thead><tr><th>通路</th><th>檔期</th><th>價格</th><th>抽成%</th><th>抽成後利潤</th></tr></thead><tbody>
+        ${prices.map(cp=>{
+          const commission = commissionMap[cp.platform+'|'+(cp.campaign_period||'')] || commissionMap[cp.platform+'|'];
+          let profitCell = '<span style="color:var(--gray-400)">未設定抽成方案</span>';
+          let pctCell = '—';
+          if (commission && costForProfit!=null){
+            const profit = cp.price - (cp.price*commission.pct) - commission.fixed - (costForProfit*1.05);
+            profitCell = `<span style="color:${profit>=0?'var(--success)':'var(--danger)'}">${fmtMoney(profit)}</span>`;
+            pctCell = (commission.pct*100).toFixed(1)+'%'+(commission.fixed?` +$${commission.fixed}`:'');
+          }
+          return `<tr><td>${cp.platform}</td><td>${cp.campaign_period||'—'}</td><td>${fmtMoney(cp.price)}</td><td>${pctCell}</td><td>${profitCell}</td></tr>`;
+        }).join('')}
       </tbody></table>` : '<div style="color:var(--gray-400);font-size:13px">尚無通路售價資料</div>'}
     </div>
+
+    <div class="detail-section">
+      <h4>毛利率階梯建議售價</h4>
+      ${(tiers&&tiers.length&&costForProfit!=null) ? `<table><thead><tr><th>毛利率</th><th>建議售價(未稅)</th><th>建議售價(含稅)</th></tr></thead><tbody>
+        ${tiers.map(t=>{
+          const untaxed = costForProfit/(1-t.margin_pct);
+          return `<tr><td>${t.tier_label}</td><td>${fmtMoney(untaxed)}</td><td>${fmtMoney(untaxed*1.05)}</td></tr>`;
+        }).join('')}
+      </tbody></table>` : '<div style="color:var(--gray-400);font-size:13px">尚無成本資料，無法試算</div>'}
+    </div>
   `;
+}
+
+let _commissionCache = null;
+async function getCommissionTotals(){
+  if (_commissionCache) return _commissionCache;
+  const { data: rates } = await db.from('channel_commission_rates').select('id,platform,campaign_period');
+  const { data: items } = await db.from('commission_fee_items').select('commission_rate_id,fee_value,fee_type');
+  const byRate = {};
+  (items||[]).forEach(i=>{
+    const r = byRate[i.commission_rate_id] = byRate[i.commission_rate_id] || {pct:0, fixed:0};
+    if (i.fee_type==='percentage') r.pct += i.fee_value; else r.fixed += i.fee_value;
+  });
+  const map = {};
+  (rates||[]).forEach(r=>{
+    const key = r.platform+'|'+(r.campaign_period||'');
+    map[key] = byRate[r.id] || {pct:0, fixed:0};
+  });
+  _commissionCache = map;
+  return map;
 }
 function closeDetail(){ document.getElementById('detail-modal').style.display='none'; }
 
@@ -508,6 +563,7 @@ async function submitNewProduct(){
   const brand = document.getElementById('np-brand').value.trim() || null;
   const category = document.getElementById('np-category').value.trim() || null;
   const name = document.getElementById('np-name').value.trim();
+  const nameEn = document.getElementById('np-name-en').value.trim() || null;
   const barcode = document.getElementById('np-barcode').value.trim() || null;
   const ragic = document.getElementById('np-ragic').value.trim() || null;
   const supplierName = document.getElementById('np-supplier').value.trim();
@@ -519,7 +575,7 @@ async function submitNewProduct(){
   if (!name){ msg.textContent = '請輸入商品名稱'; msg.style.color='var(--danger)'; return; }
 
   const { data: prod, error: perr } = await db.from('products').insert({
-    brand, category, name, barcode, ragic_item_no: ragic, status: 'active',
+    brand, category, name, name_en: nameEn, barcode, ragic_item_no: ragic, status: 'active',
     needs_review: !barcode || !ragic,
   }).select().single();
   if (perr){ msg.textContent = '建立失敗：'+perr.message; msg.style.color='var(--danger)'; return; }
@@ -556,7 +612,7 @@ async function submitNewProduct(){
 
   msg.textContent = '建立成功';
   msg.style.color = 'var(--success)';
-  ['np-brand','np-category','np-name','np-barcode','np-ragic','np-supplier','np-price','np-cost'].forEach(id=>document.getElementById(id).value='');
+  ['np-brand','np-category','np-name','np-name-en','np-barcode','np-ragic','np-supplier','np-price','np-cost'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('similar-card').style.display='none';
 }
 
@@ -675,7 +731,16 @@ async function addParam(){
 }
 
 // 初始載入
+async function populateFilterOptions(){
+  const { data } = await db.from('products').select('brand,category').limit(5000);
+  const brands = new Set(), categories = new Set();
+  (data||[]).forEach(p=>{ if(p.brand) brands.add(p.brand); if(p.category) categories.add(p.category); });
+  document.getElementById('brand-options').innerHTML = [...brands].sort().map(b=>`<option value="${b}">`).join('');
+  document.getElementById('category-options').innerHTML = [...categories].sort().map(c=>`<option value="${c}">`).join('');
+}
+
 doSearch();
+populateFilterOptions();
 </script>
 </body>
 </html>
