@@ -219,7 +219,7 @@
     <a class="nav-item" href="shopee-converter.html"><span class="icon">🛒</span> 蝦皮撥款轉換</a>
     <a class="nav-item" href="invoice-stamp.html"><span class="icon">🖋️</span> 發票蓋章工具</a>
     <a class="nav-item" href="profit-calculator.html"><span class="icon">💰</span> 毛利試算機</a>
-    <a class="nav-item" href="brand-sales.html"><span class="icon">📈</span> 品牌銷售轉換</a>
+    <a class="nav-item" href="brand-sales.html"><span class="icon">📈</span> 品牌銷售分析</a>
   </div><div class="sidebar-section"><div class="sidebar-label">市場分析</div><a class="nav-item" href="market-tracker.html"><span class="icon">🔭</span> 品類競品分析</a></div>
   <div class="sidebar-section"><div class="sidebar-label">行銷</div><div class="nav-item soon"><span class="icon">📢</span> 廣告文案<span class="soon-tag">即將推出</span></div></div>
   <div class="sidebar-section"><div class="sidebar-label">客服</div><div class="nav-item soon"><span class="icon">💬</span> 客服回覆<span class="soon-tag">即將推出</span></div></div>
@@ -305,7 +305,7 @@ const SKILLS = [
   { icon:'🔄', name:'庫存訂貨建議',     cat:'庫存管理', ver:'—',    desc:'依銷售速度與現有庫存自動產生訂貨建議清單', url:'reorder-suggestions.html' },
   { icon:'🤖', name:'庫存自動核對',     cat:'庫存管理', ver:'GAS',  desc:'每日 17:00 自動同步 Ragic 效期批次，發送 HTML 日報', url:null, info:'Google Apps Script · 綁定 Sheet: 庫存核對' },
   // ── 電商銷售 ──
-  { icon:'📈', name:'品牌銷售轉換', cat:'電商銷售', ver:'—',   desc:'各品牌銷售數字彙整與走勢分析', url:'brand-sales.html' },
+  { icon:'📈', name:'品牌銷售分析', cat:'電商銷售', ver:'—',   desc:'各品牌銷售數字彙整與走勢分析', url:'brand-sales.html' },
   { icon:'🔭', name:'品類競品分析', cat:'電商銷售', ver:'—',   desc:'追蹤蝦皮競品動態，分析市場定位與價格帶', url:'market-tracker.html' },
   // ── 研發法規 ──
   { icon:'📚', name:'研發筆記',   cat:'研發法規', ver:'v2.4', desc:'YouTube 字幕擷取、OCR 圖片辨識轉筆記，後端 Supabase', url:'research-notes.html' },
@@ -327,6 +327,7 @@ const SKILLS = [
   { icon:'🛍️', name:'淘寶訂單匯出外掛',      cat:'自動化', ver:'外掛',   desc:'Chrome 外掛一鍵抓取淘寶訂單，自動翻頁並送至 Apps Script', url:null, info:'Chrome Extension · ~/Desktop/淘寶訂單匯出/' },
   { icon:'📊', name:'淘寶訂單 Apps Script',   cat:'自動化', ver:'GAS',    desc:'接收 Chrome 外掛資料，自動建 Google Sheet（含商品縮圖）', url:null, info:'Google Apps Script · Deploy: AKfycbx0…' },
   { icon:'⏰', name:'Supabase 保活排程',      cat:'自動化', ver:'排程',   desc:'每 6 天自動呼叫 Supabase API，避免 free tier 7 天暫停', url:null, info:'Cloud Routine · Trigger: trig_014e4GNd…' },
+  { icon:'📋', name:'Feebit 每日待辦整理',    cat:'自動化', ver:'排程',   desc:'週一至五 08:30 整合 Asana/Gmail/Slack/Notion 產出待辦清單並建 Gmail 草稿，含信件連結、完整回覆草稿、星號/重要信件近兩週提醒', url:'schedule-notifications.html', info:'Cloud Routine · Trigger: trig_01KJRRNzuss…' },
   // ── 系統 ──
   { icon:'🏠', name:'首頁',     cat:'系統', ver:'v3.0', desc:'飛比特營運工具箱入口，所有工具快速導覽', url:'index.html' },
   { icon:'🔧', name:'使用工具', cat:'系統', ver:'v1.1', desc:'外部平台與後台連結總覽，點擊前往各系統', url:'tools.html' },
