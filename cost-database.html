@@ -15,6 +15,11 @@
 #result-table{table-layout:fixed}
 #result-table td,#result-table th{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #result-table td.name-cell{white-space:normal}
+.th-sort{cursor:pointer;user-select:none}
+.th-sort:hover{color:var(--primary)}
+.sort-arrow{font-size:9px;margin-left:3px;opacity:.4}
+.sort-arrow.active{opacity:1;color:var(--primary)}
+.row-num{color:var(--gray-400);font-size:12px}
 .search-bar{background:white;border-radius:var(--radius);padding:16px 18px;margin-bottom:18px;box-shadow:0 1px 3px rgba(0,0,0,.08);display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 .search-bar input[type=text]{flex:1;min-width:220px}
 .status-chip{padding:5px 12px;border-radius:20px;border:1px solid var(--gray-300);background:white;font-size:12.5px;cursor:pointer;user-select:none;color:var(--gray-700)}
@@ -168,17 +173,33 @@
         <span class="status-chip active" data-status="active" onclick="toggleStatusChip(this)">上架中</span>
         <span class="status-chip" data-status="discontinued" onclick="toggleStatusChip(this)">停產</span>
         <span class="status-chip" data-status="hidden" onclick="toggleStatusChip(this)">隱藏</span>
-        <button class="btn btn-primary" onclick="doSearch()">搜尋</button>
+        <button class="btn btn-primary" onclick="doSearch(0)">搜尋</button>
+        <span style="margin-left:auto;font-size:12px;color:var(--gray-500);display:flex;align-items:center;gap:6px">
+          每頁顯示
+          <select id="page-size-select" onchange="onPageSizeChange()" style="padding:4px 8px;font-size:12px">
+            <option value="50">50</option>
+            <option value="100" selected>100</option>
+            <option value="250">250</option>
+            <option value="9999">全部</option>
+          </select>
+        </span>
       </div>
       <div class="result-count" id="result-count"></div>
       <div class="card" style="padding:0">
         <div class="table-wrapper">
         <table id="result-table">
           <thead><tr>
-            <th style="width:110px">品牌</th><th>商品名稱</th><th style="width:120px">條碼</th><th style="width:90px">分類</th>
-            <th style="width:90px">目前成本</th><th style="width:100px">建議售價<br><span style="font-weight:400;text-transform:none;font-size:10px">(30%毛利)</span></th>
-            <th style="width:90px">官網售價</th><th style="width:90px">蝦皮商城</th>
-            <th style="width:60px">供應商數</th><th style="width:80px">狀態</th>
+            <th style="width:44px">#</th>
+            <th class="th-sort" style="width:110px" onclick="sortBy('brand')">品牌<span class="sort-arrow" data-col="brand"></span></th>
+            <th class="th-sort" onclick="sortBy('name')">商品名稱<span class="sort-arrow" data-col="name"></span></th>
+            <th style="width:120px">條碼</th>
+            <th class="th-sort" style="width:90px" onclick="sortBy('category')">分類<span class="sort-arrow" data-col="category"></span></th>
+            <th class="th-sort" style="width:90px" onclick="sortBy('cost')">目前成本<span class="sort-arrow" data-col="cost"></span></th>
+            <th class="th-sort" style="width:100px" onclick="sortBy('suggested')">建議售價<span class="sort-arrow" data-col="suggested"></span><br><span style="font-weight:400;text-transform:none;font-size:10px">(30%毛利)</span></th>
+            <th class="th-sort" style="width:90px" onclick="sortBy('official')">官網售價<span class="sort-arrow" data-col="official"></span></th>
+            <th class="th-sort" style="width:90px" onclick="sortBy('shopee')">蝦皮商城<span class="sort-arrow" data-col="shopee"></span></th>
+            <th class="th-sort" style="width:60px" onclick="sortBy('supCount')">供應商數<span class="sort-arrow" data-col="supCount"></span></th>
+            <th class="th-sort" style="width:80px" onclick="sortBy('status')">狀態<span class="sort-arrow" data-col="status"></span></th>
           </tr></thead>
           <tbody id="result-tbody"></tbody>
         </table>
@@ -309,6 +330,7 @@ function switchTab(el){
 
 function toggleStatusChip(el){
   el.classList.toggle('active');
+  doSearch(0);
 }
 
 function fmtMoney(v){
@@ -321,29 +343,36 @@ function fmtDate(v){
 }
 
 // ── 商品查詢 ──
-const PAGE_SIZE = 100;
+let PAGE_SIZE = 100;
 let currentPage = 0;
+let currentRows = [];       // 目前這頁載入的完整資料（含算好的成本/建議售價等），排序在這份資料上做
+let sortField = null, sortAsc = true;
+
+function onPageSizeChange(){
+  PAGE_SIZE = parseInt(document.getElementById('page-size-select').value, 10);
+  doSearch(0);
+}
 
 async function doSearch(page){
   currentPage = page || 0;
   const q = document.getElementById('search-input').value.trim();
   const statuses = [...document.querySelectorAll('.status-chip.active')].map(c=>c.dataset.status);
   const tbody = document.getElementById('result-tbody');
-  tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--gray-400)">搜尋中…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--gray-400)">搜尋中…</td></tr>';
 
-  let query = db.from('products').select('id,brand,name,barcode,category,status,needs_review,default_supplier_id', {count:'exact'})
+  let query = db.from('products').select('id,brand,name,name_en,barcode,category,status,needs_review,default_supplier_id', {count:'exact'})
     .range(currentPage*PAGE_SIZE, currentPage*PAGE_SIZE + PAGE_SIZE - 1);
   if (statuses.length) query = query.in('status', statuses);
   if (q) query = query.or(`name.ilike.%${q}%,brand.ilike.%${q}%,barcode.eq.${q},ragic_item_no.eq.${q}`);
 
   const { data, error, count } = await query;
-  if (error){ tbody.innerHTML = `<tr><td colspan="10" style="color:var(--danger)">搜尋失敗：${error.message}</td></tr>`; return; }
+  if (error){ tbody.innerHTML = `<tr><td colspan="11" style="color:var(--danger)">搜尋失敗：${error.message}</td></tr>`; return; }
 
   const totalPages = Math.max(1, Math.ceil(count/PAGE_SIZE));
   document.getElementById('result-count').innerHTML = `共 ${count} 筆　第 ${currentPage+1}／${totalPages} 頁
     ${currentPage>0?`<button class="btn btn-outline" style="padding:2px 10px;font-size:12px" onclick="doSearch(${currentPage-1})">‹ 上一頁</button>`:''}
     ${currentPage<totalPages-1?`<button class="btn btn-outline" style="padding:2px 10px;font-size:12px" onclick="doSearch(${currentPage+1})">下一頁 ›</button>`:''}`;
-  if (!data.length){ tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--gray-400);padding:30px">沒有符合的商品</td></tr>'; return; }
+  if (!data.length){ currentRows = []; tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--gray-400);padding:30px">沒有符合的商品</td></tr>'; return; }
 
   const ids = data.map(p=>p.id);
   const [{data:costs}, {data:sups}, {data:prices}] = await Promise.all([
@@ -351,7 +380,7 @@ async function doSearch(page){
     db.from('product_suppliers').select('product_id').in('product_id', ids),
     db.from('channel_prices').select('product_id,platform,campaign_period,price').in('product_id', ids).in('platform', ['官網','蝦皮商城']),
   ]);
-  const costMap = {}; // product_id -> latest matching default supplier or first
+  const costMap = {};
   const supCount = {};
   (sups||[]).forEach(s=> supCount[s.product_id] = (supCount[s.product_id]||0)+1 );
   const byProduct = {};
@@ -368,20 +397,73 @@ async function doSearch(page){
     else if (cp.platform==='蝦皮商城' && !(cp.product_id in shopeePriceMap)) shopeePriceMap[cp.product_id] = cp.price;
   });
 
-  tbody.innerHTML = data.map(p=>{
+  currentRows = data.map(p=>{
     const cost = costMap[p.id];
-    const suggested = cost!=null ? cost/(1-0.30) : null;
+    return {
+      p, cost, suggested: cost!=null ? cost/(1-0.30) : null,
+      official: officialPriceMap[p.id] ?? null, shopee: shopeePriceMap[p.id] ?? null,
+      supCount: supCount[p.id] || 0,
+    };
+  });
+  if (sortField) applySort();
+  renderRows();
+}
+
+function sortBy(field){
+  if (sortField === field) sortAsc = !sortAsc;
+  else { sortField = field; sortAsc = true; }
+  document.querySelectorAll('.sort-arrow').forEach(el=>{
+    el.classList.remove('active');
+    el.textContent = '';
+  });
+  const arrow = document.querySelector(`.sort-arrow[data-col="${field}"]`);
+  if (arrow){ arrow.classList.add('active'); arrow.textContent = sortAsc ? '▲' : '▼'; }
+  applySort();
+  renderRows();
+}
+
+function applySort(){
+  const dir = sortAsc ? 1 : -1;
+  const getVal = (row) => {
+    switch(sortField){
+      case 'brand': return row.p.brand || '';
+      case 'name': return row.p.name || '';
+      case 'category': return row.p.category || '';
+      case 'status': return row.p.status || '';
+      case 'cost': return row.cost;
+      case 'suggested': return row.suggested;
+      case 'official': return row.official;
+      case 'shopee': return row.shopee;
+      case 'supCount': return row.supCount;
+      default: return '';
+    }
+  };
+  currentRows.sort((a,b)=>{
+    const va = getVal(a), vb = getVal(b);
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;  // null 一律排最後
+    if (vb == null) return -1;
+    if (typeof va === 'string') return va.localeCompare(vb) * dir;
+    return (va - vb) * dir;
+  });
+}
+
+function renderRows(){
+  const tbody = document.getElementById('result-tbody');
+  tbody.innerHTML = currentRows.map((row, i)=>{
+    const p = row.p;
     return `
     <tr class="clickable-row" onclick="openDetail('${p.id}')">
+      <td class="row-num">${currentPage*PAGE_SIZE + i + 1}</td>
       <td>${p.brand||'—'}</td>
       <td class="name-cell"><div class="n-zh">${p.name}</div>${p.name_en?`<div class="n-en">${p.name_en}</div>`:''}</td>
       <td>${p.barcode||'—'}</td>
       <td>${p.category||'—'}</td>
-      <td>${fmtMoney(cost)}</td>
-      <td>${fmtMoney(suggested)}</td>
-      <td>${fmtMoney(officialPriceMap[p.id])}</td>
-      <td>${fmtMoney(shopeePriceMap[p.id])}</td>
-      <td>${supCount[p.id]||0}</td>
+      <td>${fmtMoney(row.cost)}</td>
+      <td>${fmtMoney(row.suggested)}</td>
+      <td>${fmtMoney(row.official)}</td>
+      <td>${fmtMoney(row.shopee)}</td>
+      <td>${row.supCount}</td>
       <td><span class="status-pill st-${p.status}">${statusLabel(p.status)}</span>${p.needs_review?'<span class="review-flag">待確認</span>':''}</td>
     </tr>`;
   }).join('');
@@ -437,6 +519,18 @@ async function openDetail(id){
           <td>${s.suppliers?.name||'—'}</td><td>${fmtMoney(s.unit_price)}</td><td>${s.currency||'—'}</td><td>${fmtDate(s.effective_from)}</td>
         </tr>`).join('')}
       </tbody></table>` : '<div style="color:var(--gray-400);font-size:13px">尚無供應商資料</div>'}
+      <div style="display:flex;gap:8px;margin-top:12px;align-items:flex-end;flex-wrap:wrap">
+        <div class="form-group" style="margin-bottom:0;flex:1;min-width:140px"><label>新增供應商</label>
+          <input type="text" id="add-sup-name" list="all-supplier-options" placeholder="供應商名稱">
+          <datalist id="all-supplier-options"></datalist>
+        </div>
+        <div class="form-group" style="margin-bottom:0;width:100px"><label>進貨價</label><input type="text" id="add-sup-price" inputmode="decimal"></div>
+        <div class="form-group" style="margin-bottom:0;width:90px"><label>幣別</label>
+          <select id="add-sup-currency"><option>TWD</option><option>USD</option><option>JPY</option><option>CNY</option></select>
+        </div>
+        <button class="btn btn-primary" onclick="addSupplierToProduct('${p.id}')">＋ 新增</button>
+      </div>
+      <span id="add-sup-msg" style="font-size:12px;margin-left:4px"></span>
     </div>
 
     <div class="detail-section">
@@ -480,6 +574,7 @@ async function openDetail(id){
       </tbody></table>` : '<div style="color:var(--gray-400);font-size:13px">尚無成本資料，無法試算</div>'}
     </div>
   `;
+  populateSupplierOptions();
 }
 
 let _commissionCache = null;
@@ -501,6 +596,64 @@ async function getCommissionTotals(){
   return map;
 }
 function closeDetail(){ document.getElementById('detail-modal').style.display='none'; }
+
+let _supplierNameCache = null;
+async function populateSupplierOptions(){
+  if (!_supplierNameCache){
+    const { data } = await db.from('suppliers').select('name').order('name');
+    _supplierNameCache = (data||[]).map(s=>s.name);
+  }
+  const el = document.getElementById('all-supplier-options');
+  if (el) el.innerHTML = _supplierNameCache.map(n=>`<option value="${n}">`).join('');
+}
+
+async function addSupplierToProduct(productId){
+  const name = document.getElementById('add-sup-name').value.trim();
+  const price = parseFloat(document.getElementById('add-sup-price').value);
+  const currency = document.getElementById('add-sup-currency').value;
+  const msg = document.getElementById('add-sup-msg');
+  if (!name){ msg.textContent = '請輸入供應商名稱'; msg.style.color = 'var(--danger)'; return; }
+  if (!price){ msg.textContent = '請輸入進貨價'; msg.style.color = 'var(--danger)'; return; }
+
+  let { data: existing } = await db.from('suppliers').select('id').eq('name', name).maybeSingle();
+  let supplierId = existing?.id;
+  if (!supplierId){
+    const { data: newSup, error: supErr } = await db.from('suppliers').insert({name}).select().single();
+    if (supErr){ msg.textContent = '建立供應商失敗：'+supErr.message; msg.style.color='var(--danger)'; return; }
+    supplierId = newSup.id;
+    _supplierNameCache = null; // 快取失效，下次重新載入
+  }
+
+  const today = new Date().toISOString().slice(0,10);
+  const { error: psErr } = await db.from('product_suppliers').insert({
+    product_id: productId, supplier_id: supplierId, unit_price: price, currency, effective_from: today,
+  });
+  if (psErr){ msg.textContent = '新增失敗：'+psErr.message; msg.style.color='var(--danger)'; return; }
+
+  const rates = await getCurrentRates();
+  let rate = 1;
+  if (currency==='USD') rate = rates.exchange_rate_USD || 32;
+  else if (currency==='JPY') rate = rates.exchange_rate_JPY || 0.2185;
+  else if (currency==='CNY') rate = rates.exchange_rate_CNY || 4.7;
+  const tariff = rates.tariff_coefficient || 1.16;
+  const newCost = price * rate * tariff;
+  await db.from('cost_snapshots').insert({
+    product_id: productId, supplier_id: supplierId, purchase_price: price, currency,
+    exchange_rate_used: rate, tariff_coefficient_used: tariff, cost_twd_untaxed: newCost, source: 'manual',
+  });
+
+  // 重新比較全部供應商成本，自動選出最低成本的當預設供應商
+  const { data: allSupCosts } = await db.from('cost_snapshots')
+    .select('supplier_id,cost_twd_untaxed').eq('product_id', productId).order('calculated_at',{ascending:false});
+  const latestPerSupplier = {};
+  (allSupCosts||[]).forEach(c=>{ if(!(c.supplier_id in latestPerSupplier)) latestPerSupplier[c.supplier_id]=c.cost_twd_untaxed; });
+  const cheapest = Object.entries(latestPerSupplier).sort((a,b)=>a[1]-b[1])[0];
+  if (cheapest) await db.from('products').update({default_supplier_id: cheapest[0]}).eq('id', productId);
+
+  msg.textContent = '';
+  openDetail(productId); // 重新整理詳情頁
+  doSearch(currentPage);  // 背景更新列表的成本/供應商數
+}
 
 async function updateStatus(id, status){
   const { error } = await db.from('products').update({status}).eq('id', id);
