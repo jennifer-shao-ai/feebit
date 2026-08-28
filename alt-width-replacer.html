@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>圖片語法加寬器 · 飛比特</title>
+<link rel="icon" href="favicon.svg">
+<style>
+:root {
+  --primary: #2563eb; --primary-dark: #1d4ed8; --primary-light: #dbeafe;
+  --success: #16a34a; --danger: #dc2626;
+  --gray-50: #f9fafb; --gray-100: #f3f4f6; --gray-200: #e5e7eb;
+  --gray-300: #d1d5db; --gray-400: #9ca3af; --gray-600: #4b5563; --gray-800: #1f2937;
+  --radius: 8px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+  background: var(--gray-100); color: var(--gray-800); min-height: 100vh; padding: 24px;
+}
+.wrap { max-width: 900px; margin: 0 auto; }
+.back { display: inline-flex; align-items: center; gap: 6px; color: var(--gray-600); text-decoration: none; font-size: 13px; margin-bottom: 16px; }
+.back:hover { color: var(--primary); }
+h1 { font-size: 20px; margin-bottom: 4px; }
+.sub { color: var(--gray-600); font-size: 13px; margin-bottom: 20px; }
+.card { background: white; border-radius: var(--radius); padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 16px; }
+label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+textarea {
+  width: 100%; min-height: 180px; padding: 12px; border: 1px solid var(--gray-300);
+  border-radius: 6px; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 13px;
+  line-height: 1.5; resize: vertical; color: var(--gray-800);
+}
+textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+textarea[readonly] { background: var(--gray-50); }
+.row { display: flex; align-items: center; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+button {
+  background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 6px;
+  font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.15s;
+}
+button:hover { background: var(--primary-dark); }
+button.ghost { background: white; color: var(--gray-600); border: 1px solid var(--gray-300); }
+button.ghost:hover { background: var(--gray-50); color: var(--gray-800); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+.stat { font-size: 13px; color: var(--gray-600); }
+.stat b { color: var(--success); font-size: 15px; }
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--gray-800); color: white; padding: 10px 20px; border-radius: 6px; font-size: 13px;
+  opacity: 0; pointer-events: none; transition: all 0.25s;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.hint { font-size: 12px; color: var(--gray-400); margin-top: 8px; line-height: 1.6; }
+code { background: var(--gray-100); padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="index.html">← 回工具箱</a>
+  <h1>🖼️ 圖片語法加寬器</h1>
+  <p class="sub">貼上 HTML 語法，自動把每個 <code>alt</code> 前面加上 <code>width="750px"</code>，輸出可一鍵複製。</p>
+
+  <div class="card">
+    <label for="input">原始語法</label>
+    <textarea id="input" placeholder='在這裡貼上 HTML 語法，例如：&#10;&lt;img src="a.jpg" alt="商品圖1"&gt;&#10;&lt;img src="b.jpg" alt="商品圖2"&gt;'></textarea>
+    <div class="row">
+      <button id="clearBtn" class="ghost">清空</button>
+      <span class="stat" id="stat"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <label for="output">改好的語法</label>
+    <textarea id="output" readonly placeholder="改好的語法會出現在這裡…"></textarea>
+    <div class="row">
+      <button id="copyBtn" disabled>📋 一鍵複製</button>
+    </div>
+    <p class="hint">
+      規則：把每個 <code>alt=</code> 取代成 <code>width="750px" alt=</code>（僅比對屬性形式的 <code>alt</code>，不會動到 <code>data-alt</code> 這類字）。<br>
+      已經有 <code>width="750px"</code> 的不會重複加，可安心重跑。
+    </p>
+  </div>
+</div>
+
+<div class="toast" id="toast">已複製到剪貼簿</div>
+
+<script>
+const input = document.getElementById('input');
+const output = document.getElementById('output');
+const stat = document.getElementById('stat');
+const copyBtn = document.getElementById('copyBtn');
+const clearBtn = document.getElementById('clearBtn');
+const toast = document.getElementById('toast');
+
+// 比對「空白 + (可選的既有 width="750px" +空白) + alt=」，取代成「空白 + width="750px" alt=」
+// 用空白開頭確保只命中屬性形式的 alt，不會動到 data-alt / salt 這類字；既有 width 不重複加。
+const RE = /(\s)(?:width="750px"\s+)?alt=/gi;
+
+function convert() {
+  const src = input.value;
+  if (!src.trim()) {
+    output.value = '';
+    stat.textContent = '';
+    copyBtn.disabled = true;
+    return;
+  }
+  let count = 0;
+  const result = src.replace(RE, (m, ws) => { count++; return ws + 'width="750px" alt='; });
+  output.value = result;
+  stat.innerHTML = count ? `已處理 <b>${count}</b> 個 alt` : '沒有找到 alt 屬性';
+  copyBtn.disabled = !result;
+}
+
+input.addEventListener('input', convert);
+
+clearBtn.addEventListener('click', () => {
+  input.value = '';
+  convert();
+  input.focus();
+});
+
+copyBtn.addEventListener('click', async () => {
+  if (!output.value) return;
+  try {
+    await navigator.clipboard.writeText(output.value);
+  } catch (e) {
+    output.select();
+    document.execCommand('copy');
+    window.getSelection().removeAllRanges();
+  }
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 1600);
+});
+</script>
+</body>
+</html>
