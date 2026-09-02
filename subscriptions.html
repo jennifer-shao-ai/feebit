@@ -18,6 +18,15 @@
 .sum-tile .v { font-size:20px; font-weight:700; margin-top:4px; color:var(--gray-800); }
 .sum-tile .v.warn { color:var(--warning); }
 
+.cbrk { background:white; border-radius:var(--radius); box-shadow:0 1px 3px rgba(0,0,0,.08); overflow:hidden; }
+.cbrk .cap { padding:10px 14px 4px; font-size:11px; font-weight:600; color:var(--gray-500); letter-spacing:.5px; }
+.cbrk table { width:100%; border-collapse:collapse; font-size:13px; }
+.cbrk th, .cbrk td { padding:9px 14px; text-align:left; border-bottom:1px solid var(--gray-100); white-space:nowrap; }
+.cbrk th { background:var(--gray-50); font-weight:600; font-size:11px; color:var(--gray-500); letter-spacing:.5px; }
+.cbrk td.num, .cbrk th.num { text-align:right; font-variant-numeric:tabular-nums; }
+.cbrk tbody tr:last-child td { border-bottom:none; font-weight:700; background:var(--gray-50); }
+.cbrk .tw { overflow-x:auto; }
+
 .subs-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px; }
 .sub-card { background:white; border-radius:var(--radius); padding:18px; box-shadow:0 1px 3px rgba(0,0,0,.08); border:2px solid transparent; display:flex; flex-direction:column; gap:10px; transition:border-color .15s, box-shadow .15s; }
 .sub-card.drag-over { border-color:var(--primary); box-shadow:0 4px 16px rgba(37,99,235,.18); }
@@ -150,7 +159,7 @@ textarea:focus { border-color:var(--primary); }
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
     <a class="nav-item active" href="subscriptions.html"><span class="icon">💳</span> 訂閱服務管理</a>
   </div>
-  <div class="sidebar-footer">v2.0 · Feebit © 2026</div>
+  <div class="sidebar-footer">v2.1 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -160,7 +169,7 @@ textarea:focus { border-color:var(--primary); }
       <button class="btn-hamburger" onclick="openSidebar()">☰</button>
       <span class="topbar-title">訂閱服務管理</span>
       <span class="topbar-badge">付費工具 / 平台</span>
-      <span style="font-size:11px;color:var(--gray-400);margin-left:4px">v2.0</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:4px">v2.1</span>
     </div>
     <div style="display:flex;align-items:center;gap:6px">
       <span id="save-state" style="font-size:11px;color:var(--gray-400)"></span>
@@ -179,6 +188,8 @@ textarea:focus { border-color:var(--primary); }
     <div id="ro-banner" style="display:none">👀 唯讀模式：你可以瀏覽與匯出，只有 esuse.adobe@gmail.com 能新增／編輯／匯入。</div>
 
     <div class="sub-summary" id="summary"></div>
+
+    <div id="company-breakdown" style="margin-bottom:20px"></div>
 
     <div class="sub-toolbar">
       <input type="text" class="sub-search" id="search" placeholder="🔍 搜尋服務名稱 / 分類 / 帳號" oninput="render()">
@@ -450,6 +461,42 @@ function renderSummary(){
     <div class="sum-tile"><div class="k">7 天內要結帳</div><div class="v ${soon?'warn':''}">${soon}</div></div>`;
 }
 
+// ── PER-COMPANY BREAKDOWN ─────────────────────────────
+function renderCompanyBreakdown(){
+  const el = document.getElementById('company-breakdown');
+  if (!store.items.length){ el.innerHTML = ''; return; }
+  const rows = store.companies.map(c => {
+    const its = store.items.filter(i => i.payCompanyId === c.id);
+    return {
+      label: esc(c.name) + (c.taxId ? `　<span style="color:var(--gray-400)">統編 ${esc(c.taxId)}</span>` : ''),
+      n: its.length,
+      m: its.reduce((s,i) => s + monthlyTWD(i), 0),
+      a: its.reduce((s,i) => s + annualTWD(i), 0)
+    };
+  });
+  const unassigned = store.items.filter(i => !companyById(i.payCompanyId));
+  if (unassigned.length){
+    rows.push({
+      label: '<span style="color:var(--gray-400)">未指定付款公司</span>',
+      n: unassigned.length,
+      m: unassigned.reduce((s,i) => s + monthlyTWD(i), 0),
+      a: unassigned.reduce((s,i) => s + annualTWD(i), 0)
+    });
+  }
+  const totM = rows.reduce((s,r) => s + r.m, 0);
+  const totA = rows.reduce((s,r) => s + r.a, 0);
+  el.innerHTML = `<div class="cbrk">
+    <div class="cap">各公司分攤（依目前「付款公司」設定，金額已把 USD 換算為 TWD）</div>
+    <div class="tw"><table>
+      <thead><tr><th>付款公司</th><th class="num">服務數</th><th class="num">每月</th><th class="num">每年</th></tr></thead>
+      <tbody>
+        ${rows.map(r => `<tr><td>${r.label}</td><td class="num">${r.n}</td><td class="num">${fmtMoney(r.m)}</td><td class="num">${fmtMoney(r.a)}</td></tr>`).join('')}
+        <tr><td>合計</td><td class="num">${store.items.length}</td><td class="num">${fmtMoney(totM)}</td><td class="num">${fmtMoney(totA)}</td></tr>
+      </tbody>
+    </table></div>
+  </div>`;
+}
+
 // ── RENDER GRID ───────────────────────────────────────
 function currentList(){
   const q = document.getElementById('search').value.trim().toLowerCase();
@@ -476,6 +523,7 @@ function currentList(){
 
 function render(){
   renderSummary();
+  renderCompanyBreakdown();
   refreshCatList();
   const grid = document.getElementById('grid');
   const list = currentList();
