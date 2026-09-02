@@ -76,6 +76,8 @@ td.muted { color:var(--gray-400); font-size:12px; }
 
 .trend-down { color:#dc2626; font-weight:600; }
 .action-link { color:var(--primary); font-size:12px; text-decoration:underline; cursor:pointer; }
+.action-link.mute { color:var(--gray-500); }
+.hidden-badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; background:#e5e7eb; color:#6b7280; }
 
 /* loading */
 .loading-overlay { display:none; position:fixed; inset:0; background:rgba(255,255,255,.88); z-index:1000; align-items:center; justify-content:center; flex-direction:column; gap:14px; }
@@ -195,7 +197,7 @@ td.muted { color:var(--gray-400); font-size:12px; }
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
 
-  <div class="sidebar-footer">v1.0 · Feebit © 2026</div>
+  <div class="sidebar-footer">v2.0 · Feebit © 2026</div>
 </div>
 
 <!-- TOPBAR -->
@@ -213,6 +215,7 @@ td.muted { color:var(--gray-400); font-size:12px; }
       <div class="sync-info" id="sync-info">載入中...</div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-outline btn-sm" onclick="showHiddenList()">🙈 隱藏清單 <span id="hidden-count">(0)</span></button>
       <button class="btn btn-outline btn-sm" onclick="showHistory()">📋 快照記錄</button>
       <button class="btn btn-outline btn-sm" onclick="location.reload()">🔄 重新載入</button>
     </div>
@@ -341,6 +344,11 @@ td.muted { color:var(--gray-400); font-size:12px; }
             <option value="in">有庫存</option>
             <option value="zero">零庫存</option>
           </select>
+          <select class="filter-select" id="fil-hidden" onchange="renderAll()">
+            <option value="">隱藏：全部顯示</option>
+            <option value="visible">只看未隱藏</option>
+            <option value="hidden">只看已隱藏</option>
+          </select>
           <input class="search-input" id="q-all" placeholder="搜尋商品..." oninput="renderAll()">
         </div>
       </div>
@@ -373,9 +381,14 @@ const SEVERE_P   = 8;   // 8期 ≈ 4個月
 const CHRONIC_P  = 24;  // 24期 ≈ 1年
 const DECLINE_R  = 0.5; // 近期均銷 < 前期 50% → 下滑
 const DATA_URL   = './data/inventory-snapshots.json';
+const HIDE_KEY   = 'slowMoverHiddenCodes'; // localStorage：使用者手動隱藏的貨號（活動貨號等）
 
 let db = null;           // 原始快照資料
 let analysis = null;     // 分析結果
+
+// 已隱藏貨號：不列入滯銷／下滑分析與統計，只在「全部商品」分頁可見與還原
+let hiddenCodes = new Set();
+try { hiddenCodes = new Set(JSON.parse(localStorage.getItem(HIDE_KEY) || '[]')); } catch(e) {}
 
 // ── 主流程 ──────────────────────────────────────────────
 async function init() {
@@ -410,18 +423,11 @@ async function init() {
   document.getElementById('stats-row').style.display = '';
   document.getElementById('main-tabs').style.display = '';
 
-  // Banner
-  const tot = analysis.slowMovers.length + analysis.decliners.length;
-  if (n < MILD_P) {
-    setBanner('info', `⏳ 已累積 ${n} 期，再累積 ${MILD_P - n} 期（約 ${(MILD_P - n) * 15} 天）後可開始偵測滯銷`);
-  } else if (tot === 0) {
-    setBanner('success', `✅ 目前無明顯滯銷或下滑商品，共 ${analysis.latestInStock} 項有庫存商品`);
-  } else {
-    setBanner('warn', `⚠️ 發現 <b>${analysis.slowMovers.length}</b> 項滯銷、<b>${analysis.decliners.length}</b> 項下滑，請逐一確認`);
-  }
+  renderBanner();
 
   document.getElementById('badge-slow').textContent    = analysis.slowMovers.length;
   document.getElementById('badge-decline').textContent = analysis.decliners.length;
+  updateHiddenCount();
 
   renderSlow();
   renderDecline();
@@ -456,6 +462,7 @@ function analyze(snaps) {
   let latestInStock = 0;
 
   for (const [code, info] of Object.entries(latest.products)) {
+    if (hiddenCodes.has(code)) continue;   // 活動貨號等：完全不列入分析與統計
     const qty = info.qty;
     if (qty > 0) latestInStock++;
     const hist = history[code] || [];
@@ -531,6 +538,18 @@ function declineReasons(hist) {
 }
 
 // ── 渲染 ────────────────────────────────────────────────
+function renderBanner() {
+  const n = db?.snapshots?.length || 0;
+  const tot = analysis.slowMovers.length + analysis.decliners.length;
+  if (n < MILD_P) {
+    setBanner('info', `⏳ 已累積 ${n} 期，再累積 ${MILD_P - n} 期（約 ${(MILD_P - n) * 15} 天）後可開始偵測滯銷`);
+  } else if (tot === 0) {
+    setBanner('success', `✅ 目前無明顯滯銷或下滑商品，共 ${analysis.latestInStock} 項有庫存商品`);
+  } else {
+    setBanner('warn', `⚠️ 發現 <b>${analysis.slowMovers.length}</b> 項滯銷、<b>${analysis.decliners.length}</b> 項下滑，請逐一確認`);
+  }
+}
+
 function renderStats() {
   const a = analysis;
   setText('st-total',    a.latestInStock);
@@ -568,7 +587,7 @@ function renderSlow() {
       <td style="text-align:right;" class="muted">${it.price ? 'NT$ ' + it.price : '—'}</td>
       <td>${priceSearch}</td>
       <td class="wrap" style="color:var(--gray-500);">${it.reasons.join('、')}</td>
-      <td class="wrap">${it.actions.map(a => '・' + a).join('<br>')}</td>
+      <td class="wrap">${it.actions.map(a => '・' + a).join('<br>')}<br><span class="action-link mute" data-code="${esc(it.code)}" onclick="hideCode(this.dataset.code)">🙈 隱藏此貨號</span></td>
     </tr>`;
   }).join('');
 }
@@ -598,14 +617,15 @@ function renderDecline() {
       <td style="text-align:right;" class="trend-down">▼ ${it.rate}%</td>
       <td style="text-align:right;font-weight:600;">${it.qty}</td>
       <td class="wrap" style="color:var(--gray-500);">${it.dReasons.join('、')}</td>
-      <td>${search}</td>
+      <td>${search}<br><span class="action-link mute" data-code="${esc(it.code)}" onclick="hideCode(this.dataset.code)">🙈 隱藏</span></td>
     </tr>`;
   }).join('');
 }
 
 function renderAll() {
   if (!analysis) return;
-  const stockFilter = document.getElementById('fil-stock').value;
+  const stockFilter  = document.getElementById('fil-stock').value;
+  const hiddenFilter = document.getElementById('fil-hidden').value;
   const q = document.getElementById('q-all').value.toLowerCase();
   const hist = analysis.history;
 
@@ -613,11 +633,13 @@ function renderAll() {
     const h = hist[code] || [];
     const recent4 = h.slice(-4);
     const avg = recent4.length ? (recent4.reduce((s,x) => s + x.sales, 0) / recent4.length).toFixed(1) : '—';
-    return { code, ...info, avg };
+    return { code, ...info, avg, hidden: hiddenCodes.has(code) };
   });
 
   if (stockFilter === 'in')   items = items.filter(i => i.qty > 0);
   if (stockFilter === 'zero') items = items.filter(i => i.qty <= 0);
+  if (hiddenFilter === 'visible') items = items.filter(i => !i.hidden);
+  if (hiddenFilter === 'hidden')  items = items.filter(i => i.hidden);
   if (q) items = items.filter(i => i.name.toLowerCase().includes(q) || i.code.toLowerCase().includes(q));
   items.sort((a,b) => b.qty - a.qty);
 
@@ -628,14 +650,17 @@ function renderAll() {
     const search = it.ean
       ? `<a class="action-link" href="https://www.google.com.tw/search?q=${enc(it.ean)}&tbm=shop" target="_blank">🔍</a>`
       : '—';
-    return `<tr>
-      <td class="wrap">${esc(it.name)}</td>
+    const toggle = it.hidden
+      ? `<span class="action-link" data-code="${esc(it.code)}" onclick="unhideCode(this.dataset.code)">↩︎ 取消隱藏</span>`
+      : `<span class="action-link mute" data-code="${esc(it.code)}" onclick="hideCode(this.dataset.code)">🙈 隱藏</span>`;
+    return `<tr${it.hidden ? ' style="opacity:.5;"' : ''}>
+      <td class="wrap">${esc(it.name)}${it.hidden ? ' <span class="hidden-badge">已隱藏</span>' : ''}</td>
       <td class="muted">${esc(it.code)}</td>
       <td style="text-align:right;font-weight:${it.qty > 0 ? 600 : 400};color:${it.qty <= 0 ? 'var(--gray-400)' : 'inherit'};">${it.qty}</td>
       <td style="text-align:right;">${it.avg}</td>
       <td style="text-align:right;" class="muted">${it.price ? 'NT$ ' + it.price : '—'}</td>
       <td class="muted">${esc(it.ean || '—')}</td>
-      <td>${search}</td>
+      <td>${search}　${toggle}</td>
     </tr>`;
   }).join('');
 
@@ -682,6 +707,49 @@ function showHistory() {
   alert(`快照記錄（共 ${db.snapshots.length} 期）\n\n` + lines.join('\n'));
 }
 
+// ── 商品隱藏（活動貨號等不列入滯銷分析）─────────────────
+function saveHidden() {
+  try { localStorage.setItem(HIDE_KEY, JSON.stringify([...hiddenCodes])); } catch(e) {}
+}
+function hideCode(code) {
+  if (!code) return;
+  hiddenCodes.add(String(code));
+  saveHidden();
+  reanalyze();
+}
+function unhideCode(code) {
+  hiddenCodes.delete(String(code));
+  saveHidden();
+  reanalyze();
+}
+function updateHiddenCount() {
+  const el = document.getElementById('hidden-count');
+  if (el) el.textContent = '(' + hiddenCodes.size + ')';
+}
+function showHiddenList() {
+  switchTab('all');
+  const f = document.getElementById('fil-hidden');
+  if (f) f.value = 'hidden';
+  renderAll();
+  if (hiddenCodes.size === 0) {
+    alert('目前沒有隱藏任何貨號。\n\n在「滯銷警示」或「全部商品」清單點「🙈 隱藏」即可把活動貨號等排除。');
+    return;
+  }
+  document.getElementById('panel-all').scrollIntoView({ behavior:'smooth' });
+}
+function reanalyze() {
+  if (!db || !db.snapshots?.length) { updateHiddenCount(); return; }
+  analysis = analyze(db.snapshots);
+  renderStats();
+  document.getElementById('badge-slow').textContent    = analysis.slowMovers.length;
+  document.getElementById('badge-decline').textContent = analysis.decliners.length;
+  renderBanner();
+  updateHiddenCount();
+  renderSlow();
+  renderDecline();
+  renderAll();
+}
+
 // ── 工具函式 ────────────────────────────────────────────
 function setBanner(type, html) {
   const el = document.getElementById('status-banner');
@@ -690,7 +758,7 @@ function setBanner(type, html) {
   el.innerHTML = html;
 }
 function setText(id, val) { document.getElementById(id).textContent = val; }
-function esc(s)  { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function esc(s)  { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function enc(s)  { return encodeURIComponent(s); }
 function showLoading(msg) { document.getElementById('loading-msg').textContent = msg; document.getElementById('loading-overlay').classList.add('show'); }
 function hideLoading()    { document.getElementById('loading-overlay').classList.remove('show'); }
