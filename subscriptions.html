@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>訂閱服務管理 · 飛比特營運工具箱</title>
+<link rel="icon" href="favicon.svg">
+<script>if(location.search.includes("share"))document.documentElement.classList.add("standalone");</script>
+<link rel="stylesheet" href="style.css">
+<style>
+.sub-toolbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:16px; }
+.sub-toolbar input[type="text"], .sub-toolbar select { width:auto; }
+.sub-search { min-width:200px; flex:1; max-width:320px; }
+.sub-summary { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; margin-bottom:20px; }
+.sum-tile { background:white; border-radius:var(--radius); padding:14px 16px; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+.sum-tile .k { font-size:11px; color:var(--gray-500); font-weight:600; letter-spacing:.5px; }
+.sum-tile .v { font-size:20px; font-weight:700; margin-top:4px; color:var(--gray-800); }
+.sum-tile .v.warn { color:var(--warning); }
+
+.subs-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px; }
+.sub-card { background:white; border-radius:var(--radius); padding:18px; box-shadow:0 1px 3px rgba(0,0,0,.08); border:2px solid transparent; display:flex; flex-direction:column; gap:10px; transition:border-color .15s, box-shadow .15s; }
+.sub-card.drag-over { border-color:var(--primary); box-shadow:0 4px 16px rgba(37,99,235,.18); }
+.sub-card.dragging { opacity:.4; }
+.sc-head { display:flex; align-items:center; gap:12px; }
+.sc-icon { width:44px; height:44px; border-radius:10px; background:var(--gray-50); display:flex; align-items:center; justify-content:center; font-size:24px; flex-shrink:0; overflow:hidden; }
+.sc-icon img { width:100%; height:100%; object-fit:contain; }
+.sc-title { flex:1; min-width:0; }
+.sc-title .nm { font-weight:700; font-size:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sc-title .cat { font-size:11px; color:var(--primary); font-weight:600; letter-spacing:.5px; text-transform:uppercase; margin-top:2px; }
+.sc-drag { cursor:grab; color:var(--gray-400); font-size:18px; padding:2px 4px; user-select:none; }
+.sc-drag:active { cursor:grabbing; }
+.sc-plan { font-size:13px; color:var(--gray-700); }
+.sc-plan .amt { font-weight:700; color:var(--gray-800); }
+.sc-row { font-size:12px; color:var(--gray-600); line-height:1.5; }
+.sc-row b { color:var(--gray-700); font-weight:600; }
+.sc-badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
+.sc-badge.soon { background:#fef3c7; color:var(--warning); }
+.sc-badge.today { background:#fee2e2; color:var(--danger); }
+.sc-accounts { border-top:1px solid var(--gray-100); padding-top:8px; display:flex; flex-direction:column; gap:4px; }
+.sc-acct { font-size:12px; color:var(--gray-700); }
+.sc-acct .use { color:var(--gray-500); }
+.sc-acct .val { font-family:ui-monospace,Menlo,monospace; }
+.sc-note { font-size:12px; color:var(--gray-500); font-style:italic; }
+.sc-actions { display:flex; flex-wrap:wrap; gap:6px; margin-top:auto; padding-top:6px; }
+.sc-actions .btn { padding:6px 12px; font-size:12px; }
+.mini { padding:6px 10px !important; font-size:12px !important; }
+
+.acct-editor { display:flex; flex-direction:column; gap:8px; }
+.acct-line { display:grid; grid-template-columns:1fr 1.3fr 1fr auto; gap:6px; align-items:center; }
+.acct-line input { padding:6px 8px; font-size:13px; }
+.acct-line .rm { background:#fff; border:1px solid #fca5a5; color:var(--danger); border-radius:6px; padding:5px 9px; cursor:pointer; font-size:12px; }
+textarea { width:100%; padding:8px 12px; border:1px solid var(--gray-200); border-radius:var(--radius); font-size:14px; font-family:inherit; resize:vertical; min-height:60px; outline:none; }
+textarea:focus { border-color:var(--primary); }
+.form-2col { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.hint { font-size:11px; color:var(--gray-400); margin-top:4px; }
+.empty-state { text-align:center; padding:60px 20px; color:var(--gray-400); }
+.company-line { display:grid; grid-template-columns:1fr 1fr auto; gap:8px; align-items:center; margin-bottom:8px; }
+.company-line input { padding:7px 10px; font-size:13px; }
+@media (max-width:768px){
+  .acct-line { grid-template-columns:1fr 1fr; }
+  .form-2col { grid-template-columns:1fr; }
+  .company-line { grid-template-columns:1fr 1fr; }
+}
+</style>
+</head>
+<body>
+<div id="sidebar">
+  <div class="sidebar-logo">
+    <div class="brand">飛比特 Feebit</div>
+    <div class="sub">營運工具箱</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">總覽</div>
+    <a class="nav-item" href="index.html"><span class="icon">🏠</span> 首頁</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">營運</div>
+    <a class="nav-item" href="finance-dashboard.html"><span class="icon">📊</span> 帳務分析</a>
+    <a class="nav-item" href="brand-trend.html"><span class="icon">📊</span> 品牌趨勢分析</a>
+    <a class="nav-item" href="channel-revenue.html"><span class="icon">🛍️</span> 通路營收分析</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">財務</div>
+    <a class="nav-item" href="bank-converter.html"><span class="icon">🏦</span> 帳務轉換</a>
+    <a class="nav-item" href="journal-voucher.html"><span class="icon">📗</span> 分錄帳轉換</a>
+    <a class="nav-item" href="accounting-ops.html"><span class="icon">📅</span> 例行帳務作業</a>
+    <a class="nav-item" href="coupang-invoice.html"><span class="icon">🧾</span> 酷澎發票轉檔</a>
+    <a class="nav-item" href="coupang-reconcile.html"><span class="icon">🔍</span> 酷澎商城對帳</a>
+    <a class="nav-item" href="shopee-subsidy.html"><span class="icon">🚚</span> 蝦皮運費補助申請</a>
+    <a class="nav-item" href="shopee-converter.html"><span class="icon">🛒</span> 蝦皮撥款轉換</a>
+    <a class="nav-item" href="invoice-stamp.html"><span class="icon">🖋️</span> 發票蓋章工具</a>
+    <a class="nav-item" href="profit-calculator.html"><span class="icon">💰</span> 毛利試算機</a>
+    <a class="nav-item" href="cost-database.html"><span class="icon">💾</span> 商品成本資料庫</a>
+    <a class="nav-item" href="brand-sales.html"><span class="icon">📈</span> 品牌銷售轉換</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">市場分析</div>
+    <a class="nav-item" href="market-tracker.html"><span class="icon">🔭</span> 品類競品分析</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">行銷</div>
+    <a class="nav-item" href="product-image-gen.html"><span class="icon">🎨</span> 商品圖生成</a>
+    <a class="nav-item" href="meta-audience.html"><span class="icon">🎯</span> Meta顧客名單轉換</a>
+    <a class="nav-item" href="alt-width-replacer.html"><span class="icon">🖼️</span> 圖片語法加寬器</a>
+    <div class="nav-item soon"><span class="icon">📢</span> 廣告文案<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">客服</div>
+    <div class="nav-item soon"><span class="icon">💬</span> 客服回覆<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">業務</div>
+    <a class="nav-item" href="purchase-order.html"><span class="icon">📄</span> 採購單轉換</a>
+    <div class="nav-item soon"><span class="icon">🤝</span> 廠商談判<span class="soon-tag">即將推出</span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">人事</div>
+    <a class="nav-item" href="attendance.html"><span class="icon">🗓️</span> 考勤查驗</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">庫存</div>
+    <a class="nav-item" href="stock-analysis.html"><span class="icon">📦</span> 庫存訂貨分析</a>
+    <a class="nav-item" href="slow-mover-alert.html"><span class="icon">🔴</span> 滯銷品警示</a>
+    <a class="nav-item" href="feebit-inventory-filter.html"><span class="icon">🏪</span> 商品篩選工具</a>
+    <a class="nav-item" href="reorder-suggestions.html"><span class="icon">🔄</span> 庫存訂貨建議</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">研發</div>
+    <a class="nav-item" href="research-notes.html"><span class="icon">📚</span> 研發筆記</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">法規</div>
+    <a class="nav-item" href="fda-registration.html"><span class="icon">🧪</span> 化粧品登錄轉換</a>
+    <a class="nav-item" href="ingredient-checker.html"><span class="icon">🧫</span> 食品成分比對</a>
+    <a class="nav-item" href="http://127.0.0.1:5050" target="_blank"><span class="icon">📋</span> PIF Builder</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">生活</div>
+    <a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span> 旅行規劃</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">自動化</div>
+    <a class="nav-item" href="schedule-notifications.html"><span class="icon">⏰</span> 自動排程通知</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">系統</div>
+    <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
+    <a class="nav-item active" href="subscriptions.html"><span class="icon">💳</span> 訂閱服務管理</a>
+  </div>
+  <div class="sidebar-footer">v1.0 · Feebit © 2026</div>
+</div>
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<div id="main">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="btn-hamburger" onclick="openSidebar()">☰</button>
+      <span class="topbar-title">訂閱服務管理</span>
+      <span class="topbar-badge">付費工具 / 平台</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:4px">v1.0</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <button class="btn btn-outline mini" onclick="openCompanyModal()">🏢 公司 / 統編</button>
+      <button class="btn btn-outline mini" onclick="exportJSON()">⬇ 匯出</button>
+      <button class="btn btn-outline mini" onclick="document.getElementById('import-file').click()">⬆ 匯入</button>
+      <input type="file" id="import-file" accept="application/json" style="display:none" onchange="importJSON(this)">
+      <button class="btn btn-primary mini" onclick="openItemModal()">＋ 新增服務</button>
+    </div>
+  </div>
+
+  <div class="page">
+    <p style="color:var(--gray-600);font-size:14px;margin-bottom:6px">目前付費使用中的工具、伺服器與平台一覽：方案、價格、結帳日、帳號與後台入口。</p>
+    <p style="color:var(--gray-400);font-size:12px;margin-bottom:16px">資料只存在這台電腦的瀏覽器（localStorage），換裝置請用「匯出 / 匯入」搬移。拖曳右上角 ⠿ 可自訂排序。</p>
+
+    <div class="sub-summary" id="summary"></div>
+
+    <div class="sub-toolbar">
+      <input type="text" class="sub-search" id="search" placeholder="🔍 搜尋服務名稱 / 分類 / 帳號" oninput="render()">
+      <label style="font-size:12px;color:var(--gray-500)">排序</label>
+      <select id="sortmode" onchange="setSort(this.value)">
+        <option value="custom">自訂順序（可拖曳）</option>
+        <option value="name">服務名稱</option>
+        <option value="billing">結帳日（近→遠）</option>
+        <option value="amount">每月金額（高→低）</option>
+        <option value="category">分類</option>
+      </select>
+    </div>
+
+    <div class="subs-grid" id="grid"></div>
+  </div>
+</div>
+
+<!-- ── ITEM MODAL ── -->
+<div class="modal-backdrop" id="item-modal" style="display:none">
+  <div class="modal" style="width:620px">
+    <h2 id="item-modal-title">新增服務</h2>
+    <div class="form-2col">
+      <div class="form-group">
+        <label>圖示（emoji 或圖片網址）</label>
+        <input type="text" id="f-icon" placeholder="例：🔥 或 https://...icon.png">
+      </div>
+      <div class="form-group">
+        <label>服務名稱 *</label>
+        <input type="text" id="f-name" placeholder="例：Supabase Pro">
+      </div>
+    </div>
+    <div class="form-2col">
+      <div class="form-group">
+        <label>分類</label>
+        <input type="text" id="f-category" list="cat-list" placeholder="例：伺服器 / 平台 / SaaS">
+        <datalist id="cat-list"></datalist>
+      </div>
+      <div class="form-group">
+        <label>方案</label>
+        <input type="text" id="f-plan" placeholder="例：Pro 團隊版 / 8GB RAM">
+      </div>
+    </div>
+    <div class="form-2col">
+      <div class="form-group">
+        <label>金額</label>
+        <input type="text" id="f-amount" inputmode="decimal" placeholder="例：25">
+      </div>
+      <div class="form-group">
+        <label>幣別 / 結帳週期</label>
+        <div style="display:flex;gap:6px">
+          <select id="f-currency" style="flex:1">
+            <option value="TWD">TWD</option>
+            <option value="USD">USD</option>
+          </select>
+          <select id="f-cycle" style="flex:1.4">
+            <option value="monthly">月繳</option>
+            <option value="quarterly">季繳</option>
+            <option value="yearly">年繳</option>
+            <option value="onetime">一次性</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="form-2col">
+      <div class="form-group">
+        <label>結帳日</label>
+        <input type="text" id="f-billing" placeholder="例：每月 15 日 或 2026/03/20">
+        <div class="hint">填數字或「每月 N 日」會自動提醒；填完整日期則以該日為準</div>
+      </div>
+      <div class="form-group">
+        <label>後台網址</label>
+        <input type="text" id="f-url" placeholder="https://...">
+      </div>
+    </div>
+    <div class="form-2col">
+      <div class="form-group">
+        <label>付款公司</label>
+        <select id="f-company"></select>
+      </div>
+      <div class="form-group">
+        <label>付費年度</label>
+        <input type="text" id="f-year" placeholder="例：2026">
+        <div class="hint">兩間公司輪流付款，記錄今年由哪間出</div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>帳號（可多組，例如管理者帳號 + 財務帳號）</label>
+      <div class="acct-editor" id="acct-editor"></div>
+      <button class="btn btn-outline mini" style="margin-top:8px" onclick="addAcctLine()">＋ 新增帳號</button>
+    </div>
+
+    <div class="form-group">
+      <label>備註</label>
+      <textarea id="f-note" placeholder="續約條件、聯絡窗口、發票抬頭注意事項…"></textarea>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="saveItem()">儲存</button>
+      <button class="btn btn-outline" onclick="closeItemModal()">取消</button>
+      <button class="btn btn-outline" id="btn-delete-item" style="margin-left:auto;color:var(--danger);border-color:#fca5a5" onclick="deleteItem()">刪除此服務</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── COMPANY MODAL ── -->
+<div class="modal-backdrop" id="company-modal" style="display:none">
+  <div class="modal">
+    <h2>公司 / 統編設定</h2>
+    <p style="font-size:12px;color:var(--gray-500);margin-bottom:14px">每筆服務可指定由哪間公司付款，卡片會顯示對應統編。</p>
+    <div id="company-editor"></div>
+    <button class="btn btn-outline mini" style="margin-top:6px" onclick="addCompanyLine()">＋ 新增公司</button>
+    <div class="form-group" style="margin-top:18px">
+      <label>USD → TWD 匯率（僅用於上方總計換算）</label>
+      <input type="text" id="f-usdrate" inputmode="decimal" style="max-width:160px">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="saveCompanies()">儲存</button>
+      <button class="btn btn-outline" onclick="closeCompanyModal()">取消</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function copyShare(b){navigator.clipboard.writeText(location.origin+location.pathname+"?share").then(()=>{b.textContent="✅ 已複製";setTimeout(()=>b.innerHTML="🔗 分享",1500)});}
+function openSidebar(){document.getElementById('sidebar').classList.add('open');document.getElementById('sidebar-overlay').classList.add('show');}
+function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebar-overlay').classList.remove('show');}
+</script>
+<script>
+// ── STORE ─────────────────────────────────────────────
+const KEY = 'feebit_subscriptions_v1';
+const CYCLE_LABEL = { monthly:'月繳', quarterly:'季繳', yearly:'年繳', onetime:'一次性' };
+const CYCLE_MONTHS = { monthly:1, quarterly:3, yearly:12, onetime:0 };
+
+let store = load();
+let editingId = null;
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+function defaultStore(){
+  return {
+    companies: [
+      { id: uid(), name: '公司 A', taxId: '' },
+      { id: uid(), name: '公司 B', taxId: '' }
+    ],
+    usdRate: 32,
+    sortMode: 'custom',
+    items: []
+  };
+}
+function load(){
+  try {
+    const raw = JSON.parse(localStorage.getItem(KEY));
+    if (raw && Array.isArray(raw.items)) {
+      if (!Array.isArray(raw.companies) || !raw.companies.length) raw.companies = defaultStore().companies;
+      if (typeof raw.usdRate !== 'number') raw.usdRate = 32;
+      if (!raw.sortMode) raw.sortMode = 'custom';
+      return raw;
+    }
+  } catch(e) {}
+  return defaultStore();
+}
+function save(){ localStorage.setItem(KEY, JSON.stringify(store)); }
+
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function companyById(id){ return store.companies.find(c => c.id === id) || null; }
+
+// ── BILLING DATE ──────────────────────────────────────
+function daysUntilBilling(str){
+  if (!str) return null;
+  str = String(str).trim();
+  const today = new Date(); today.setHours(0,0,0,0);
+  let m = str.match(/(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/);
+  if (m){
+    const d = new Date(+m[1], +m[2]-1, +m[3]); d.setHours(0,0,0,0);
+    return Math.round((d - today) / 86400000);
+  }
+  m = str.match(/(\d{1,2})/);
+  if (m){
+    let day = +m[1];
+    if (day >= 1 && day <= 31){
+      let d = new Date(today.getFullYear(), today.getMonth(), day); d.setHours(0,0,0,0);
+      if (d < today) d = new Date(today.getFullYear(), today.getMonth()+1, day);
+      return Math.round((d - today) / 86400000);
+    }
+  }
+  return null;
+}
+
+// ── MONEY ─────────────────────────────────────────────
+function toTWD(amount, currency){
+  const n = parseFloat(amount) || 0;
+  return currency === 'USD' ? n * (parseFloat(store.usdRate) || 0) : n;
+}
+function monthlyTWD(it){
+  const months = CYCLE_MONTHS[it.cycle];
+  if (!months) return 0;
+  return toTWD(it.amount, it.currency) / months;
+}
+function annualTWD(it){
+  const months = CYCLE_MONTHS[it.cycle];
+  if (!months) return 0;
+  return toTWD(it.amount, it.currency) * (12 / months);
+}
+function fmtMoney(n){ return 'NT$' + Math.round(n).toLocaleString('en-US'); }
+function fmtAmount(it){
+  const n = parseFloat(it.amount);
+  if (isNaN(n)) return '—';
+  const sym = it.currency === 'USD' ? 'US$' : 'NT$';
+  return sym + n.toLocaleString('en-US') + ' / ' + (CYCLE_LABEL[it.cycle] || '');
+}
+
+// ── SUMMARY ───────────────────────────────────────────
+function renderSummary(){
+  const items = store.items;
+  const mtot = items.reduce((s,it) => s + monthlyTWD(it), 0);
+  const atot = items.reduce((s,it) => s + annualTWD(it), 0);
+  let soon = 0;
+  items.forEach(it => { const d = daysUntilBilling(it.billingDate); if (d !== null && d >= 0 && d <= 7) soon++; });
+  document.getElementById('summary').innerHTML = `
+    <div class="sum-tile"><div class="k">服務數</div><div class="v">${items.length}</div></div>
+    <div class="sum-tile"><div class="k">每月固定支出</div><div class="v">${fmtMoney(mtot)}</div></div>
+    <div class="sum-tile"><div class="k">每年支出（含年繳攤提）</div><div class="v">${fmtMoney(atot)}</div></div>
+    <div class="sum-tile"><div class="k">7 天內要結帳</div><div class="v ${soon?'warn':''}">${soon}</div></div>`;
+}
+
+// ── RENDER GRID ───────────────────────────────────────
+function currentList(){
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  let list = store.items.slice();
+  if (q){
+    list = list.filter(it => {
+      const hay = [it.name, it.category, it.plan, it.note, (it.accounts||[]).map(a=>a.use+' '+a.account).join(' ')].join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+  }
+  const mode = store.sortMode;
+  if (mode === 'name') list.sort((a,b) => (a.name||'').localeCompare(b.name||'', 'zh-Hant'));
+  else if (mode === 'category') list.sort((a,b) => (a.category||'').localeCompare(b.category||'', 'zh-Hant') || (a.name||'').localeCompare(b.name||'','zh-Hant'));
+  else if (mode === 'amount') list.sort((a,b) => monthlyTWD(b) - monthlyTWD(a));
+  else if (mode === 'billing') list.sort((a,b) => {
+    const da = daysUntilBilling(a.billingDate), db = daysUntilBilling(b.billingDate);
+    if (da === null && db === null) return 0;
+    if (da === null) return 1;
+    if (db === null) return -1;
+    return da - db;
+  });
+  return list;
+}
+
+function render(){
+  renderSummary();
+  refreshCatList();
+  const grid = document.getElementById('grid');
+  const list = currentList();
+  if (!store.items.length){
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">還沒有任何服務，點右上角「＋ 新增服務」開始建立。</div>`;
+    return;
+  }
+  if (!list.length){
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">找不到符合的服務。</div>`;
+    return;
+  }
+  const draggable = store.sortMode === 'custom' && !document.getElementById('search').value.trim();
+  grid.innerHTML = list.map(it => card(it, draggable)).join('');
+  if (draggable) wireDrag();
+}
+
+function card(it, draggable){
+  const co = companyById(it.payCompanyId);
+  const d = daysUntilBilling(it.billingDate);
+  let badge = '';
+  if (d !== null && d >= 0 && d <= 7) badge = `<span class="sc-badge ${d===0?'today':'soon'}">${d===0?'今天結帳':d+' 天後結帳'}</span>`;
+  const iconHtml = /^(https?:|data:)/i.test((it.icon||'').trim())
+    ? `<img src="${esc(it.icon.trim())}" alt="">`
+    : esc(it.icon || '💳');
+  const accts = (it.accounts||[]).filter(a => a.use || a.account || a.note).map(a => `
+    <div class="sc-acct">${a.use?`<span class="use">${esc(a.use)}：</span>`:''}<span class="val">${esc(a.account||'—')}</span>${a.note?` <span class="use">（${esc(a.note)}）</span>`:''}</div>`).join('');
+  const payLine = co
+    ? `<b>付款：</b>${esc(co.name)}${co.taxId?`（統編 ${esc(co.taxId)}）`:''}${it.payYear?` · ${esc(it.payYear)} 年`:''}`
+    : (it.payYear ? `<b>付款年度：</b>${esc(it.payYear)}` : '');
+  return `
+  <div class="sub-card" data-id="${it.id}" ${draggable?'draggable="true"':''}>
+    <div class="sc-head">
+      <div class="sc-icon">${iconHtml}</div>
+      <div class="sc-title">
+        <div class="nm">${esc(it.name)}</div>
+        ${it.category?`<div class="cat">${esc(it.category)}</div>`:''}
+      </div>
+      ${draggable?'<span class="sc-drag" title="拖曳排序">⠿</span>':''}
+    </div>
+    <div class="sc-plan">${it.plan?`${esc(it.plan)} · `:''}<span class="amt">${esc(fmtAmount(it))}</span></div>
+    <div class="sc-row"><b>結帳日：</b>${esc(it.billingDate||'—')} ${badge}</div>
+    ${payLine?`<div class="sc-row">${payLine}</div>`:''}
+    ${accts?`<div class="sc-accounts">${accts}</div>`:''}
+    ${it.note?`<div class="sc-note">${esc(it.note)}</div>`:''}
+    <div class="sc-actions">
+      ${it.backendUrl?`<a class="btn btn-primary mini" href="${esc(it.backendUrl)}" target="_blank" rel="noopener">前往後台 →</a>`:''}
+      <button class="btn btn-outline mini" onclick="openItemModal('${it.id}')">編輯</button>
+    </div>
+  </div>`;
+}
+
+// ── DRAG REORDER ──────────────────────────────────────
+let dragId = null;
+function wireDrag(){
+  document.querySelectorAll('.sub-card[draggable]').forEach(el => {
+    el.addEventListener('dragstart', () => { dragId = el.dataset.id; el.classList.add('dragging'); });
+    el.addEventListener('dragend', () => { dragId = null; el.classList.remove('dragging'); document.querySelectorAll('.sub-card').forEach(c=>c.classList.remove('drag-over')); });
+    el.addEventListener('dragover', e => { e.preventDefault(); if (el.dataset.id !== dragId) el.classList.add('drag-over'); });
+    el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+    el.addEventListener('drop', e => {
+      e.preventDefault();
+      el.classList.remove('drag-over');
+      if (!dragId || el.dataset.id === dragId) return;
+      const items = store.items;
+      const from = items.findIndex(i => i.id === dragId);
+      const to = items.findIndex(i => i.id === el.dataset.id);
+      if (from < 0 || to < 0) return;
+      const [moved] = items.splice(from, 1);
+      items.splice(to, 0, moved);
+      save(); render();
+    });
+  });
+}
+
+function setSort(v){ store.sortMode = v; save(); render(); }
+
+// ── ITEM MODAL ────────────────────────────────────────
+function refreshCatList(){
+  const cats = [...new Set(store.items.map(i => i.category).filter(Boolean))];
+  document.getElementById('cat-list').innerHTML = cats.map(c => `<option value="${esc(c)}">`).join('');
+}
+function fillCompanySelect(){
+  const sel = document.getElementById('f-company');
+  sel.innerHTML = `<option value="">未指定</option>` + store.companies.map(c => `<option value="${esc(c.id)}">${esc(c.name)}${c.taxId?` (${esc(c.taxId)})`:''}</option>`).join('');
+}
+function addAcctLine(use='', account='', note=''){
+  const wrap = document.getElementById('acct-editor');
+  const div = document.createElement('div');
+  div.className = 'acct-line';
+  div.innerHTML = `
+    <input type="text" placeholder="用途（管理者/財務…）" value="${esc(use)}">
+    <input type="text" placeholder="帳號 / email" value="${esc(account)}">
+    <input type="text" placeholder="備註（選填）" value="${esc(note)}">
+    <button class="rm" onclick="this.parentElement.remove()">✕</button>`;
+  wrap.appendChild(div);
+}
+function openItemModal(id){
+  editingId = id || null;
+  const it = id ? store.items.find(i => i.id === id) : null;
+  document.getElementById('item-modal-title').textContent = it ? '編輯服務' : '新增服務';
+  document.getElementById('btn-delete-item').style.display = it ? '' : 'none';
+  fillCompanySelect();
+  document.getElementById('f-icon').value = it?.icon || '';
+  document.getElementById('f-name').value = it?.name || '';
+  document.getElementById('f-category').value = it?.category || '';
+  document.getElementById('f-plan').value = it?.plan || '';
+  document.getElementById('f-amount').value = it?.amount ?? '';
+  document.getElementById('f-currency').value = it?.currency || 'TWD';
+  document.getElementById('f-cycle').value = it?.cycle || 'monthly';
+  document.getElementById('f-billing').value = it?.billingDate || '';
+  document.getElementById('f-url').value = it?.backendUrl || '';
+  document.getElementById('f-company').value = it?.payCompanyId || '';
+  document.getElementById('f-year').value = it?.payYear || '';
+  document.getElementById('f-note').value = it?.note || '';
+  const ae = document.getElementById('acct-editor');
+  ae.innerHTML = '';
+  const accts = (it?.accounts && it.accounts.length) ? it.accounts : [{}];
+  accts.forEach(a => addAcctLine(a.use, a.account, a.note));
+  document.getElementById('item-modal').style.display = 'flex';
+}
+function closeItemModal(){ document.getElementById('item-modal').style.display = 'none'; editingId = null; }
+function saveItem(){
+  const name = document.getElementById('f-name').value.trim();
+  if (!name){ alert('請填服務名稱'); return; }
+  const accounts = [...document.querySelectorAll('#acct-editor .acct-line')].map(l => {
+    const [a,b,c] = l.querySelectorAll('input');
+    return { use:a.value.trim(), account:b.value.trim(), note:c.value.trim() };
+  }).filter(a => a.use || a.account || a.note);
+  const data = {
+    icon: document.getElementById('f-icon').value.trim(),
+    name,
+    category: document.getElementById('f-category').value.trim(),
+    plan: document.getElementById('f-plan').value.trim(),
+    amount: document.getElementById('f-amount').value.trim(),
+    currency: document.getElementById('f-currency').value,
+    cycle: document.getElementById('f-cycle').value,
+    billingDate: document.getElementById('f-billing').value.trim(),
+    backendUrl: document.getElementById('f-url').value.trim(),
+    payCompanyId: document.getElementById('f-company').value,
+    payYear: document.getElementById('f-year').value.trim(),
+    accounts,
+    note: document.getElementById('f-note').value.trim()
+  };
+  if (editingId){
+    const it = store.items.find(i => i.id === editingId);
+    Object.assign(it, data);
+  } else {
+    store.items.push({ id: uid(), ...data });
+  }
+  save(); closeItemModal(); render();
+}
+function deleteItem(){
+  if (!editingId) return;
+  const it = store.items.find(i => i.id === editingId);
+  if (!confirm(`確定刪除「${it?.name||''}」？`)) return;
+  store.items = store.items.filter(i => i.id !== editingId);
+  save(); closeItemModal(); render();
+}
+
+// ── COMPANY MODAL ─────────────────────────────────────
+function addCompanyLine(id='', name='', taxId=''){
+  const wrap = document.getElementById('company-editor');
+  const div = document.createElement('div');
+  div.className = 'company-line';
+  div.dataset.id = id || uid();
+  div.innerHTML = `
+    <input type="text" placeholder="公司名稱" value="${esc(name)}">
+    <input type="text" placeholder="統一編號" value="${esc(taxId)}">
+    <button class="rm" style="background:#fff;border:1px solid #fca5a5;color:var(--danger);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:12px" onclick="this.parentElement.remove()">✕</button>`;
+  wrap.appendChild(div);
+}
+function openCompanyModal(){
+  const wrap = document.getElementById('company-editor');
+  wrap.innerHTML = '';
+  store.companies.forEach(c => addCompanyLine(c.id, c.name, c.taxId));
+  if (!store.companies.length){ addCompanyLine(); addCompanyLine(); }
+  document.getElementById('f-usdrate').value = store.usdRate;
+  document.getElementById('company-modal').style.display = 'flex';
+}
+function closeCompanyModal(){ document.getElementById('company-modal').style.display = 'none'; }
+function saveCompanies(){
+  const lines = [...document.querySelectorAll('#company-editor .company-line')];
+  const companies = lines.map(l => {
+    const [n,t] = l.querySelectorAll('input');
+    return { id: l.dataset.id, name: n.value.trim(), taxId: t.value.trim() };
+  }).filter(c => c.name || c.taxId);
+  if (!companies.length){ alert('至少保留一間公司'); return; }
+  store.companies = companies;
+  const rate = parseFloat(document.getElementById('f-usdrate').value);
+  store.usdRate = isNaN(rate) ? 0 : rate;
+  save(); closeCompanyModal(); render();
+}
+
+// ── IMPORT / EXPORT ───────────────────────────────────
+function exportJSON(){
+  const blob = new Blob([JSON.stringify(store, null, 2)], { type:'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'feebit-訂閱服務-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function importJSON(input){
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!data || !Array.isArray(data.items)) throw new Error('格式不符');
+      if (!confirm('匯入會覆蓋目前所有資料，確定？')) { input.value=''; return; }
+      store = {
+        companies: Array.isArray(data.companies) && data.companies.length ? data.companies : defaultStore().companies,
+        usdRate: typeof data.usdRate === 'number' ? data.usdRate : 32,
+        sortMode: data.sortMode || 'custom',
+        items: data.items.map(it => ({ id: it.id || uid(), ...it }))
+      };
+      save();
+      document.getElementById('sortmode').value = store.sortMode;
+      render();
+      alert('匯入完成，共 ' + store.items.length + ' 筆服務');
+    } catch(e){ alert('匯入失敗：' + e.message); }
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ── INIT ──────────────────────────────────────────────
+document.getElementById('sortmode').value = store.sortMode;
+[document.getElementById('item-modal'), document.getElementById('company-modal')].forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.style.display = 'none'; });
+});
+render();
+</script>
+</body>
+</html>
