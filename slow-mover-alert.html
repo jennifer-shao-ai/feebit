@@ -64,6 +64,10 @@ table { width:100%; border-collapse:collapse; font-size:13px; }
 th { background:var(--gray-50); padding:9px 12px; text-align:left; font-weight:600; border-bottom:2px solid var(--gray-200); white-space:nowrap; }
 td { padding:8px 12px; border-bottom:1px solid var(--gray-100); white-space:nowrap; vertical-align:middle; }
 tr:hover td { background:var(--gray-50); }
+th.sortable { cursor:pointer; user-select:none; }
+th.sortable:hover { color:var(--primary); }
+.sort-ind { color:var(--gray-300); font-size:10px; margin-left:2px; }
+.sort-ind.active { color:var(--primary); }
 td.wrap { white-space:normal; max-width:220px; font-size:12px; }
 td.muted { color:var(--gray-400); font-size:12px; }
 
@@ -197,7 +201,7 @@ td.muted { color:var(--gray-400); font-size:12px; }
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
 
-  <div class="sidebar-footer">v2.0 · Feebit © 2026</div>
+  <div class="sidebar-footer">v3.0 · Feebit © 2026</div>
 </div>
 
 <!-- TOPBAR -->
@@ -289,17 +293,7 @@ td.muted { color:var(--gray-400); font-size:12px; }
       <div class="table-wrapper">
         <table>
           <thead>
-            <tr>
-              <th>商品名稱</th>
-              <th>代號</th>
-              <th style="text-align:right;">庫存</th>
-              <th style="text-align:right;">未售期數</th>
-              <th>滯銷等級</th>
-              <th style="text-align:right;">建議售價</th>
-              <th>競品比價</th>
-              <th>可能原因</th>
-              <th>建議行動</th>
-            </tr>
+            <tr id="head-slow"></tr>
           </thead>
           <tbody id="tb-slow"><tr><td colspan="9" class="empty-cell">等待資料載入...</td></tr></tbody>
         </table>
@@ -317,15 +311,7 @@ td.muted { color:var(--gray-400); font-size:12px; }
       <div class="table-wrapper">
         <table>
           <thead>
-            <tr>
-              <th>商品名稱</th>
-              <th style="text-align:right;">前期週均銷量</th>
-              <th style="text-align:right;">近期週均銷量</th>
-              <th style="text-align:right;">下滑幅度</th>
-              <th style="text-align:right;">庫存</th>
-              <th>可能原因</th>
-              <th>競品比價</th>
-            </tr>
+            <tr id="head-decline"></tr>
           </thead>
           <tbody id="tb-decline"><tr><td colspan="7" class="empty-cell">需累積 4 期以上才能偵測下滑趨勢</td></tr></tbody>
         </table>
@@ -355,15 +341,7 @@ td.muted { color:var(--gray-400); font-size:12px; }
       <div class="table-wrapper">
         <table>
           <thead>
-            <tr>
-              <th>商品名稱</th>
-              <th>代號</th>
-              <th style="text-align:right;">庫存</th>
-              <th style="text-align:right;">近4期均銷</th>
-              <th style="text-align:right;">建議售價</th>
-              <th>EAN</th>
-              <th>競品比價</th>
-            </tr>
+            <tr id="head-all"></tr>
           </thead>
           <tbody id="tb-all"><tr><td colspan="7" class="empty-cell">等待資料載入...</td></tr></tbody>
         </table>
@@ -389,6 +367,34 @@ let analysis = null;     // 分析結果
 // 已隱藏貨號：不列入滯銷／下滑分析與統計，只在「全部商品」分頁可見與還原
 let hiddenCodes = new Set();
 try { hiddenCodes = new Set(JSON.parse(localStorage.getItem(HIDE_KEY) || '[]')); } catch(e) {}
+
+// ── 排序設定（點欄位標題切換）─────────────────────────────
+const SEV_RANK = { mild:1, moderate:2, severe:3, chronic:4 };
+// 每個分頁的欄位：[排序鍵 或 null＝不可排序, 顯示文字, 是否靠右對齊]
+const COLS = {
+  slow: [
+    ['name','商品名稱',0], ['code','代號',0], ['qty','庫存',1], ['zeroPeriods','未售期數',1],
+    ['sevRank','滯銷等級',0], ['price','建議售價',1], [null,'競品比價',0], [null,'可能原因',0], [null,'建議行動',0],
+  ],
+  decline: [
+    ['name','商品名稱',0], ['pAvg','前期週均銷量',1], ['rAvg','近期週均銷量',1], ['rate','下滑幅度',1],
+    ['qty','庫存',1], [null,'可能原因',0], [null,'競品比價',0],
+  ],
+  all: [
+    ['name','商品名稱',0], ['code','代號',0], ['qty','庫存',1], ['avg','近4期均銷',1],
+    ['price','建議售價',1], ['ean','EAN',0], [null,'競品比價',0],
+  ],
+};
+const NUM_KEYS = {
+  slow:    new Set(['qty','zeroPeriods','sevRank','price']),
+  decline: new Set(['pAvg','rAvg','rate','qty']),
+  all:     new Set(['qty','avg','price']),
+};
+let sortState = {
+  slow:    { key:'zeroPeriods', dir:'desc' },
+  decline: { key:'rate',        dir:'desc' },
+  all:     { key:'qty',         dir:'desc' },
+};
 
 // ── 主流程 ──────────────────────────────────────────────
 async function init() {
@@ -483,7 +489,7 @@ function analyze(snaps) {
       else if (zeroPeriods >= SEVERE_P)    { sev = 'severe';   sevLabel = '嚴重滯銷（≥4月）'; }
       else if (zeroPeriods >= MODERATE_P)  { sev = 'moderate'; sevLabel = '中度滯銷（≥2月）'; }
       else                                  { sev = 'mild';     sevLabel = '輕微滯銷（≥1月）'; }
-      slowMovers.push({ code, ...info, zeroPeriods, sev, sevLabel, hist,
+      slowMovers.push({ code, ...info, zeroPeriods, sev, sevLabel, sevRank: SEV_RANK[sev], hist,
         reasons: reasons(zeroPeriods, info),
         actions:  actions(zeroPeriods, info) });
     }
@@ -561,12 +567,14 @@ function renderStats() {
 }
 
 function renderSlow() {
+  renderHead('slow');
   if (!analysis) return;
   const sevFilter = document.getElementById('fil-sev').value;
   const q = document.getElementById('q-slow').value.toLowerCase();
   let items = analysis.slowMovers;
   if (sevFilter) items = items.filter(i => i.sev === sevFilter);
   if (q)        items = items.filter(i => i.name.toLowerCase().includes(q) || i.code.toLowerCase().includes(q));
+  items = applySort(items, 'slow');
 
   const tbody = document.getElementById('tb-slow');
   if (items.length === 0) {
@@ -593,10 +601,12 @@ function renderSlow() {
 }
 
 function renderDecline() {
+  renderHead('decline');
   if (!analysis) return;
   const q = document.getElementById('q-decline').value.toLowerCase();
   let items = analysis.decliners;
   if (q) items = items.filter(i => i.name.toLowerCase().includes(q));
+  items = applySort(items, 'decline');
 
   const tbody = document.getElementById('tb-decline');
   if (items.length === 0) {
@@ -623,6 +633,7 @@ function renderDecline() {
 }
 
 function renderAll() {
+  renderHead('all');
   if (!analysis) return;
   const stockFilter  = document.getElementById('fil-stock').value;
   const hiddenFilter = document.getElementById('fil-hidden').value;
@@ -641,7 +652,7 @@ function renderAll() {
   if (hiddenFilter === 'visible') items = items.filter(i => !i.hidden);
   if (hiddenFilter === 'hidden')  items = items.filter(i => i.hidden);
   if (q) items = items.filter(i => i.name.toLowerCase().includes(q) || i.code.toLowerCase().includes(q));
-  items.sort((a,b) => b.qty - a.qty);
+  items = applySort(items, 'all');
 
   const tbody = document.getElementById('tb-all');
   if (items.length === 0) { tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">無符合條件商品</td></tr>'; return; }
@@ -707,6 +718,45 @@ function showHistory() {
   alert(`快照記錄（共 ${db.snapshots.length} 期）\n\n` + lines.join('\n'));
 }
 
+// ── 排序 ────────────────────────────────────────────────
+function renderHead(panel) {
+  const tr = document.getElementById('head-' + panel);
+  if (!tr) return;
+  const s = sortState[panel];
+  tr.innerHTML = COLS[panel].map(([key, label, right]) => {
+    const align = right ? ' style="text-align:right;"' : '';
+    if (!key) return `<th${align}>${label}</th>`;
+    const ind = s.key === key
+      ? `<span class="sort-ind active">${s.dir === 'asc' ? '▲' : '▼'}</span>`
+      : '<span class="sort-ind">↕</span>';
+    return `<th class="sortable"${align} onclick="setSort('${panel}','${key}')">${label} ${ind}</th>`;
+  }).join('');
+}
+
+function setSort(panel, key) {
+  const s = sortState[panel];
+  if (s.key === key) s.dir = s.dir === 'asc' ? 'desc' : 'asc';
+  else { s.key = key; s.dir = NUM_KEYS[panel].has(key) ? 'desc' : 'asc'; }
+  ({ slow: renderSlow, decline: renderDecline, all: renderAll })[panel]();
+}
+
+function applySort(items, panel) {
+  const { key, dir } = sortState[panel];
+  const isNum = NUM_KEYS[panel].has(key);
+  const mul = dir === 'asc' ? 1 : -1;
+  return [...items].sort((a, b) => {
+    let av = a[key], bv = b[key];
+    if (isNum) {
+      av = parseFloat(av); bv = parseFloat(bv);
+      if (isNaN(av) && isNaN(bv)) return 0;
+      if (isNaN(av)) return 1;   // 空值（—、未填價）永遠排最後
+      if (isNaN(bv)) return -1;
+      return (av - bv) * mul;
+    }
+    return String(av || '').localeCompare(String(bv || ''), 'zh-Hant') * mul;
+  });
+}
+
 // ── 商品隱藏（活動貨號等不列入滯銷分析）─────────────────
 function saveHidden() {
   try { localStorage.setItem(HIDE_KEY, JSON.stringify([...hiddenCodes])); } catch(e) {}
@@ -768,6 +818,7 @@ function openSidebar()  { document.getElementById('sidebar').classList.add('open
 function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('show'); }
 
 // 啟動
+renderHead('slow'); renderHead('decline'); renderHead('all');
 init();
 </script>
 </body>
