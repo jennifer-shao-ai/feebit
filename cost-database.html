@@ -12,9 +12,11 @@
 .container{max-width:1720px;margin:0 auto}
 .name-cell .n-zh{font-weight:600}
 .name-cell .n-en{font-size:11.5px;color:var(--gray-400);margin-top:1px}
-#result-table{table-layout:fixed}
-#result-table td,#result-table th{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#result-table{table-layout:fixed;min-width:1180px}
+#result-table th{white-space:normal;word-break:break-word;line-height:1.3}
+#result-table td{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #result-table td.name-cell{white-space:normal}
+.table-wrapper{overflow-x:auto}
 .th-sort{cursor:pointer;user-select:none}
 .th-sort:hover{color:var(--primary)}
 .sort-arrow{font-size:9px;margin-left:3px;opacity:.4}
@@ -57,6 +59,13 @@
 .sim-movers{margin-top:10px;max-height:260px;overflow-y:auto}
 .close-x{position:absolute;top:16px;right:18px;cursor:pointer;font-size:18px;color:var(--gray-400);background:none;border:none}
 .modal{position:relative}
+.qa-row{display:flex;gap:8px;margin-bottom:8px;align-items:center}
+.qa-row input{padding:7px 9px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px}
+.qa-row .qa-name{flex:1.3}
+.qa-row .qa-price{flex:0.7}
+.qa-row select{padding:7px 9px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px;flex:0.6}
+.qa-row .qa-remove{background:none;border:none;color:var(--gray-400);cursor:pointer;font-size:15px;padding:2px 6px}
+.qa-row .qa-remove:hover{color:var(--danger)}
 </style>
 </head>
 <body>
@@ -200,6 +209,7 @@
             <th class="th-sort" style="width:90px" onclick="sortBy('shopee')">蝦皮商城<span class="sort-arrow" data-col="shopee"></span></th>
             <th class="th-sort" style="width:60px" onclick="sortBy('supCount')">供應商數<span class="sort-arrow" data-col="supCount"></span></th>
             <th class="th-sort" style="width:80px" onclick="sortBy('status')">狀態<span class="sort-arrow" data-col="status"></span></th>
+            <th style="width:50px">供應商</th>
           </tr></thead>
           <tbody id="result-tbody"></tbody>
         </table>
@@ -314,6 +324,21 @@
   </div>
 </div>
 
+<!-- 快速新增供應商 Modal -->
+<div class="modal-backdrop" id="quick-add-modal" style="display:none">
+  <div class="modal" style="width:560px">
+    <button class="close-x" onclick="closeQuickAddSupplier()">✕</button>
+    <h2 id="quick-add-title" style="margin-bottom:14px">新增供應商</h2>
+    <div id="quick-add-rows"></div>
+    <button class="btn btn-outline" style="margin-top:6px" onclick="addQuickRow()">＋ 再加一列</button>
+    <div style="margin-top:16px;display:flex;align-items:center;gap:10px">
+      <button class="btn btn-primary" onclick="submitQuickAddSupplier()">儲存全部</button>
+      <span id="quick-add-msg" style="font-size:12px"></span>
+    </div>
+  </div>
+</div>
+<datalist id="global-supplier-options"></datalist>
+
 <script>
 const SB_URL = 'https://eavrayumrtkbfolimjiq.supabase.co';
 const SB_ANON_KEY = 'sb_publishable_zpZ39RlF8eRDZHYPuosXdg_mQWXl52x';
@@ -358,7 +383,7 @@ async function doSearch(page){
   const q = document.getElementById('search-input').value.trim();
   const statuses = [...document.querySelectorAll('.status-chip.active')].map(c=>c.dataset.status);
   const tbody = document.getElementById('result-tbody');
-  tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--gray-400)">搜尋中…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:var(--gray-400)">搜尋中…</td></tr>';
 
   let query = db.from('products').select('id,brand,name,name_en,barcode,category,status,needs_review,default_supplier_id', {count:'exact'})
     .range(currentPage*PAGE_SIZE, currentPage*PAGE_SIZE + PAGE_SIZE - 1);
@@ -366,13 +391,13 @@ async function doSearch(page){
   if (q) query = query.or(`name.ilike.%${q}%,brand.ilike.%${q}%,barcode.eq.${q},ragic_item_no.eq.${q}`);
 
   const { data, error, count } = await query;
-  if (error){ tbody.innerHTML = `<tr><td colspan="11" style="color:var(--danger)">搜尋失敗：${error.message}</td></tr>`; return; }
+  if (error){ tbody.innerHTML = `<tr><td colspan="12" style="color:var(--danger)">搜尋失敗：${error.message}</td></tr>`; return; }
 
   const totalPages = Math.max(1, Math.ceil(count/PAGE_SIZE));
   document.getElementById('result-count').innerHTML = `共 ${count} 筆　第 ${currentPage+1}／${totalPages} 頁
     ${currentPage>0?`<button class="btn btn-outline" style="padding:2px 10px;font-size:12px" onclick="doSearch(${currentPage-1})">‹ 上一頁</button>`:''}
     ${currentPage<totalPages-1?`<button class="btn btn-outline" style="padding:2px 10px;font-size:12px" onclick="doSearch(${currentPage+1})">下一頁 ›</button>`:''}`;
-  if (!data.length){ currentRows = []; tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--gray-400);padding:30px">沒有符合的商品</td></tr>'; return; }
+  if (!data.length){ currentRows = []; tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:var(--gray-400);padding:30px">沒有符合的商品</td></tr>'; return; }
 
   const ids = data.map(p=>p.id);
   const [{data:costs}, {data:sups}, {data:prices}] = await Promise.all([
@@ -465,6 +490,7 @@ function renderRows(){
       <td>${fmtMoney(row.shopee)}</td>
       <td>${row.supCount}</td>
       <td><span class="status-pill st-${p.status}">${statusLabel(p.status)}</span>${p.needs_review?'<span class="review-flag">待確認</span>':''}</td>
+      <td onclick="event.stopPropagation()"><button class="btn btn-outline" style="padding:2px 9px;font-size:14px;font-weight:700" onclick="openQuickAddSupplier('${p.id}','${(p.name||'').replace(/'/g,"\\'")}')" title="快速新增供應商">＋</button></td>
     </tr>`;
   }).join('');
 }
@@ -607,28 +633,24 @@ async function populateSupplierOptions(){
   if (el) el.innerHTML = _supplierNameCache.map(n=>`<option value="${n}">`).join('');
 }
 
-async function addSupplierToProduct(productId){
-  const name = document.getElementById('add-sup-name').value.trim();
-  const price = parseFloat(document.getElementById('add-sup-price').value);
-  const currency = document.getElementById('add-sup-currency').value;
-  const msg = document.getElementById('add-sup-msg');
-  if (!name){ msg.textContent = '請輸入供應商名稱'; msg.style.color = 'var(--danger)'; return; }
-  if (!price){ msg.textContent = '請輸入進貨價'; msg.style.color = 'var(--danger)'; return; }
+// 新增一筆供應商報價＋對應成本快照，回傳 {ok, error}
+async function insertOneSupplierRow(productId, name, price, currency){
+  if (!name || !price) return {ok:false, error:'供應商名稱跟進貨價都要填'};
 
   let { data: existing } = await db.from('suppliers').select('id').eq('name', name).maybeSingle();
   let supplierId = existing?.id;
   if (!supplierId){
     const { data: newSup, error: supErr } = await db.from('suppliers').insert({name}).select().single();
-    if (supErr){ msg.textContent = '建立供應商失敗：'+supErr.message; msg.style.color='var(--danger)'; return; }
+    if (supErr) return {ok:false, error:'建立供應商失敗：'+supErr.message};
     supplierId = newSup.id;
-    _supplierNameCache = null; // 快取失效，下次重新載入
+    _supplierNameCache = null;
   }
 
   const today = new Date().toISOString().slice(0,10);
   const { error: psErr } = await db.from('product_suppliers').insert({
     product_id: productId, supplier_id: supplierId, unit_price: price, currency, effective_from: today,
   });
-  if (psErr){ msg.textContent = '新增失敗：'+psErr.message; msg.style.color='var(--danger)'; return; }
+  if (psErr) return {ok:false, error:'新增失敗：'+psErr.message};
 
   const rates = await getCurrentRates();
   let rate = 1;
@@ -641,18 +663,94 @@ async function addSupplierToProduct(productId){
     product_id: productId, supplier_id: supplierId, purchase_price: price, currency,
     exchange_rate_used: rate, tariff_coefficient_used: tariff, cost_twd_untaxed: newCost, source: 'manual',
   });
+  return {ok:true};
+}
 
-  // 重新比較全部供應商成本，自動選出最低成本的當預設供應商
+// 重新比較全部供應商成本，自動選出最低成本的當預設供應商
+async function recomputeDefaultSupplier(productId){
   const { data: allSupCosts } = await db.from('cost_snapshots')
     .select('supplier_id,cost_twd_untaxed').eq('product_id', productId).order('calculated_at',{ascending:false});
   const latestPerSupplier = {};
   (allSupCosts||[]).forEach(c=>{ if(!(c.supplier_id in latestPerSupplier)) latestPerSupplier[c.supplier_id]=c.cost_twd_untaxed; });
   const cheapest = Object.entries(latestPerSupplier).sort((a,b)=>a[1]-b[1])[0];
   if (cheapest) await db.from('products').update({default_supplier_id: cheapest[0]}).eq('id', productId);
+}
+
+async function addSupplierToProduct(productId){
+  const name = document.getElementById('add-sup-name').value.trim();
+  const price = parseFloat(document.getElementById('add-sup-price').value);
+  const currency = document.getElementById('add-sup-currency').value;
+  const msg = document.getElementById('add-sup-msg');
+
+  const result = await insertOneSupplierRow(productId, name, price, currency);
+  if (!result.ok){ msg.textContent = result.error; msg.style.color='var(--danger)'; return; }
+  await recomputeDefaultSupplier(productId);
 
   msg.textContent = '';
   openDetail(productId); // 重新整理詳情頁
   doSearch(currentPage);  // 背景更新列表的成本/供應商數
+}
+
+// ── 列表快速新增供應商（一次多列，不用開商品詳情）──
+let quickAddProductId = null;
+async function ensureGlobalSupplierOptions(){
+  if (!_supplierNameCache){
+    const { data } = await db.from('suppliers').select('name').order('name');
+    _supplierNameCache = (data||[]).map(s=>s.name);
+  }
+  document.getElementById('global-supplier-options').innerHTML = _supplierNameCache.map(n=>`<option value="${n}">`).join('');
+}
+
+function quickRowHtml(){
+  return `<div class="qa-row">
+    <input type="text" class="qa-name" list="global-supplier-options" placeholder="供應商名稱">
+    <input type="text" class="qa-price" inputmode="decimal" placeholder="進貨價">
+    <select class="qa-currency"><option>TWD</option><option>USD</option><option>JPY</option><option>CNY</option></select>
+    <button class="qa-remove" onclick="this.parentElement.remove()">✕</button>
+  </div>`;
+}
+
+function addQuickRow(){
+  document.getElementById('quick-add-rows').insertAdjacentHTML('beforeend', quickRowHtml());
+}
+
+async function openQuickAddSupplier(productId, productName){
+  quickAddProductId = productId;
+  document.getElementById('quick-add-title').textContent = `新增供應商 － ${productName}`;
+  document.getElementById('quick-add-rows').innerHTML = quickRowHtml()+quickRowHtml()+quickRowHtml();
+  document.getElementById('quick-add-msg').textContent = '';
+  document.getElementById('quick-add-modal').style.display = 'flex';
+  await ensureGlobalSupplierOptions();
+}
+function closeQuickAddSupplier(){ document.getElementById('quick-add-modal').style.display='none'; }
+
+async function submitQuickAddSupplier(){
+  const msg = document.getElementById('quick-add-msg');
+  const rows = [...document.querySelectorAll('#quick-add-rows .qa-row')];
+  const filled = rows.map(r=>({
+    name: r.querySelector('.qa-name').value.trim(),
+    price: parseFloat(r.querySelector('.qa-price').value),
+    currency: r.querySelector('.qa-currency').value,
+  })).filter(r=>r.name || r.price);
+
+  if (!filled.length){ msg.textContent = '至少填一列'; msg.style.color='var(--danger)'; return; }
+
+  msg.textContent = '儲存中…'; msg.style.color='var(--gray-500)';
+  let okCount = 0, errors = [];
+  for (const row of filled){
+    const result = await insertOneSupplierRow(quickAddProductId, row.name, row.price, row.currency);
+    if (result.ok) okCount++;
+    else errors.push(`${row.name||'(未命名)'}：${result.error}`);
+  }
+  if (okCount) await recomputeDefaultSupplier(quickAddProductId);
+
+  if (errors.length){
+    msg.textContent = `成功 ${okCount} 筆，失敗：${errors.join('；')}`;
+    msg.style.color = 'var(--danger)';
+  } else {
+    closeQuickAddSupplier();
+  }
+  doSearch(currentPage);
 }
 
 async function updateStatus(id, status){
