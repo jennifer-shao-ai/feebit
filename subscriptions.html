@@ -57,6 +57,7 @@ textarea:focus { border-color:var(--primary); }
 .empty-state { text-align:center; padding:60px 20px; color:var(--gray-400); }
 .company-line { display:grid; grid-template-columns:1fr 1fr auto; gap:8px; align-items:center; margin-bottom:8px; }
 .company-line input { padding:7px 10px; font-size:13px; }
+#ro-banner { margin-bottom:16px; padding:10px 14px; background:#eff6ff; border-left:4px solid var(--primary); border-radius:6px; font-size:13px; color:#1e40af; }
 @media (max-width:768px){
   .acct-line { grid-template-columns:1fr 1fr; }
   .form-2col { grid-template-columns:1fr; }
@@ -73,6 +74,7 @@ textarea:focus { border-color:var(--primary); }
   <div class="sidebar-section">
     <div class="sidebar-label">總覽</div>
     <a class="nav-item" href="index.html"><span class="icon">🏠</span> 首頁</a>
+    <a class="nav-item" href="skill-tree.html"><span class="icon">🌳</span> 技能樹</a>
   </div>
   <div class="sidebar-section">
     <div class="sidebar-label">營運</div>
@@ -148,7 +150,7 @@ textarea:focus { border-color:var(--primary); }
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
     <a class="nav-item active" href="subscriptions.html"><span class="icon">💳</span> 訂閱服務管理</a>
   </div>
-  <div class="sidebar-footer">v1.0 · Feebit © 2026</div>
+  <div class="sidebar-footer">v2.0 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -158,20 +160,23 @@ textarea:focus { border-color:var(--primary); }
       <button class="btn-hamburger" onclick="openSidebar()">☰</button>
       <span class="topbar-title">訂閱服務管理</span>
       <span class="topbar-badge">付費工具 / 平台</span>
-      <span style="font-size:11px;color:var(--gray-400);margin-left:4px">v1.0</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:4px">v2.0</span>
     </div>
     <div style="display:flex;align-items:center;gap:6px">
-      <button class="btn btn-outline mini" onclick="openCompanyModal()">🏢 公司 / 統編</button>
-      <button class="btn btn-outline mini" onclick="exportJSON()">⬇ 匯出</button>
-      <button class="btn btn-outline mini" onclick="document.getElementById('import-file').click()">⬆ 匯入</button>
+      <span id="save-state" style="font-size:11px;color:var(--gray-400)"></span>
+      <button class="btn btn-outline mini" id="btn-company" onclick="openCompanyModal()">🏢 公司 / 統編</button>
+      <button class="btn btn-outline mini" id="btn-export" onclick="exportJSON()">⬇ 匯出</button>
+      <button class="btn btn-outline mini" id="btn-import" onclick="document.getElementById('import-file').click()">⬆ 匯入</button>
       <input type="file" id="import-file" accept="application/json" style="display:none" onchange="importJSON(this)">
-      <button class="btn btn-primary mini" onclick="openItemModal()">＋ 新增服務</button>
+      <button class="btn btn-primary mini" id="btn-add" onclick="openItemModal()">＋ 新增服務</button>
     </div>
   </div>
 
   <div class="page">
     <p style="color:var(--gray-600);font-size:14px;margin-bottom:6px">目前付費使用中的工具、伺服器與平台一覽：方案、價格、結帳日、帳號與後台入口。</p>
-    <p style="color:var(--gray-400);font-size:12px;margin-bottom:16px">資料只存在這台電腦的瀏覽器（localStorage），換裝置請用「匯出 / 匯入」搬移。拖曳右上角 ⠿ 可自訂排序。</p>
+    <p style="color:var(--gray-400);font-size:12px;margin-bottom:16px">資料存 Supabase 雲端，全站有帳號者登入皆可查看；只有 esuse.adobe@gmail.com 能新增／編輯。拖曳卡片右上角 ⠿ 可自訂排序。</p>
+
+    <div id="ro-banner" style="display:none">👀 唯讀模式：你可以瀏覽與匯出，只有 esuse.adobe@gmail.com 能新增／編輯／匯入。</div>
 
     <div class="sub-summary" id="summary"></div>
 
@@ -303,43 +308,96 @@ function openSidebar(){document.getElementById('sidebar').classList.add('open');
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebar-overlay').classList.remove('show');}
 </script>
 <script>
-// ── STORE ─────────────────────────────────────────────
-const KEY = 'feebit_subscriptions_v1';
+// ── CONFIG ────────────────────────────────────────────
+const ADMIN_EMAIL = 'esuse.adobe@gmail.com';
+const LOCAL_KEY   = 'feebit_subscriptions_view_v1';   // 只存個人檢視偏好（排序）
+const LEGACY_KEY  = 'feebit_subscriptions_v1';        // v1 舊的純本機資料，供一次性搬遷
 const CYCLE_LABEL = { monthly:'月繳', quarterly:'季繳', yearly:'年繳', onetime:'一次性' };
 const CYCLE_MONTHS = { monthly:1, quarterly:3, yearly:12, onetime:0 };
 
-let store = load();
+let sb = null;
+let canEdit = false;
+let store = { companies: [], usdRate: 32, items: [] };
 let editingId = null;
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function defaultCompanies(){ return [ { id: uid(), name: '公司 A', taxId: '' }, { id: uid(), name: '公司 B', taxId: '' } ]; }
+function companyById(id){ return store.companies.find(c => c.id === id) || null; }
 
-function defaultStore(){
+// ── VIEW PREF (local) ─────────────────────────────────
+function getSortMode(){ try { return JSON.parse(localStorage.getItem(LOCAL_KEY))?.sortMode || 'custom'; } catch(e){ return 'custom'; } }
+function setSortMode(v){ try { localStorage.setItem(LOCAL_KEY, JSON.stringify({ sortMode: v })); } catch(e){} }
+
+// ── SAVE STATE ────────────────────────────────────────
+function setSaveState(s){
+  const el = document.getElementById('save-state');
+  if (!el) return;
+  if (s === 'loading'){ el.textContent = '☁️ 載入中…'; el.style.color = 'var(--gray-400)'; }
+  else if (s === 'saving'){ el.textContent = '☁️ 儲存中…'; el.style.color = 'var(--gray-400)'; }
+  else if (s === 'saved'){ el.textContent = '✅ 已儲存'; el.style.color = 'var(--success)'; setTimeout(() => { if (el.textContent === '✅ 已儲存') el.textContent = ''; }, 2000); }
+  else if (s === 'error'){ el.textContent = '⚠️ 儲存失敗'; el.style.color = 'var(--danger)'; }
+  else el.textContent = '';
+}
+
+// ── AUTH CLIENT ───────────────────────────────────────
+async function waitForAuthClient(){
+  for (let i = 0; i < 120; i++){
+    if (window._authClient) return window._authClient;
+    await new Promise(r => setTimeout(r, 100));
+  }
+  throw new Error('登入模組尚未就緒，請重新整理頁面');
+}
+
+// ── CLOUD LOAD / SAVE ─────────────────────────────────
+function normalize(d){
+  d = d || {};
   return {
-    companies: [
-      { id: uid(), name: '公司 A', taxId: '' },
-      { id: uid(), name: '公司 B', taxId: '' }
-    ],
-    usdRate: 32,
-    sortMode: 'custom',
-    items: []
+    companies: Array.isArray(d.companies) && d.companies.length ? d.companies : defaultCompanies(),
+    usdRate: typeof d.usdRate === 'number' ? d.usdRate : 32,
+    items: Array.isArray(d.items) ? d.items.map(it => ({ id: it.id || uid(), ...it })) : []
   };
 }
-function load(){
-  try {
-    const raw = JSON.parse(localStorage.getItem(KEY));
-    if (raw && Array.isArray(raw.items)) {
-      if (!Array.isArray(raw.companies) || !raw.companies.length) raw.companies = defaultStore().companies;
-      if (typeof raw.usdRate !== 'number') raw.usdRate = 32;
-      if (!raw.sortMode) raw.sortMode = 'custom';
-      return raw;
-    }
-  } catch(e) {}
-  return defaultStore();
+async function loadCloud(){
+  const { data, error } = await sb.from('subscription_state').select('data').eq('id', 1).maybeSingle();
+  if (error) throw error;
+  store = normalize(data && data.data);
 }
-function save(){ localStorage.setItem(KEY, JSON.stringify(store)); }
+async function saveCloud(){
+  if (!canEdit){ alert('唯讀模式，無法儲存'); return false; }
+  setSaveState('saving');
+  const { error } = await sb.from('subscription_state').upsert({ id: 1, data: store, updated_at: new Date().toISOString() });
+  if (error){
+    setSaveState('error');
+    alert('儲存到雲端失敗：' + error.message + '\n（可能是權限不足或連線問題，畫面將重新載入雲端資料）');
+    try { await loadCloud(); render(); } catch(e){}
+    return false;
+  }
+  setSaveState('saved');
+  return true;
+}
+function persist(){ render(); saveCloud(); }
 
-function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function companyById(id){ return store.companies.find(c => c.id === id) || null; }
+// ── PERMISSION UI ─────────────────────────────────────
+function applyPermissionUI(){
+  ['btn-company','btn-import','btn-add'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = canEdit ? '' : 'none';
+  });
+  document.getElementById('ro-banner').style.display = canEdit ? 'none' : '';
+}
+
+// ── LEGACY MIGRATION ──────────────────────────────────
+async function maybeMigrateLegacy(){
+  if (!canEdit || store.items.length) return;
+  let old;
+  try { old = JSON.parse(localStorage.getItem(LEGACY_KEY)); } catch(e){ return; }
+  if (!old || !Array.isArray(old.items) || !old.items.length) return;
+  if (!confirm(`偵測到這台電腦上有 ${old.items.length} 筆舊的「本機」訂閱資料，雲端目前是空的。\n要把舊資料上傳到雲端共用嗎？`)) return;
+  store = normalize(old);
+  const ok = await saveCloud();
+  if (ok){ try { localStorage.removeItem(LEGACY_KEY); } catch(e){} render(); alert('已把 ' + store.items.length + ' 筆資料搬到雲端。'); }
+}
 
 // ── BILLING DATE ──────────────────────────────────────
 function daysUntilBilling(str){
@@ -368,16 +426,8 @@ function toTWD(amount, currency){
   const n = parseFloat(amount) || 0;
   return currency === 'USD' ? n * (parseFloat(store.usdRate) || 0) : n;
 }
-function monthlyTWD(it){
-  const months = CYCLE_MONTHS[it.cycle];
-  if (!months) return 0;
-  return toTWD(it.amount, it.currency) / months;
-}
-function annualTWD(it){
-  const months = CYCLE_MONTHS[it.cycle];
-  if (!months) return 0;
-  return toTWD(it.amount, it.currency) * (12 / months);
-}
+function monthlyTWD(it){ const m = CYCLE_MONTHS[it.cycle]; return m ? toTWD(it.amount, it.currency) / m : 0; }
+function annualTWD(it){ const m = CYCLE_MONTHS[it.cycle]; return m ? toTWD(it.amount, it.currency) * (12 / m) : 0; }
 function fmtMoney(n){ return 'NT$' + Math.round(n).toLocaleString('en-US'); }
 function fmtAmount(it){
   const n = parseFloat(it.amount);
@@ -410,7 +460,7 @@ function currentList(){
       return hay.includes(q);
     });
   }
-  const mode = store.sortMode;
+  const mode = getSortMode();
   if (mode === 'name') list.sort((a,b) => (a.name||'').localeCompare(b.name||'', 'zh-Hant'));
   else if (mode === 'category') list.sort((a,b) => (a.category||'').localeCompare(b.category||'', 'zh-Hant') || (a.name||'').localeCompare(b.name||'','zh-Hant'));
   else if (mode === 'amount') list.sort((a,b) => monthlyTWD(b) - monthlyTWD(a));
@@ -430,14 +480,14 @@ function render(){
   const grid = document.getElementById('grid');
   const list = currentList();
   if (!store.items.length){
-    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">還沒有任何服務，點右上角「＋ 新增服務」開始建立。</div>`;
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">${canEdit ? '還沒有任何服務，點右上角「＋ 新增服務」開始建立。' : '目前雲端沒有任何服務資料。'}</div>`;
     return;
   }
   if (!list.length){
     grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">找不到符合的服務。</div>`;
     return;
   }
-  const draggable = store.sortMode === 'custom' && !document.getElementById('search').value.trim();
+  const draggable = canEdit && getSortMode() === 'custom' && !document.getElementById('search').value.trim();
   grid.innerHTML = list.map(it => card(it, draggable)).join('');
   if (draggable) wireDrag();
 }
@@ -447,14 +497,16 @@ function card(it, draggable){
   const d = daysUntilBilling(it.billingDate);
   let badge = '';
   if (d !== null && d >= 0 && d <= 7) badge = `<span class="sc-badge ${d===0?'today':'soon'}">${d===0?'今天結帳':d+' 天後結帳'}</span>`;
-  const iconHtml = /^(https?:|data:)/i.test((it.icon||'').trim())
-    ? `<img src="${esc(it.icon.trim())}" alt="">`
-    : esc(it.icon || '💳');
+  const iconRaw = (it.icon || '').trim();
+  const iconHtml = /^(https?:|data:)/i.test(iconRaw)
+    ? `<img src="${esc(iconRaw)}" alt="" onerror="this.replaceWith(document.createTextNode('💳'))">`
+    : esc(iconRaw || '💳');
   const accts = (it.accounts||[]).filter(a => a.use || a.account || a.note).map(a => `
     <div class="sc-acct">${a.use?`<span class="use">${esc(a.use)}：</span>`:''}<span class="val">${esc(a.account||'—')}</span>${a.note?` <span class="use">（${esc(a.note)}）</span>`:''}</div>`).join('');
   const payLine = co
     ? `<b>付款：</b>${esc(co.name)}${co.taxId?`（統編 ${esc(co.taxId)}）`:''}${it.payYear?` · ${esc(it.payYear)} 年`:''}`
     : (it.payYear ? `<b>付款年度：</b>${esc(it.payYear)}` : '');
+  const safeUrl = /^https?:\/\//i.test((it.backendUrl||'').trim()) ? it.backendUrl.trim() : '';
   return `
   <div class="sub-card" data-id="${it.id}" ${draggable?'draggable="true"':''}>
     <div class="sc-head">
@@ -471,8 +523,8 @@ function card(it, draggable){
     ${accts?`<div class="sc-accounts">${accts}</div>`:''}
     ${it.note?`<div class="sc-note">${esc(it.note)}</div>`:''}
     <div class="sc-actions">
-      ${it.backendUrl?`<a class="btn btn-primary mini" href="${esc(it.backendUrl)}" target="_blank" rel="noopener">前往後台 →</a>`:''}
-      <button class="btn btn-outline mini" onclick="openItemModal('${it.id}')">編輯</button>
+      ${safeUrl?`<a class="btn btn-primary mini" href="${esc(safeUrl)}" target="_blank" rel="noopener">前往後台 →</a>`:''}
+      ${canEdit?`<button class="btn btn-outline mini" onclick="openItemModal('${it.id}')">編輯</button>`:''}
     </div>
   </div>`;
 }
@@ -495,12 +547,12 @@ function wireDrag(){
       if (from < 0 || to < 0) return;
       const [moved] = items.splice(from, 1);
       items.splice(to, 0, moved);
-      save(); render();
+      persist();
     });
   });
 }
 
-function setSort(v){ store.sortMode = v; save(); render(); }
+function setSort(v){ setSortMode(v); render(); }
 
 // ── ITEM MODAL ────────────────────────────────────────
 function refreshCatList(){
@@ -523,6 +575,7 @@ function addAcctLine(use='', account='', note=''){
   wrap.appendChild(div);
 }
 function openItemModal(id){
+  if (!canEdit) return;
   editingId = id || null;
   const it = id ? store.items.find(i => i.id === id) : null;
   document.getElementById('item-modal-title').textContent = it ? '編輯服務' : '新增服務';
@@ -548,6 +601,7 @@ function openItemModal(id){
 }
 function closeItemModal(){ document.getElementById('item-modal').style.display = 'none'; editingId = null; }
 function saveItem(){
+  if (!canEdit) return;
   const name = document.getElementById('f-name').value.trim();
   if (!name){ alert('請填服務名稱'); return; }
   const accounts = [...document.querySelectorAll('#acct-editor .acct-line')].map(l => {
@@ -575,14 +629,16 @@ function saveItem(){
   } else {
     store.items.push({ id: uid(), ...data });
   }
-  save(); closeItemModal(); render();
+  closeItemModal();
+  persist();
 }
 function deleteItem(){
-  if (!editingId) return;
+  if (!canEdit || !editingId) return;
   const it = store.items.find(i => i.id === editingId);
   if (!confirm(`確定刪除「${it?.name||''}」？`)) return;
   store.items = store.items.filter(i => i.id !== editingId);
-  save(); closeItemModal(); render();
+  closeItemModal();
+  persist();
 }
 
 // ── COMPANY MODAL ─────────────────────────────────────
@@ -598,6 +654,7 @@ function addCompanyLine(id='', name='', taxId=''){
   wrap.appendChild(div);
 }
 function openCompanyModal(){
+  if (!canEdit) return;
   const wrap = document.getElementById('company-editor');
   wrap.innerHTML = '';
   store.companies.forEach(c => addCompanyLine(c.id, c.name, c.taxId));
@@ -607,6 +664,7 @@ function openCompanyModal(){
 }
 function closeCompanyModal(){ document.getElementById('company-modal').style.display = 'none'; }
 function saveCompanies(){
+  if (!canEdit) return;
   const lines = [...document.querySelectorAll('#company-editor .company-line')];
   const companies = lines.map(l => {
     const [n,t] = l.querySelectorAll('input');
@@ -616,7 +674,8 @@ function saveCompanies(){
   store.companies = companies;
   const rate = parseFloat(document.getElementById('f-usdrate').value);
   store.usdRate = isNaN(rate) ? 0 : rate;
-  save(); closeCompanyModal(); render();
+  closeCompanyModal();
+  persist();
 }
 
 // ── IMPORT / EXPORT ───────────────────────────────────
@@ -629,6 +688,7 @@ function exportJSON(){
   URL.revokeObjectURL(a.href);
 }
 function importJSON(input){
+  if (!canEdit){ input.value = ''; return; }
   const file = input.files[0];
   if (!file) return;
   const reader = new FileReader();
@@ -636,17 +696,9 @@ function importJSON(input){
     try {
       const data = JSON.parse(reader.result);
       if (!data || !Array.isArray(data.items)) throw new Error('格式不符');
-      if (!confirm('匯入會覆蓋目前所有資料，確定？')) { input.value=''; return; }
-      store = {
-        companies: Array.isArray(data.companies) && data.companies.length ? data.companies : defaultStore().companies,
-        usdRate: typeof data.usdRate === 'number' ? data.usdRate : 32,
-        sortMode: data.sortMode || 'custom',
-        items: data.items.map(it => ({ id: it.id || uid(), ...it }))
-      };
-      save();
-      document.getElementById('sortmode').value = store.sortMode;
-      render();
-      alert('匯入完成，共 ' + store.items.length + ' 筆服務');
+      if (!confirm('匯入會覆蓋雲端目前所有資料，確定？')) { input.value=''; return; }
+      store = normalize(data);
+      saveCloud().then(ok => { if (ok){ render(); alert('匯入完成，共 ' + store.items.length + ' 筆服務'); } });
     } catch(e){ alert('匯入失敗：' + e.message); }
     input.value = '';
   };
@@ -654,11 +706,30 @@ function importJSON(input){
 }
 
 // ── INIT ──────────────────────────────────────────────
-document.getElementById('sortmode').value = store.sortMode;
+document.getElementById('sortmode').value = getSortMode();
 [document.getElementById('item-modal'), document.getElementById('company-modal')].forEach(m => {
   m.addEventListener('click', e => { if (e.target === m) m.style.display = 'none'; });
 });
-render();
+
+(async function boot(){
+  setSaveState('loading');
+  try {
+    sb = await waitForAuthClient();
+    let email = '';
+    try { const { data: { session } } = await sb.auth.getSession(); email = (session && session.user && session.user.email || '').toLowerCase(); } catch(e){}
+    canEdit = email === ADMIN_EMAIL;
+    await loadCloud();
+    setSaveState('');
+    applyPermissionUI();
+    render();
+    await maybeMigrateLegacy();
+  } catch(e){
+    setSaveState('error');
+    document.getElementById('grid').innerHTML =
+      `<div class="empty-state" style="grid-column:1/-1">載入失敗：${esc(e.message || e)}<br><br>` +
+      `請確認已登入並重新整理。若剛建好資料表仍出現此訊息，檢查 Supabase 的 <code>subscription_state</code> 表與 RLS 政策是否已建立。</div>`;
+  }
+})();
 </script>
 </body>
 </html>
