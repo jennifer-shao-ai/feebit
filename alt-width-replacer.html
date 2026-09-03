@@ -51,6 +51,14 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 .hint { font-size: 12px; color: var(--gray-400); margin-top: 8px; line-height: 1.6; }
 code { background: var(--gray-100); padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+.dl-btn {
+  display: inline-flex; align-items: center; gap: 8px; background: var(--primary); color: white;
+  text-decoration: none; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 600;
+  transition: background 0.15s;
+}
+.dl-btn:hover { background: var(--primary-dark); }
+.card h2 { font-size: 15px; margin-bottom: 6px; }
+.card ol { margin: 10px 0 0 18px; font-size: 12px; color: var(--gray-600); line-height: 1.8; }
 </style>
 </head>
 <body>
@@ -78,6 +86,20 @@ code { background: var(--gray-100); padding: 1px 5px; border-radius: 3px; font-s
       規則：把每個 <code>alt=</code> 取代成 <code>width="750px" alt=</code>（僅比對屬性形式的 <code>alt</code>，不會動到 <code>data-alt</code> 這類字）。<br>
       已經有 <code>width="750px"</code> 的不會重複加，可安心重跑。
     </p>
+  </div>
+
+  <div class="card">
+    <h2>🧩 Chrome 外掛版（免開分頁）</h2>
+    <p class="sub" style="margin-bottom:14px">
+      同一套轉換邏輯做成瀏覽器小視窗，點工具列圖示就用，適合在 SHOPLINE 後台一邊改一邊貼。
+    </p>
+    <a class="dl-btn" href="alt-width-extension.zip" download>⬇️ 下載外掛 ZIP</a>
+    <ol>
+      <li>解壓縮 ZIP</li>
+      <li>Chrome 網址列輸入 <code>chrome://extensions</code>，開啟右上角「開發人員模式」</li>
+      <li>點「載入未封裝項目」，選解壓出來的 <code>alt-width-extension</code> 資料夾</li>
+      <li>點工具列拼圖圖示，把「圖片語法加寬器」釘選出來即可使用</li>
+    </ol>
   </div>
 </div>
 
