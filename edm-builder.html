@@ -60,7 +60,7 @@
   <div class="card">
     <h2>使用步驟</h2>
     <ol>
-      <li>切好的 <b>18 張圖</b>（01–18），<b>依編號順序</b>上傳到 SHOPLINE 媒體庫（順序很重要）。社群段與頁尾不用切圖，工具自動產生</li>
+      <li>切好的 <b>9 張圖</b>（01–08 ＋ 送禮 09），<b>依編號順序</b>上傳到 SHOPLINE 媒體庫（順序很重要）。品牌段、社群段、頁尾不用切圖，工具自動產生（品牌膠囊 7 張圖另外在「版位設定→品牌區塊」設定一次）</li>
       <li>SHOPLINE 會產生一段 <code>&lt;p&gt;&lt;img …&gt;&lt;br&gt;…&lt;/p&gt;</code>，整段貼到下面框框，按「解析圖片」</li>
       <li>只填當月會變的連結（主視覺、會員優惠、4 個活動區塊、送禮區、更多品牌），其餘固定連結會自動帶入</li>
       <li>按「產生 HTML」→ 複製 → 貼進 SHOPLINE 網誌／頁面的「HTML / 原始碼」模式</li>
@@ -110,6 +110,17 @@
         <button class="ghost" onclick="resetCfg()">還原預設</button>
       </div>
       <div id="cfgMsg"></div>
+      <p class="sub" style="margin:16px 0 4px"><b>品牌區塊</b>　人氣熱銷品牌標題 + 7 條膠囊圖 + and more。膠囊圖（含 logo、產品照）用你切好的 7 張透明 PNG，設計沒改就不用重傳。</p>
+      <div class="colorrow">
+        <label>區塊底色 <input type="color" id="brd-bg-c"><input type="text" class="hex" id="brd-bg-h" maxlength="7"></label>
+        <label>標題文字色 <input type="color" id="brd-ti-c"><input type="text" class="hex" id="brd-ti-h" maxlength="7"></label>
+        <label>裝飾色（✦與線） <input type="color" id="brd-or-c"><input type="text" class="hex" id="brd-or-h" maxlength="7"></label>
+      </div>
+      <p class="sub" style="margin:4px 0 3px;font-size:12px">7 張品牌膠囊圖上傳 SHOPLINE 後，把它產生的 &lt;img&gt; 語法貼在這（依 ONDO→Dr.SEED→MARY&amp;MAY→athens→rom&amp;nd→AXIS-Y→V4U 順序）：</p>
+      <textarea id="brandpills" rows="3" placeholder="貼上 7 張品牌膠囊圖的 <img ...> 語法"></textarea>
+      <div class="row-actions" style="margin-top:6px"><button class="ghost" onclick="applyBrandPills()">套用膠囊圖</button></div>
+      <div id="brandMsg"></div>
+      <textarea id="brand" rows="4" style="margin-top:8px"></textarea>
       <p class="sub" style="margin:16px 0 4px"><b>社群區塊</b>　追蹤我們 + LINE/IG/FB 三顆按鈕，每封自動加在圖片表格後面（真文字＋連結，不用切圖）</p>
       <div class="colorrow">
         <label>按鈕底色 <input type="color" id="soc-bg-c"><input type="text" class="hex" id="soc-bg-h" maxlength="7"></label>
@@ -137,21 +148,44 @@ const DEFAULT_SLOTS = [
   ["06_promo_scent","香氣生活提案｜居家擴香×衣物香氛×隨身香氣","monthly","https://www.lala-v.com/pages/wdressroom"],
   ["07_promo_sale","雙11暖身開跑｜人氣好物搶先購","monthly","https://www.lala-v.com/categories/super-sale-combo"],
   ["08_cta","快來官網選購","fixed","https://www.lala-v.com/"],
-  ["09_brands_title","人氣熱銷品牌","none",""],
-  ["10_brand_ondo","ONDO 昂朵","fixed","https://www.lala-v.com/pages/ondo"],
-  ["11_brand_drseed","Dr.SEED","fixed","https://www.lala-v.com/pages/dr-seed"],
-  ["12_brand_marymay","MARY & MAY","fixed","https://www.lala-v.com/pages/marymay"],
-  ["13_brand_athens","athens","fixed","https://www.lala-v.com/categories/athens"],
-  ["14_brand_romand","rom&nd","fixed","https://www.lala-v.com/pages/romand"],
-  ["15_brand_axisy","AXIS-Y 安舒研","fixed","https://www.lala-v.com/pages/axis-y"],
-  ["16_brand_v4u","V4U 薇選禮","fixed","https://www.lala-v.com/categories/v4u"],
-  ["17_brand_more","and more...","monthly","https://www.lala-v.com/"],
-  ["18_gift","節慶時刻｜送出一份獨一無二的禮物","monthly","https://www.lala-v.com/products/wwwhavefuncomsmiley-color-gift-box-with-bag"],
+  ["09_gift","節慶時刻｜送出一份獨一無二的禮物","monthly","https://www.lala-v.com/products/wwwhavefuncomsmiley-color-gift-box-with-bag"],
 ];
-// 社群段與頁尾不再切圖，改成工具內建 HTML 區塊，輸出時接在圖片表格後面。
-// 顏色由色板控制，socialHTML() / tailHTML() 依目前顏色重新產生語法。
+// 品牌段、社群段、頁尾都不再切圖，改成工具內建 HTML 區塊。
+// 輸出順序：圖片表格(01–08) → 品牌區塊 → 送禮圖(09) → 社群區塊 → 頁尾。
+// 顏色由色板控制，brandHTML()/socialHTML()/tailHTML() 依目前顏色重新產生語法。
 const SOCIAL_DEFAULTS = { btnBg:"#fff9f5", btnBorder:"#bc8772" };
 const TAIL_DEFAULTS   = { bg:"#f6eae4", text:"#8d5f5b" };
+const BRAND_DEFAULTS  = { bg:"#f8efe9", title:"#5d3d3c", orn:"#d7aaa2" };
+const BRAND_LINKS = [
+  ["ONDO 昂朵",      "https://www.lala-v.com/pages/ondo"],
+  ["Dr.SEED",        "https://www.lala-v.com/pages/dr-seed"],
+  ["MARY & MAY",     "https://www.lala-v.com/pages/marymay"],
+  ["athens",         "https://www.lala-v.com/categories/athens"],
+  ["rom&nd",         "https://www.lala-v.com/pages/romand"],
+  ["AXIS-Y 安舒研",  "https://www.lala-v.com/pages/axis-y"],
+  ["V4U 薇選禮",     "https://www.lala-v.com/categories/v4u"],
+];
+function brandHTML(c, pills){
+  pills = pills || [];
+  const pillRows = BRAND_LINKS.map(function(b,i){
+    const u = pills[i] || "";
+    return '    <a href="'+b[1]+'" target="_blank" rel="noopener" style="display:block;text-decoration:none;margin:9px auto 0;">'
+         + '<img src="'+u+'" width="604" alt="'+b[0].replace(/&/g,"&amp;")+'" style="display:block;width:604px;max-width:100%;margin:0 auto;border:0;"></a>';
+  }).join('\n');
+  return [
+   '<table role="presentation" width="750" cellpadding="0" cellspacing="0" border="0" align="center" style="width:750px;max-width:100%;margin:0 auto;border-collapse:collapse;">',
+   '  <tr><td style="background:'+c.bg+';padding:34px 40px 42px;text-align:center;font-family:\'PingFang TC\',\'Noto Sans TC\',\'Microsoft JhengHei\',sans-serif;">',
+   '    <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 20px;"><tr>',
+   '      <td style="width:90px;border-bottom:1px solid '+c.orn+';font-size:0;line-height:0;">&nbsp;</td>',
+   '      <td style="padding:0 14px;white-space:nowrap;font-family:\'Noto Serif TC\',serif;font-size:22px;letter-spacing:4px;font-weight:700;"><span style="color:'+c.orn+';">✦</span> <span style="color:'+c.title+';">人氣熱銷品牌</span> <span style="color:'+c.orn+';">✦</span></td>',
+   '      <td style="width:90px;border-bottom:1px solid '+c.orn+';font-size:0;line-height:0;">&nbsp;</td>',
+   '    </tr></table>',
+   pillRows,
+   '    <div style="margin-top:14px;color:'+c.title+';font-family:Georgia,\'Times New Roman\',serif;font-size:22px;letter-spacing:1px;">and more…</div>',
+   '  </td></tr>',
+   '</table>'
+  ].join('\n');
+}
 
 function socialHTML(c){
   const bs = "display:block;margin:12px auto;border:1px solid "+c.btnBorder+";border-radius:50px;padding:13px 20px;color:#915a50;font-family:Georgia,'Times New Roman',serif;letter-spacing:4px;font-size:20px;background:"+c.btnBg+";text-decoration:none;";
@@ -181,9 +215,11 @@ function tailHTML(c){
 }
 const DEFAULT_SOCIAL = socialHTML(SOCIAL_DEFAULTS);
 const DEFAULT_TAIL   = tailHTML(TAIL_DEFAULTS);
+const DEFAULT_BRAND  = brandHTML(BRAND_DEFAULTS, []);
 const LS_CFG="lalav_edm_cfg_v1", LS_MONTHLY="lalav_edm_monthly_v1",
       LS_TAIL="lalav_edm_tail_v2", LS_SOCIAL="lalav_edm_social_v1",
-      LS_SOCIAL_C="lalav_edm_socialcolors_v1", LS_TAIL_C="lalav_edm_tailcolors_v1";
+      LS_SOCIAL_C="lalav_edm_socialcolors_v1", LS_TAIL_C="lalav_edm_tailcolors_v1",
+      LS_BRAND="lalav_edm_brand_v1", LS_BRAND_C="lalav_edm_brandcolors_v1", LS_BRAND_PILLS="lalav_edm_brandpills_v1";
 
 let SLOTS=[], urls=[], mapping=[];   // mapping[slotIndex] = urls 索引，-1 = 略過此版位
 
@@ -193,11 +229,21 @@ function loadCfg(){
   if(!SLOTS||!Array.isArray(SLOTS)||!SLOTS.length) SLOTS=DEFAULT_SLOTS.map(r=>r.slice());
   document.getElementById('cfg').value = SLOTS.map(r=>r.join(" | ")).join("\n");
 
-  const scCol=readJSON(LS_SOCIAL_C,SOCIAL_DEFAULTS), tlCol=readJSON(LS_TAIL_C,TAIL_DEFAULTS);
+  const brCol=readJSON(LS_BRAND_C,BRAND_DEFAULTS), scCol=readJSON(LS_SOCIAL_C,SOCIAL_DEFAULTS), tlCol=readJSON(LS_TAIL_C,TAIL_DEFAULTS);
+  brandP.bg = initColorPair('brd-bg-c','brd-bg-h', brCol.bg    || BRAND_DEFAULTS.bg,    regenBrand);
+  brandP.ti = initColorPair('brd-ti-c','brd-ti-h', brCol.title || BRAND_DEFAULTS.title, regenBrand);
+  brandP.or = initColorPair('brd-or-c','brd-or-h', brCol.orn   || BRAND_DEFAULTS.orn,   regenBrand);
   socP.bg = initColorPair('soc-bg-c','soc-bg-h', scCol.btnBg     || SOCIAL_DEFAULTS.btnBg,     regenSocial);
   socP.bd = initColorPair('soc-bd-c','soc-bd-h', scCol.btnBorder || SOCIAL_DEFAULTS.btnBorder, regenSocial);
   tailP.bg = initColorPair('tail-bg-c','tail-bg-h', tlCol.bg   || TAIL_DEFAULTS.bg,   regenTail);
   tailP.tx = initColorPair('tail-tx-c','tail-tx-h', tlCol.text || TAIL_DEFAULTS.text, regenTail);
+
+  const pasteEl=document.getElementById('brandpills'), brEl=document.getElementById('brand');
+  let bp=null; try{bp=localStorage.getItem(LS_BRAND_PILLS)}catch(e){}
+  pasteEl.value = bp || "";
+  let br=null; try{br=localStorage.getItem(LS_BRAND)}catch(e){}
+  brEl.value = (br!==null ? br : brandHTML(brandColors(), getBrandPills()));
+  brEl.oninput=()=>{ try{localStorage.setItem(LS_BRAND,brEl.value)}catch(e){} };
 
   const tailEl=document.getElementById('tail'), socEl=document.getElementById('social');
   let t=null; try{t=localStorage.getItem(LS_TAIL)}catch(e){}
@@ -218,9 +264,28 @@ function initColorPair(cId,hId,initial,onChange){
   return { get:()=> hexOk(h.value.trim())? h.value.trim().toLowerCase() : c.value,
            set:(v)=>{ v=(hexOk(v)?v:'#000000').toLowerCase(); c.value=v; h.value=v; } };
 }
-const socP={}, tailP={};
+const socP={}, tailP={}, brandP={};
 function socialColors(){ return { btnBg:socP.bg.get(), btnBorder:socP.bd.get() }; }
 function tailColors(){ return { bg:tailP.bg.get(), text:tailP.tx.get() }; }
+function brandColors(){ return { bg:brandP.bg.get(), title:brandP.ti.get(), orn:brandP.or.get() }; }
+function getBrandPills(){
+  const t=(document.getElementById('brandpills')||{}).value||"";
+  const re=/src\s*=\s*["']([^"']+)["']/gi, out=[]; let m;
+  while((m=re.exec(t))!==null) out.push(m[1]);
+  return out;
+}
+function applyBrandPills(){
+  const p=getBrandPills();
+  try{ localStorage.setItem(LS_BRAND_PILLS, document.getElementById('brandpills').value); }catch(e){}
+  regenBrand();
+  if(p.length===7) msg('brandMsg','ok','7 張膠囊圖已套用');
+  else msg('brandMsg','bad','偵測到 '+p.length+' 張，應該是 7 張（ONDO→Dr.SEED→MARY&MAY→athens→rom&nd→AXIS-Y→V4U）。已先套用抓到的部分。');
+}
+function regenBrand(){
+  const html=brandHTML(brandColors(), getBrandPills());
+  document.getElementById('brand').value=html;
+  try{ localStorage.setItem(LS_BRAND,html); localStorage.setItem(LS_BRAND_C,JSON.stringify(brandColors())); }catch(e){}
+}
 function regenSocial(){
   const html=socialHTML(socialColors());
   document.getElementById('social').value=html;
@@ -252,12 +317,15 @@ function resetCfg(){
   SLOTS=DEFAULT_SLOTS.map(r=>r.slice()); saveCfg();
   document.getElementById('cfg').value=SLOTS.map(r=>r.join(" | ")).join("\n");
   try{ localStorage.removeItem(LS_TAIL); localStorage.removeItem(LS_SOCIAL);
-       localStorage.removeItem(LS_SOCIAL_C); localStorage.removeItem(LS_TAIL_C); }catch(e){}
+       localStorage.removeItem(LS_SOCIAL_C); localStorage.removeItem(LS_TAIL_C);
+       localStorage.removeItem(LS_BRAND); localStorage.removeItem(LS_BRAND_C); }catch(e){}
+  brandP.bg.set(BRAND_DEFAULTS.bg); brandP.ti.set(BRAND_DEFAULTS.title); brandP.or.set(BRAND_DEFAULTS.orn);
   socP.bg.set(SOCIAL_DEFAULTS.btnBg); socP.bd.set(SOCIAL_DEFAULTS.btnBorder);
   tailP.bg.set(TAIL_DEFAULTS.bg);     tailP.tx.set(TAIL_DEFAULTS.text);
+  document.getElementById('brand').value=brandHTML(BRAND_DEFAULTS, getBrandPills());
   document.getElementById('tail').value=DEFAULT_TAIL;
   document.getElementById('social').value=DEFAULT_SOCIAL;
-  renderSlots(); msg('cfgMsg','ok','已還原預設（含社群區塊、頁尾與顏色）');
+  renderSlots(); msg('cfgMsg','ok','已還原預設（品牌／社群／頁尾區塊與顏色，膠囊圖網址保留）');
 }
 
 function parseSrc(){
@@ -375,18 +443,27 @@ function build(){
     const cell=href ? '<a href="'+esc(href)+'" target="_blank" rel="noopener">'+img+'</a>' : img;
     emitted++;
     return '  <tr><td>'+cell+'</td></tr>';
-  }).filter(Boolean).join("\n");
-  const html='<table role="presentation" width="750" cellpadding="0" cellspacing="0" border="0" align="center" style="width:750px;max-width:100%;margin:0 auto;border-collapse:collapse;font-size:0;line-height:0;">\n'+rows+'\n</table>';
+  });
+  function wrap(arr){ return '<table role="presentation" width="750" cellpadding="0" cellspacing="0" border="0" align="center" style="width:750px;max-width:100%;margin:0 auto;border-collapse:collapse;font-size:0;line-height:0;">\n'+arr.join("\n")+'\n</table>'; }
+  const giftIdx=SLOTS.findIndex(s=>/gift/i.test(s[0]));
+  const cutAt=giftIdx>=0?giftIdx:SLOTS.length;
+  const pre=rows.slice(0,cutAt).filter(Boolean);
+  const post=rows.slice(cutAt).filter(Boolean);
+  const brand=(document.getElementById('brand').value||'').trim();
   const social=(document.getElementById('social').value||'').trim();
   const tail=(document.getElementById('tail').value||'').trim();
-  let outHtml=html;
+  let outHtml=wrap(pre);
+  if(brand) outHtml+='\n\n'+brand;
+  if(post.length) outHtml+='\n\n'+wrap(post);
   if(social) outHtml+='\n\n'+social;
   if(tail) outHtml+='\n\n'+tail;
   document.getElementById('out').value=outHtml;
-  let note='完成！輸出 '+emitted+' 列。';
+  let note='完成！圖片 '+emitted+' 列＋品牌／社群／頁尾區塊。';
   if(skipped.length) note+=' 略過版位：'+skipped.join(", ")+'。';
-  if(dups.length) note+=' ⚠ 同一張圖用在多個版位：'+dups.join(", ")+'，確認是否刻意。';
-  msg('outMsg', (skipped.length||dups.length)?'bad':'ok', note+' 複製整段貼進 SHOPLINE 原始碼模式。');
+  if(dups.length) note+=' ⚠ 同一張圖用在多個版位：'+dups.join(", ")+'。';
+  const bp=getBrandPills().length;
+  if(brand && bp!==7) note+=' ⚠ 品牌區塊只帶到 '+bp+'/7 張膠囊圖，去「版位設定→品牌區塊」貼 7 張的語法。';
+  msg('outMsg', (skipped.length||dups.length||(brand&&bp!==7))?'bad':'ok', note+' 複製整段貼進 SHOPLINE 原始碼模式。');
 }
 
 function copyOut(){
