@@ -153,9 +153,21 @@ const DEFAULT_SLOTS = [
 // 品牌段、社群段、頁尾都不再切圖，改成工具內建 HTML 區塊。
 // 輸出順序：圖片表格(01–08) → 品牌區塊 → 送禮圖(09) → 社群區塊 → 頁尾。
 // 顏色由色板控制，brandHTML()/socialHTML()/tailHTML() 依目前顏色重新產生語法。
-const SOCIAL_DEFAULTS = { btnBg:"#fff9f5", btnBorder:"#bc8772" };
+const SOCIAL_DEFAULTS = { btnBg:"#fcf6f2", btnBorder:"#bc8772" };
 const TAIL_DEFAULTS   = { bg:"#f6eae4", text:"#8d5f5b" };
 const BRAND_DEFAULTS  = { bg:"#f8efe9", title:"#5d3d3c", orn:"#d7aaa2" };
+// 已上傳 SHOPLINE 的 7 張品牌膠囊圖（ONDO→Dr.SEED→MARY&MAY→athens→rom&nd→AXIS-Y→V4U）
+const DEFAULT_BRAND_PILLS = [
+"https://img.shoplineapp.com/media/image_clips/6a9e6c1bbf02a0693354d506/original.png?1788767259=&amp;owner_id=5dc0eecc9db3cb002ca18bd7",
+"https://img.shoplineapp.com/media/image_clips/6a9e6c1d53d4a1ce392e6209/original.png?1788767261=&amp;owner_id=5dc0eecc9db3cb002ca18bd7",
+"https://img.shoplineapp.com/media/image_clips/6a9e6c214dc08179f8b8885a/original.png?1788767265=&amp;owner_id=5dc0eecc9db3cb002ca18bd7",
+"https://img.shoplineapp.com/media/image_clips/6a9e6c247c9c4f8d4c896517/original.png?1788767268=&amp;owner_id=5dc0eecc9db3cb002ca18bd7",
+"https://img.shoplineapp.com/media/image_clips/6a9e6c285665bfbc6a0db8ad/original.png?1788767272=&amp;owner_id=5dc0eecc9db3cb002ca18bd7",
+"https://img.shoplineapp.com/media/image_clips/6a9e6c2baddfafa14d6c5a57/original.png?1788767275=&amp;owner_id=5dc0eecc9db3cb002ca18bd7",
+"https://img.shoplineapp.com/media/image_clips/6a9e6c2eb6c87f778422de38/original.png?1788767277=&amp;owner_id=5dc0eecc9db3cb002ca18bd7"
+];
+const DEFAULT_BRAND_PILLS_PASTE = DEFAULT_BRAND_PILLS
+  .map(u=>'<p style="text-align: center;"><img alt="" src="'+u+'" /></p>').join('\n\n');
 const BRAND_LINKS = [
   ["ONDO 昂朵",      "https://www.lala-v.com/pages/ondo"],
   ["Dr.SEED",        "https://www.lala-v.com/pages/dr-seed"],
@@ -166,7 +178,7 @@ const BRAND_LINKS = [
   ["V4U 薇選禮",     "https://www.lala-v.com/categories/v4u"],
 ];
 function brandHTML(c, pills){
-  pills = pills || [];
+  pills = (pills && pills.length) ? pills : DEFAULT_BRAND_PILLS;
   const pillRows = BRAND_LINKS.map(function(b,i){
     const u = pills[i] || "";
     return '    <a href="'+b[1]+'" target="_blank" rel="noopener" style="display:block;text-decoration:none;margin:9px auto 0;">'
@@ -192,7 +204,7 @@ function socialHTML(c){
   return [
    '<table role="presentation" width="750" cellpadding="0" cellspacing="0" border="0" align="center" style="width:750px;max-width:100%;margin:0 auto;border-collapse:collapse;">',
    '  <tr><td style="background:#ffffff;text-align:center;padding:42px 100px 38px;font-family:\'PingFang TC\',\'Noto Sans TC\',\'Microsoft JhengHei\',sans-serif;">',
-   '    <div style="font-size:26px;color:#855554;letter-spacing:3px;font-weight:700;margin-bottom:22px;">追蹤我們・一起發現好物</div>',
+   '    <div style="font-size:26px;color:#855554;letter-spacing:3px;font-weight:700;line-height:1.4;margin-bottom:22px;">追蹤LaLa V<br>搶先領會員折扣&amp;資訊</div>',
    '    <a href="https://line.me/R/ti/p/%40940lqvkn" target="_blank" rel="noopener" style="'+bs+'">LINE</a>',
    '    <a href="https://www.instagram.com/lalavcollection/?hl=zh-tw" target="_blank" rel="noopener" style="'+bs+'">INSTAGRAM</a>',
    '    <a href="https://www.facebook.com/lalavcollection/" target="_blank" rel="noopener" style="'+bs+'">FACEBOOK</a>',
@@ -215,11 +227,13 @@ function tailHTML(c){
 }
 const DEFAULT_SOCIAL = socialHTML(SOCIAL_DEFAULTS);
 const DEFAULT_TAIL   = tailHTML(TAIL_DEFAULTS);
-const DEFAULT_BRAND  = brandHTML(BRAND_DEFAULTS, []);
+const DEFAULT_BRAND  = brandHTML(BRAND_DEFAULTS, DEFAULT_BRAND_PILLS);
+// _v2：2026-09-07 把 7 張膠囊圖網址與社群新標題／按鈕底色烤進預設，舊 localStorage 版本作廢，
+// 讓每個開連結的人都吃到最新版（各自後續編輯仍存自己瀏覽器）。
 const LS_CFG="lalav_edm_cfg_v1", LS_MONTHLY="lalav_edm_monthly_v1",
-      LS_TAIL="lalav_edm_tail_v2", LS_SOCIAL="lalav_edm_social_v1",
-      LS_SOCIAL_C="lalav_edm_socialcolors_v1", LS_TAIL_C="lalav_edm_tailcolors_v1",
-      LS_BRAND="lalav_edm_brand_v1", LS_BRAND_C="lalav_edm_brandcolors_v1", LS_BRAND_PILLS="lalav_edm_brandpills_v1";
+      LS_TAIL="lalav_edm_tail_v2", LS_SOCIAL="lalav_edm_social_v2",
+      LS_SOCIAL_C="lalav_edm_socialcolors_v2", LS_TAIL_C="lalav_edm_tailcolors_v1",
+      LS_BRAND="lalav_edm_brand_v2", LS_BRAND_C="lalav_edm_brandcolors_v2", LS_BRAND_PILLS="lalav_edm_brandpills_v2";
 
 let SLOTS=[], urls=[], mapping=[];   // mapping[slotIndex] = urls 索引，-1 = 略過此版位
 
@@ -240,7 +254,7 @@ function loadCfg(){
 
   const pasteEl=document.getElementById('brandpills'), brEl=document.getElementById('brand');
   let bp=null; try{bp=localStorage.getItem(LS_BRAND_PILLS)}catch(e){}
-  pasteEl.value = bp || "";
+  pasteEl.value = (bp!==null ? bp : DEFAULT_BRAND_PILLS_PASTE);
   let br=null; try{br=localStorage.getItem(LS_BRAND)}catch(e){}
   brEl.value = (br!==null ? br : brandHTML(brandColors(), getBrandPills()));
   brEl.oninput=()=>{ try{localStorage.setItem(LS_BRAND,brEl.value)}catch(e){} };
@@ -461,7 +475,7 @@ function build(){
   let note='完成！圖片 '+emitted+' 列＋品牌／社群／頁尾區塊。';
   if(skipped.length) note+=' 略過版位：'+skipped.join(", ")+'。';
   if(dups.length) note+=' ⚠ 同一張圖用在多個版位：'+dups.join(", ")+'。';
-  const bp=getBrandPills().length;
+  const bp=getBrandPills().length || DEFAULT_BRAND_PILLS.length;
   if(brand && bp!==7) note+=' ⚠ 品牌區塊只帶到 '+bp+'/7 張膠囊圖，去「版位設定→品牌區塊」貼 7 張的語法。';
   msg('outMsg', (skipped.length||dups.length||(brand&&bp!==7))?'bad':'ok', note+' 複製整段貼進 SHOPLINE 原始碼模式。');
 }
