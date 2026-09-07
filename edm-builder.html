@@ -46,6 +46,10 @@
   ol{margin:6px 0 0;padding-left:20px}
   ol li{margin:3px 0}
   #out{min-height:180px}
+  .colorrow{display:flex;gap:20px;flex-wrap:wrap;margin:4px 0 8px}
+  .colorrow label{display:flex;align-items:center;gap:6px;font-size:12.5px;color:#6b5a52}
+  .colorrow input[type=color]{width:34px;height:26px;padding:0;border:1px solid #d9c6ba;border-radius:5px;background:#fff;cursor:pointer}
+  .colorrow input.hex{width:82px;border:1px solid #d9c6ba;border-radius:5px;padding:4px 6px;font:12px ui-monospace,Menlo,monospace;text-transform:lowercase;color:#3f342f;background:#fff}
 </style>
 </head>
 <body>
@@ -107,9 +111,18 @@
       </div>
       <div id="cfgMsg"></div>
       <p class="sub" style="margin:16px 0 4px"><b>社群區塊</b>　追蹤我們 + LINE/IG/FB 三顆按鈕，每封自動加在圖片表格後面（真文字＋連結，不用切圖）</p>
+      <div class="colorrow">
+        <label>按鈕底色 <input type="color" id="soc-bg-c"><input type="text" class="hex" id="soc-bg-h" maxlength="7"></label>
+        <label>按鈕邊框 <input type="color" id="soc-bd-c"><input type="text" class="hex" id="soc-bd-h" maxlength="7"></label>
+      </div>
       <textarea id="social" rows="6"></textarea>
       <p class="sub" style="margin:16px 0 4px"><b>頁尾固定文字</b>　接在社群區塊後面（是真文字不是圖，可含連結）</p>
+      <div class="colorrow">
+        <label>底色 <input type="color" id="tail-bg-c"><input type="text" class="hex" id="tail-bg-h" maxlength="7"></label>
+        <label>文字色 <input type="color" id="tail-tx-c"><input type="text" class="hex" id="tail-tx-h" maxlength="7"></label>
+      </div>
       <textarea id="tail" rows="4"></textarea>
+      <p class="sub" style="margin:6px 0 0;font-size:12px">改色板會重新產生上面的語法（會蓋掉手動改的內容）；也可直接改語法裡的色碼。</p>
     </details>
   </div>
 </div>
@@ -135,29 +148,42 @@ const DEFAULT_SLOTS = [
   ["17_brand_more","and more...","monthly","https://www.lala-v.com/"],
   ["18_gift","節慶時刻｜送出一份獨一無二的禮物","monthly","https://www.lala-v.com/products/wwwhavefuncomsmiley-color-gift-box-with-bag"],
 ];
-// 社群段與頁尾不再切圖，改成工具內建 HTML 區塊（見 DEFAULT_SOCIAL / DEFAULT_TAIL），輸出時接在圖片表格後面
-const DEFAULT_TAIL = [
-'<table role="presentation" width="750" cellpadding="0" cellspacing="0" border="0" align="center" style="width:750px;max-width:100%;margin:0 auto;border-collapse:collapse;">',
-'  <tr><td style="background:#f6eae4;text-align:center;padding:28px 28px 30px;font-family:\'PingFang TC\',\'Noto Sans TC\',\'Microsoft JhengHei\',sans-serif;color:#8d5f5b;">',
-'    <div style="font-size:19px;font-weight:700;color:#7a4a44;letter-spacing:1px;">LaLa V Collection 💗 安心嚴選　美麗加倍</div>',
-'    <div style="font-size:14px;line-height:1.8;letter-spacing:.6px;margin-top:9px;">',
-'      <a href="https://www.lala-v.com/" target="_blank" rel="noopener" style="color:#8d5f5b;text-decoration:none;">lala-v.com</a><br>',
-'      ｜人氣韓國美妝｜進口食品｜居家生活｜質感香氛｜客製化禮品｜',
-'    </div>',
-'  </td></tr>',
-'</table>'
-].join('\n');
-const DEFAULT_SOCIAL = [
-'<table role="presentation" width="750" cellpadding="0" cellspacing="0" border="0" align="center" style="width:750px;max-width:100%;margin:0 auto;border-collapse:collapse;">',
-'  <tr><td style="background:#ffffff;text-align:center;padding:42px 100px 38px;font-family:\'PingFang TC\',\'Noto Sans TC\',\'Microsoft JhengHei\',sans-serif;">',
-'    <div style="font-size:26px;color:#855554;letter-spacing:3px;font-weight:700;margin-bottom:22px;">追蹤我們・一起發現好物</div>',
-'    <a href="https://line.me/R/ti/p/%40940lqvkn" target="_blank" rel="noopener" style="display:block;margin:12px auto;border:1px solid #bc8772;border-radius:50px;padding:13px 20px;color:#915a50;font-family:Georgia,\'Times New Roman\',serif;letter-spacing:4px;font-size:20px;background:#fff9f5;text-decoration:none;">LINE</a>',
-'    <a href="https://www.instagram.com/lalavcollection/?hl=zh-tw" target="_blank" rel="noopener" style="display:block;margin:12px auto;border:1px solid #bc8772;border-radius:50px;padding:13px 20px;color:#915a50;font-family:Georgia,\'Times New Roman\',serif;letter-spacing:4px;font-size:20px;background:#fff9f5;text-decoration:none;">INSTAGRAM</a>',
-'    <a href="https://www.facebook.com/lalavcollection/" target="_blank" rel="noopener" style="display:block;margin:12px auto;border:1px solid #bc8772;border-radius:50px;padding:13px 20px;color:#915a50;font-family:Georgia,\'Times New Roman\',serif;letter-spacing:4px;font-size:20px;background:#fff9f5;text-decoration:none;">FACEBOOK</a>',
-'  </td></tr>',
-'</table>'
-].join('\n');
-const LS_CFG="lalav_edm_cfg_v1", LS_MONTHLY="lalav_edm_monthly_v1", LS_TAIL="lalav_edm_tail_v2", LS_SOCIAL="lalav_edm_social_v1";
+// 社群段與頁尾不再切圖，改成工具內建 HTML 區塊，輸出時接在圖片表格後面。
+// 顏色由色板控制，socialHTML() / tailHTML() 依目前顏色重新產生語法。
+const SOCIAL_DEFAULTS = { btnBg:"#fff9f5", btnBorder:"#bc8772" };
+const TAIL_DEFAULTS   = { bg:"#f6eae4", text:"#8d5f5b" };
+
+function socialHTML(c){
+  const bs = "display:block;margin:12px auto;border:1px solid "+c.btnBorder+";border-radius:50px;padding:13px 20px;color:#915a50;font-family:Georgia,'Times New Roman',serif;letter-spacing:4px;font-size:20px;background:"+c.btnBg+";text-decoration:none;";
+  return [
+   '<table role="presentation" width="750" cellpadding="0" cellspacing="0" border="0" align="center" style="width:750px;max-width:100%;margin:0 auto;border-collapse:collapse;">',
+   '  <tr><td style="background:#ffffff;text-align:center;padding:42px 100px 38px;font-family:\'PingFang TC\',\'Noto Sans TC\',\'Microsoft JhengHei\',sans-serif;">',
+   '    <div style="font-size:26px;color:#855554;letter-spacing:3px;font-weight:700;margin-bottom:22px;">追蹤我們・一起發現好物</div>',
+   '    <a href="https://line.me/R/ti/p/%40940lqvkn" target="_blank" rel="noopener" style="'+bs+'">LINE</a>',
+   '    <a href="https://www.instagram.com/lalavcollection/?hl=zh-tw" target="_blank" rel="noopener" style="'+bs+'">INSTAGRAM</a>',
+   '    <a href="https://www.facebook.com/lalavcollection/" target="_blank" rel="noopener" style="'+bs+'">FACEBOOK</a>',
+   '  </td></tr>',
+   '</table>'
+  ].join('\n');
+}
+function tailHTML(c){
+  return [
+   '<table role="presentation" width="750" cellpadding="0" cellspacing="0" border="0" align="center" style="width:750px;max-width:100%;margin:0 auto;border-collapse:collapse;">',
+   '  <tr><td style="background:'+c.bg+';text-align:center;padding:28px 28px 30px;font-family:\'PingFang TC\',\'Noto Sans TC\',\'Microsoft JhengHei\',sans-serif;color:'+c.text+';">',
+   '    <div style="font-size:19px;font-weight:700;color:'+c.text+';letter-spacing:1px;">LaLa V Collection 💗 安心嚴選　美麗加倍</div>',
+   '    <div style="font-size:14px;line-height:1.8;letter-spacing:.6px;margin-top:9px;">',
+   '      <a href="https://www.lala-v.com/" target="_blank" rel="noopener" style="color:'+c.text+';text-decoration:none;">lala-v.com</a><br>',
+   '      ｜人氣韓國美妝｜進口食品｜居家生活｜質感香氛｜客製化禮品｜',
+   '    </div>',
+   '  </td></tr>',
+   '</table>'
+  ].join('\n');
+}
+const DEFAULT_SOCIAL = socialHTML(SOCIAL_DEFAULTS);
+const DEFAULT_TAIL   = tailHTML(TAIL_DEFAULTS);
+const LS_CFG="lalav_edm_cfg_v1", LS_MONTHLY="lalav_edm_monthly_v1",
+      LS_TAIL="lalav_edm_tail_v2", LS_SOCIAL="lalav_edm_social_v1",
+      LS_SOCIAL_C="lalav_edm_socialcolors_v1", LS_TAIL_C="lalav_edm_tailcolors_v1";
 
 let SLOTS=[], urls=[], mapping=[];   // mapping[slotIndex] = urls 索引，-1 = 略過此版位
 
@@ -166,14 +192,44 @@ function loadCfg(){
   if(raw){ try{ SLOTS=JSON.parse(raw); }catch(e){ SLOTS=null; } }
   if(!SLOTS||!Array.isArray(SLOTS)||!SLOTS.length) SLOTS=DEFAULT_SLOTS.map(r=>r.slice());
   document.getElementById('cfg').value = SLOTS.map(r=>r.join(" | ")).join("\n");
+
+  const scCol=readJSON(LS_SOCIAL_C,SOCIAL_DEFAULTS), tlCol=readJSON(LS_TAIL_C,TAIL_DEFAULTS);
+  socP.bg = initColorPair('soc-bg-c','soc-bg-h', scCol.btnBg     || SOCIAL_DEFAULTS.btnBg,     regenSocial);
+  socP.bd = initColorPair('soc-bd-c','soc-bd-h', scCol.btnBorder || SOCIAL_DEFAULTS.btnBorder, regenSocial);
+  tailP.bg = initColorPair('tail-bg-c','tail-bg-h', tlCol.bg   || TAIL_DEFAULTS.bg,   regenTail);
+  tailP.tx = initColorPair('tail-tx-c','tail-tx-h', tlCol.text || TAIL_DEFAULTS.text, regenTail);
+
+  const tailEl=document.getElementById('tail'), socEl=document.getElementById('social');
   let t=null; try{t=localStorage.getItem(LS_TAIL)}catch(e){}
-  const tailEl=document.getElementById('tail');
-  tailEl.value = (t!==null ? t : DEFAULT_TAIL);
+  tailEl.value = (t!==null ? t : tailHTML(tailColors()));
   tailEl.oninput=()=>{ try{localStorage.setItem(LS_TAIL,tailEl.value)}catch(e){} };
   let sc=null; try{sc=localStorage.getItem(LS_SOCIAL)}catch(e){}
-  const socEl=document.getElementById('social');
-  socEl.value = (sc!==null ? sc : DEFAULT_SOCIAL);
+  socEl.value = (sc!==null ? sc : socialHTML(socialColors()));
   socEl.oninput=()=>{ try{localStorage.setItem(LS_SOCIAL,socEl.value)}catch(e){} };
+}
+function readJSON(k,fb){ try{ const v=JSON.parse(localStorage.getItem(k)); return (v&&typeof v==='object')?v:fb; }catch(e){ return fb; } }
+function hexOk(v){ return /^#[0-9a-fA-F]{6}$/.test(v); }
+function initColorPair(cId,hId,initial,onChange){
+  const c=document.getElementById(cId), h=document.getElementById(hId);
+  const start=hexOk(initial)?initial.toLowerCase():'#000000';
+  c.value=start; h.value=start;
+  c.oninput=()=>{ h.value=c.value; onChange(); };
+  h.oninput=()=>{ let v=h.value.trim(); if(!v.startsWith('#')) v='#'+v; if(hexOk(v)){ c.value=v.toLowerCase(); onChange(); } };
+  return { get:()=> hexOk(h.value.trim())? h.value.trim().toLowerCase() : c.value,
+           set:(v)=>{ v=(hexOk(v)?v:'#000000').toLowerCase(); c.value=v; h.value=v; } };
+}
+const socP={}, tailP={};
+function socialColors(){ return { btnBg:socP.bg.get(), btnBorder:socP.bd.get() }; }
+function tailColors(){ return { bg:tailP.bg.get(), text:tailP.tx.get() }; }
+function regenSocial(){
+  const html=socialHTML(socialColors());
+  document.getElementById('social').value=html;
+  try{ localStorage.setItem(LS_SOCIAL,html); localStorage.setItem(LS_SOCIAL_C,JSON.stringify(socialColors())); }catch(e){}
+}
+function regenTail(){
+  const html=tailHTML(tailColors());
+  document.getElementById('tail').value=html;
+  try{ localStorage.setItem(LS_TAIL,html); localStorage.setItem(LS_TAIL_C,JSON.stringify(tailColors())); }catch(e){}
 }
 function saveCfg(){ try{localStorage.setItem(LS_CFG,JSON.stringify(SLOTS))}catch(e){} }
 function getMonthly(){ try{return JSON.parse(localStorage.getItem(LS_MONTHLY)||"{}")}catch(e){return {}} }
@@ -195,11 +251,13 @@ function applyCfg(){
 function resetCfg(){
   SLOTS=DEFAULT_SLOTS.map(r=>r.slice()); saveCfg();
   document.getElementById('cfg').value=SLOTS.map(r=>r.join(" | ")).join("\n");
-  try{localStorage.removeItem(LS_TAIL)}catch(e){}
-  try{localStorage.removeItem(LS_SOCIAL)}catch(e){}
+  try{ localStorage.removeItem(LS_TAIL); localStorage.removeItem(LS_SOCIAL);
+       localStorage.removeItem(LS_SOCIAL_C); localStorage.removeItem(LS_TAIL_C); }catch(e){}
+  socP.bg.set(SOCIAL_DEFAULTS.btnBg); socP.bd.set(SOCIAL_DEFAULTS.btnBorder);
+  tailP.bg.set(TAIL_DEFAULTS.bg);     tailP.tx.set(TAIL_DEFAULTS.text);
   document.getElementById('tail').value=DEFAULT_TAIL;
   document.getElementById('social').value=DEFAULT_SOCIAL;
-  renderSlots(); msg('cfgMsg','ok','已還原預設（含社群區塊與頁尾固定文字）');
+  renderSlots(); msg('cfgMsg','ok','已還原預設（含社群區塊、頁尾與顏色）');
 }
 
 function parseSrc(){
