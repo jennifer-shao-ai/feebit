@@ -370,7 +370,7 @@ const SKILLS = [
   { icon:'🔴', name:'滯銷品警示',       cat:'庫存管理', ver:'v1.0', desc:'自動偵測超過預設天數未售出的商品並產生警示', url:'slow-mover-alert.html' },
   { icon:'🏪', name:'商品篩選工具',     cat:'庫存管理', ver:'v2.0', desc:'多條件篩選商品清單，快速定位特定商品', url:'feebit-inventory-filter.html' },
   { icon:'🔄', name:'庫存訂貨建議',     cat:'庫存管理', ver:'—',    desc:'依銷售速度與現有庫存自動產生訂貨建議清單', url:'reorder-suggestions.html' },
-  { icon:'🤖', name:'庫存自動核對',     cat:'庫存管理', ver:'GAS',  desc:'每日 17:00 自動同步 Ragic 效期批次，發送 HTML 日報', url:null, info:'Google Apps Script · 綁定 Sheet: 庫存核對' },
+  { icon:'🤖', name:'庫存自動核對',     cat:'庫存管理', ver:'GAS',  desc:'每日 16:00 比對揀貨紅單與 Ragic 效期庫存做 FIFO 扣減，含退貨回補、數量異常比對進貨單、滯銷偵測，發 HTML 日報（附前往當日揀貨表按鈕）', url:null, info:'Google Apps Script · 綁定 Sheet: 庫存核對 · v17' },
   // ── 電商銷售 ──
   { icon:'📈', name:'品牌銷售轉換', cat:'電商銷售', ver:'—',   desc:'各品牌銷售數字彙整與走勢分析', url:'brand-sales.html' },
   { icon:'🔭', name:'品類競品分析', cat:'電商銷售', ver:'—',   desc:'追蹤蝦皮競品動態，分析市場定位與價格帶', url:'market-tracker.html' },
@@ -410,6 +410,7 @@ const SKILLS = [
   { icon:'📊', name:'淘寶訂單 Apps Script',   cat:'自動化', ver:'GAS',    desc:'接收 Chrome 外掛資料，自動建 Google Sheet（含商品縮圖）', url:null, info:'Google Apps Script · Deploy: AKfycbx0…' },
   { icon:'⏰', name:'Supabase 保活排程',      cat:'自動化', ver:'排程',   desc:'每 6 天自動呼叫 Supabase API，避免 free tier 7 天暫停', url:null, info:'Cloud Routine · Trigger: trig_014e4GNd…' },
   { icon:'📋', name:'Feebit 每日待辦整理',    cat:'自動化', ver:'排程',   desc:'週一至五 08:30 整合 Asana/Gmail/Slack/Notion 產出待辦清單並建 Gmail 草稿，含信件連結、完整回覆草稿、星號/重要信件近兩週提醒', url:'schedule-notifications.html', info:'Cloud Routine · Trigger: trig_01KJRRNzuss…' },
+  { icon:'📦', name:'預購商品追蹤',          cat:'自動化', ver:'排程',   desc:'每日 8:30（平日）掃 LaLa V 官網訂單信，比對 Ragic 庫存與進貨單，寄出預購商品彙整信', url:null, info:'Google Apps Script · 獨立專案 · 每日 8:30 觸發' },
   // ── 系統 ──
   { icon:'🏠', name:'首頁',     cat:'系統', ver:'v3.0', desc:'飛比特營運工具箱入口，所有工具快速導覽', url:'index.html' },
   { icon:'🔧', name:'使用工具', cat:'系統', ver:'v1.1', desc:'外部平台與後台連結總覽，點擊前往各系統', url:'tools.html' },
