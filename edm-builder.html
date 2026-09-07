@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LaLa V 電子報 HTML 產生器</title>
+<style>
+  :root{color-scheme:light}
+  *{box-sizing:border-box}
+  body{margin:0;background:#f4efe9;color:#3f342f;font:15px/1.6 "PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif}
+  .wrap{max-width:1040px;margin:0 auto;padding:26px 20px 80px}
+  h1{font-size:22px;margin:0 0 4px;color:#7a4a44}
+  .sub{color:#8a7a72;margin:0 0 22px;font-size:13.5px}
+  .card{background:#fffaf6;border:1px solid #e6d6cc;border-radius:14px;padding:18px 20px;margin-bottom:18px;box-shadow:0 3px 12px rgba(120,80,66,.06)}
+  .card h2{font-size:15px;margin:0 0 10px;color:#7a4a44;letter-spacing:.5px}
+  .card h2 span{color:#b58a7e;font-weight:400;font-size:12.5px;margin-left:6px}
+  textarea{width:100%;border:1px solid #d9c6ba;border-radius:9px;padding:10px 12px;font:12.5px/1.55 ui-monospace,Menlo,Consolas,monospace;background:#fff;color:#3f342f;resize:vertical}
+  button{cursor:pointer;border:0;border-radius:8px;padding:9px 18px;font-size:14px;font-weight:700;letter-spacing:.5px;background:#a95f5a;color:#fff}
+  button.ghost{background:#efe2da;color:#7a4a44}
+  button:active{transform:translateY(1px)}
+  .row-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+  table.slots{width:100%;border-collapse:collapse;font-size:13px}
+  table.slots th{text-align:left;color:#9a857b;font-weight:600;font-size:11.5px;padding:6px 8px;border-bottom:1px solid #e6d6cc}
+  table.slots td{padding:7px 8px;border-bottom:1px solid #f0e5dd;vertical-align:middle}
+  table.slots tr.warn td{background:#fff2ef}
+  .thumb{width:104px;height:52px;object-fit:cover;object-position:top;border-radius:5px;border:1px solid #e0cfc4;background:#f6efe9;display:block}
+  .thumb.miss{display:flex;align-items:center;justify-content:center;font-size:10px;color:#c0392b}
+  .k{font-family:ui-monospace,monospace;font-size:11.5px;color:#8a7a72;white-space:nowrap}
+  td input[type=text]{width:100%;border:1px solid #d9c6ba;border-radius:6px;padding:5px 7px;font-size:12.5px;background:#fff;color:#3f342f}
+  td select{max-width:160px;border:1px solid #d9c6ba;border-radius:6px;padding:4px 6px;font-size:12px;background:#fff;color:#3f342f}
+  td select.skip{background:#f3ebe4;color:#a5372b}
+  td button.mini{font-size:10.5px;font-weight:600;padding:3px 7px;margin-top:5px;background:#efe2da;color:#7a4a44;border-radius:5px}
+  tr.dup td select{border-color:#d98a2c;background:#fff6ec}
+  .fixed{color:#9a857b;font-size:11.5px;font-family:ui-monospace,monospace;word-break:break-all}
+  .none{color:#c3b2a8}
+  .tag{display:inline-block;font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:4px;margin-right:5px}
+  .tag.m{background:#f5d9c8;color:#a05a2c}
+  .tag.f{background:#dce8dc;color:#4a7a4a}
+  .tag.n{background:#e9dfd8;color:#9a857b}
+  .msg{font-size:13px;padding:8px 12px;border-radius:8px;margin-top:10px}
+  .msg.ok{background:#e2efe0;color:#3f6a3a}
+  .msg.bad{background:#fbe4df;color:#a5372b}
+  details{margin-top:6px}
+  summary{cursor:pointer;font-size:13px;color:#7a4a44;font-weight:700}
+  code{background:#f0e5dd;padding:1px 5px;border-radius:4px;font-size:12px}
+  ol{margin:6px 0 0;padding-left:20px}
+  ol li{margin:3px 0}
+  #out{min-height:180px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>LaLa V 電子報 HTML 產生器</h1>
+  <p class="sub">每月切好圖 → 上傳 SHOPLINE → 貼回它產生的圖片語法 → 這裡自動補上連結和 alt → 複製整段貼進 SHOPLINE 原始碼模式。</p>
+
+  <div class="card">
+    <h2>使用步驟</h2>
+    <ol>
+      <li>切好的 <b>23 張圖</b>，<b>依編號 01→23 的順序</b>上傳到 SHOPLINE 媒體庫（順序很重要）</li>
+      <li>SHOPLINE 會產生一段 <code>&lt;p&gt;&lt;img …&gt;&lt;br&gt;…&lt;/p&gt;</code>，整段貼到下面框框，按「解析圖片」</li>
+      <li>只填當月會變的連結（主視覺、會員優惠、4 個活動區塊、送禮區、更多品牌），其餘固定連結會自動帶入</li>
+      <li>按「產生 HTML」→ 複製 → 貼進 SHOPLINE 網誌／頁面的「HTML / 原始碼」模式</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>① 貼上 SHOPLINE 產生的圖片語法</h2>
+    <textarea id="src" rows="7" placeholder="把 SHOPLINE 上傳圖片後產生的 <p><img ...><br>...</p> 整段貼在這裡"></textarea>
+    <div class="row-actions">
+      <button onclick="parseSrc()">解析圖片</button>
+      <button class="ghost" onclick="document.getElementById('src').value='';">清空</button>
+    </div>
+    <div id="parseMsg"></div>
+  </div>
+
+  <div class="card">
+    <h2>② 對應版位與連結 <span>橘＝當月要填　綠＝固定自動帶　灰＝不加連結</span></h2>
+    <p class="sub" style="margin:2px 0 10px">圖片張數不足或順序跑掉時，用「對應圖」欄手動指定每個版位要用哪張圖，或設成「略過」讓該版位不輸出。</p>
+    <table class="slots">
+      <thead><tr><th>預覽</th><th>版位</th><th>對應圖</th><th style="width:28%">ALT 文字</th><th style="width:30%">連結</th></tr></thead>
+      <tbody id="slotBody"></tbody>
+    </table>
+    <div class="row-actions">
+      <button class="ghost" onclick="resetMapping()">重設對應（依序）</button>
+      <button class="ghost" onclick="clearMonthly()">清空當月連結</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>③ 產生結果</h2>
+    <div class="row-actions" style="margin-top:0;margin-bottom:10px">
+      <button onclick="build()">產生 HTML</button>
+      <button class="ghost" onclick="copyOut()">複製</button>
+    </div>
+    <textarea id="out" rows="10" readonly placeholder="按「產生 HTML」後結果會出現在這裡"></textarea>
+    <div id="outMsg"></div>
+  </div>
+
+  <div class="card">
+    <details>
+      <summary>版位設定（版型改了才需要動 — 例如活動區塊多一塊、品牌增減）</summary>
+      <p class="sub" style="margin:8px 0">每個版位一行：<code>key | alt | 連結類型(monthly/fixed/none) | 預設或固定網址</code>。改完按「套用」。設定會存在這台電腦的瀏覽器。</p>
+      <textarea id="cfg" rows="12"></textarea>
+      <div class="row-actions">
+        <button onclick="applyCfg()">套用設定</button>
+        <button class="ghost" onclick="resetCfg()">還原預設</button>
+      </div>
+      <div id="cfgMsg"></div>
+      <p class="sub" style="margin:16px 0 4px"><b>頁尾固定文字</b>　每封都會原樣加在 &lt;table&gt; 後面（是真文字不是圖，可含連結）</p>
+      <textarea id="tail" rows="4"></textarea>
+    </details>
+  </div>
+</div>
+
+<script>
+const DEFAULT_SLOTS = [
+  ["01_hero","秋日美妝季｜為妝容換上新色彩","monthly","https://www.lala-v.com/"],
+  ["02_member","會員限定優惠｜每月5號會員日 全館滿千95折","monthly","https://www.lala-v.com/"],
+  ["03_promos_title","秋日精選提案","none",""],
+  ["04_promo_makeup","氛圍妝感提案｜眼妝×頰彩×唇色","monthly","https://www.lala-v.com/pages/romand"],
+  ["05_promo_hydrate","保濕補給｜補水保濕×舒適潤澤","monthly","https://www.lala-v.com/categories/illiyoon"],
+  ["06_promo_scent","香氣生活提案｜居家擴香×衣物香氛×隨身香氣","monthly","https://www.lala-v.com/pages/wdressroom"],
+  ["07_promo_sale","雙11暖身開跑｜人氣好物搶先購","monthly","https://www.lala-v.com/categories/super-sale-combo"],
+  ["08_cta","快來官網選購","fixed","https://www.lala-v.com/"],
+  ["09_brands_title","人氣熱銷品牌","none",""],
+  ["10_brand_ondo","ONDO 昂朵","fixed","https://www.lala-v.com/pages/ondo"],
+  ["11_brand_drseed","Dr.SEED","fixed","https://www.lala-v.com/pages/dr-seed"],
+  ["12_brand_marymay","MARY & MAY","fixed","https://www.lala-v.com/pages/marymay"],
+  ["13_brand_athens","athens","fixed","https://www.lala-v.com/categories/athens"],
+  ["14_brand_romand","rom&nd","fixed","https://www.lala-v.com/pages/romand"],
+  ["15_brand_axisy","AXIS-Y 安舒研","fixed","https://www.lala-v.com/pages/axis-y"],
+  ["16_brand_v4u","V4U 薇選禮","fixed","https://www.lala-v.com/categories/v4u"],
+  ["17_brand_more","and more...","monthly","https://www.lala-v.com/"],
+  ["18_gift","節慶時刻｜送出一份獨一無二的禮物","monthly","https://www.lala-v.com/products/wwwhavefuncomsmiley-color-gift-box-with-bag"],
+  ["19_social_title","追蹤我們・一起發現好物","none",""],
+  ["20_social_line","LINE","fixed","https://line.me/R/ti/p/%40940lqvkn"],
+  ["21_social_ig","Instagram","fixed","https://www.instagram.com/lalavcollection/?hl=zh-tw"],
+  ["22_social_fb","Facebook","fixed","https://www.facebook.com/lalavcollection/"],
+  ["23_footer","LaLa V Collection 安心嚴選 美麗加倍","none",""],
+];
+const DEFAULT_TAIL = [
+'<table role="presentation" width="750" cellpadding="0" cellspacing="0" border="0" align="center" style="width:750px;max-width:100%;margin:0 auto;border-collapse:collapse;">',
+'  <tr><td style="background:#f6eae4;text-align:center;padding:28px 28px 30px;font-family:\'PingFang TC\',\'Noto Sans TC\',\'Microsoft JhengHei\',sans-serif;color:#8d5f5b;">',
+'    <div style="font-size:19px;font-weight:700;color:#7a4a44;letter-spacing:1px;">LaLa V Collection 💗 安心嚴選　美麗加倍</div>',
+'    <div style="font-size:14px;line-height:1.8;letter-spacing:.6px;margin-top:9px;">',
+'      <a href="https://www.lala-v.com/" target="_blank" rel="noopener" style="color:#8d5f5b;text-decoration:none;">lala-v.com</a><br>',
+'      ｜人氣韓國美妝｜進口食品｜居家生活｜質感香氛｜客製化禮品｜',
+'    </div>',
+'  </td></tr>',
+'</table>'
+].join('\n');
+const LS_CFG="lalav_edm_cfg_v1", LS_MONTHLY="lalav_edm_monthly_v1", LS_TAIL="lalav_edm_tail_v2";
+
+let SLOTS=[], urls=[], mapping=[];   // mapping[slotIndex] = urls 索引，-1 = 略過此版位
+
+function loadCfg(){
+  let raw=null; try{raw=localStorage.getItem(LS_CFG)}catch(e){}
+  if(raw){ try{ SLOTS=JSON.parse(raw); }catch(e){ SLOTS=null; } }
+  if(!SLOTS||!Array.isArray(SLOTS)||!SLOTS.length) SLOTS=DEFAULT_SLOTS.map(r=>r.slice());
+  document.getElementById('cfg').value = SLOTS.map(r=>r.join(" | ")).join("\n");
+  let t=null; try{t=localStorage.getItem(LS_TAIL)}catch(e){}
+  const tailEl=document.getElementById('tail');
+  tailEl.value = (t!==null ? t : DEFAULT_TAIL);
+  tailEl.oninput=()=>{ try{localStorage.setItem(LS_TAIL,tailEl.value)}catch(e){} };
+}
+function saveCfg(){ try{localStorage.setItem(LS_CFG,JSON.stringify(SLOTS))}catch(e){} }
+function getMonthly(){ try{return JSON.parse(localStorage.getItem(LS_MONTHLY)||"{}")}catch(e){return {}} }
+function setMonthly(o){ try{localStorage.setItem(LS_MONTHLY,JSON.stringify(o))}catch(e){} }
+
+function applyCfg(){
+  const lines=document.getElementById('cfg').value.split("\n").map(l=>l.trim()).filter(Boolean);
+  const next=[];
+  for(const l of lines){
+    const p=l.split("|").map(s=>s.trim());
+    if(p.length<3){ msg('cfgMsg','bad','格式錯誤：'+l); return; }
+    const type=p[2].toLowerCase();
+    if(!["monthly","fixed","none"].includes(type)){ msg('cfgMsg','bad','連結類型只能是 monthly / fixed / none：'+l); return; }
+    next.push([p[0],p[1]||"",type,p[3]||""]);
+  }
+  SLOTS=next; saveCfg(); renderSlots();
+  msg('cfgMsg','ok','已套用 '+SLOTS.length+' 個版位設定');
+}
+function resetCfg(){
+  SLOTS=DEFAULT_SLOTS.map(r=>r.slice()); saveCfg();
+  document.getElementById('cfg').value=SLOTS.map(r=>r.join(" | ")).join("\n");
+  try{localStorage.removeItem(LS_TAIL)}catch(e){}
+  document.getElementById('tail').value=DEFAULT_TAIL;
+  renderSlots(); msg('cfgMsg','ok','已還原預設（含頁尾固定文字）');
+}
+
+function parseSrc(){
+  const t=document.getElementById('src').value;
+  const re=/src\s*=\s*["']([^"']+)["']/gi; urls=[]; let m;
+  while((m=re.exec(t))!==null) urls.push(m[1]);
+  resetMapping(true);
+  if(!urls.length){ msg('parseMsg','bad','找不到任何圖片，確認貼的是 SHOPLINE 產生的 <img> 語法'); }
+  else if(urls.length<SLOTS.length){ msg('parseMsg','bad','偵測到 '+urls.length+' 張圖，版型有 '+SLOTS.length+' 個版位 — 已把前 '+urls.length+' 個版位依序對到圖，後面 '+(SLOTS.length-urls.length)+' 個先設為「略過」。請在「對應圖」欄調整成正確對應。'); }
+  else if(urls.length>SLOTS.length){ msg('parseMsg','bad','偵測到 '+urls.length+' 張圖，比版型的 '+SLOTS.length+' 個版位多 — 多出來的圖不會用到，或用「對應圖」欄手動指定。'); }
+  else{ msg('parseMsg','ok','偵測到 '+urls.length+' 張圖，數量正確'); }
+  renderSlots();
+}
+
+function resetMapping(silent){
+  mapping = SLOTS.map((_,i)=> i < urls.length ? i : -1);
+  if(!silent){ renderSlots(); msg('parseMsg','ok','已重設為依序對應（第 N 個版位＝第 N 張圖）'); }
+}
+
+function skipAndShift(i){
+  for(let j=SLOTS.length-1;j>i;j--) mapping[j]=mapping[j-1];
+  mapping[i]=-1;
+  renderSlots();
+  msg('parseMsg','ok','已略過「'+SLOTS[i][0]+'」，下面每列的對應圖往前移一格。請看縮圖確認每個版位對到正確的圖。');
+}
+
+function shortUrl(u){
+  const mm=u.match(/image_clips\/([^\/]+)/i);
+  return mm ? mm[1].slice(0,10) : u.replace(/^https?:\/\//,'').slice(0,22);
+}
+
+function renderSlots(){
+  const mon=getMonthly();
+  if(mapping.length!==SLOTS.length) mapping=SLOTS.map((_,i)=> i<urls.length ? i : -1);
+  mapping=mapping.map(mi=> (Number.isInteger(mi) && mi>=0 && mi<urls.length) ? mi : -1);
+  const useCount={}; mapping.forEach(mi=>{ if(mi>=0) useCount[mi]=(useCount[mi]||0)+1; });
+  const tb=document.getElementById('slotBody'); tb.innerHTML="";
+  SLOTS.forEach((s,i)=>{
+    const [key,alt,type,url]=s;
+    const mi=mapping[i];
+    const u=(mi>=0 && mi<urls.length) ? urls[mi] : "";
+    const tr=document.createElement('tr');
+    if(mi<0) tr.className="warn";
+    if(mi>=0 && useCount[mi]>1) tr.classList.add("dup");
+    // preview
+    const tdP=document.createElement('td');
+    if(u){ const im=document.createElement('img'); im.className="thumb"; im.src=u; im.loading="lazy"; im.onerror=()=>{im.replaceWith(Object.assign(document.createElement('div'),{className:"thumb miss",textContent:"讀不到"}))}; tdP.appendChild(im); }
+    else { tdP.innerHTML='<div class="thumb miss">略過</div>'; }
+    tr.appendChild(tdP);
+    // slot key + tag
+    const tdK=document.createElement('td');
+    const tg=type==="monthly"?'<span class="tag m">當月</span>':type==="fixed"?'<span class="tag f">固定</span>':'<span class="tag n">無</span>';
+    tdK.innerHTML=tg+'<span class="k">'+key+'</span>';
+    tr.appendChild(tdK);
+    // image mapping select
+    const tdM=document.createElement('td');
+    const sel=document.createElement('select'); sel.dataset.i=i;
+    let opts='<option value="-1">（略過此版位）</option>';
+    for(let n=0;n<urls.length;n++) opts+='<option value="'+n+'">圖 '+(n+1)+' — '+esc(shortUrl(urls[n]))+'</option>';
+    sel.innerHTML=opts; sel.value=String(mi);
+    if(mi<0) sel.classList.add("skip");
+    sel.onchange=()=>{ mapping[i]=parseInt(sel.value,10); renderSlots(); };
+    tdM.appendChild(sel);
+    if(urls.length){
+      const shb=document.createElement('button'); shb.className='mini'; shb.textContent='略過並遞補';
+      shb.title='把這一列設為略過，並讓下面每一列的對應圖往前移一格（少上傳一張圖時用）';
+      shb.onclick=()=>skipAndShift(i);
+      tdM.appendChild(shb);
+    }
+    tr.appendChild(tdM);
+    // alt
+    const tdA=document.createElement('td');
+    const ai=document.createElement('input'); ai.type="text"; ai.value=alt; ai.dataset.i=i; ai.className="altIn";
+    ai.oninput=()=>{ SLOTS[i][1]=ai.value; saveCfg(); };
+    tdA.appendChild(ai); tr.appendChild(tdA);
+    // link
+    const tdL=document.createElement('td');
+    if(type==="monthly"){
+      const li=document.createElement('input'); li.type="text"; li.className="monIn"; li.dataset.key=key;
+      li.value = (mon[key]!==undefined ? mon[key] : url);
+      li.placeholder=url||"貼上當月連結";
+      li.oninput=()=>{ const o=getMonthly(); o[key]=li.value; setMonthly(o); };
+      tdL.appendChild(li);
+    } else if(type==="fixed"){
+      tdL.innerHTML='<span class="fixed">'+esc(url)+'</span>';
+    } else {
+      tdL.innerHTML='<span class="none">—</span>';
+    }
+    tr.appendChild(tdL);
+    tb.appendChild(tr);
+  });
+}
+
+function clearMonthly(){
+  setMonthly({}); renderSlots(); msg('parseMsg','ok','當月連結已清空（改回預設值）');
+}
+
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+function build(){
+  if(!urls.length){ msg('outMsg','bad','請先在步驟①貼上圖片語法並解析'); return; }
+  const mon=getMonthly();
+  let skipped=[], emitted=0;
+  const useCount={}; mapping.forEach(mi=>{ if(mi>=0) useCount[mi]=(useCount[mi]||0)+1; });
+  const dups=Object.keys(useCount).filter(k=>useCount[k]>1).map(k=>'圖 '+(parseInt(k,10)+1));
+  const rows=SLOTS.map((s,i)=>{
+    const [key,alt,type,url]=s;
+    const mi=mapping[i];
+    if(mi<0 || mi>=urls.length){ skipped.push(key); return null; }
+    const u=urls[mi];
+    let href="";
+    if(type==="fixed") href=url;
+    else if(type==="monthly") href=(mon[key]!==undefined?mon[key]:url).trim();
+    const img='<img src="'+u+'" alt="'+esc(alt)+'" width="750" style="display:block;width:100%;border:0;">';
+    const cell=href ? '<a href="'+esc(href)+'" target="_blank" rel="noopener">'+img+'</a>' : img;
+    emitted++;
+    return '  <tr><td>'+cell+'</td></tr>';
+  }).filter(Boolean).join("\n");
+  const html='<table role="presentation" width="750" cellpadding="0" cellspacing="0" border="0" align="center" style="width:750px;max-width:100%;margin:0 auto;border-collapse:collapse;font-size:0;line-height:0;">\n'+rows+'\n</table>';
+  const tail=(document.getElementById('tail').value||'').trim();
+  document.getElementById('out').value = tail ? (html+'\n\n'+tail) : html;
+  let note='完成！輸出 '+emitted+' 列。';
+  if(skipped.length) note+=' 略過版位：'+skipped.join(", ")+'。';
+  if(dups.length) note+=' ⚠ 同一張圖用在多個版位：'+dups.join(", ")+'，確認是否刻意。';
+  msg('outMsg', (skipped.length||dups.length)?'bad':'ok', note+' 複製整段貼進 SHOPLINE 原始碼模式。');
+}
+
+function copyOut(){
+  const o=document.getElementById('out'); if(!o.value){ msg('outMsg','bad','還沒有內容'); return; }
+  navigator.clipboard.writeText(o.value).then(()=>msg('outMsg','ok','已複製到剪貼簿')).catch(()=>{o.select();document.execCommand('copy');msg('outMsg','ok','已複製');});
+}
+
+function msg(id,kind,text){ const e=document.getElementById(id); e.className="msg "+(kind==="ok"?"ok":"bad"); e.textContent=text; }
+
+loadCfg(); renderSlots();
+</script>
+</body>
+</html>
