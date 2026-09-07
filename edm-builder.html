@@ -56,7 +56,7 @@
   <div class="card">
     <h2>使用步驟</h2>
     <ol>
-      <li>切好的 <b>23 張圖</b>，<b>依編號 01→23 的順序</b>上傳到 SHOPLINE 媒體庫（順序很重要）</li>
+      <li>切好的 <b>18 張圖</b>（01–18），<b>依編號順序</b>上傳到 SHOPLINE 媒體庫（順序很重要）。社群段與頁尾不用切圖，工具自動產生</li>
       <li>SHOPLINE 會產生一段 <code>&lt;p&gt;&lt;img …&gt;&lt;br&gt;…&lt;/p&gt;</code>，整段貼到下面框框，按「解析圖片」</li>
       <li>只填當月會變的連結（主視覺、會員優惠、4 個活動區塊、送禮區、更多品牌），其餘固定連結會自動帶入</li>
       <li>按「產生 HTML」→ 複製 → 貼進 SHOPLINE 網誌／頁面的「HTML / 原始碼」模式</li>
@@ -106,7 +106,9 @@
         <button class="ghost" onclick="resetCfg()">還原預設</button>
       </div>
       <div id="cfgMsg"></div>
-      <p class="sub" style="margin:16px 0 4px"><b>頁尾固定文字</b>　每封都會原樣加在 &lt;table&gt; 後面（是真文字不是圖，可含連結）</p>
+      <p class="sub" style="margin:16px 0 4px"><b>社群區塊</b>　追蹤我們 + LINE/IG/FB 三顆按鈕，每封自動加在圖片表格後面（真文字＋連結，不用切圖）</p>
+      <textarea id="social" rows="6"></textarea>
+      <p class="sub" style="margin:16px 0 4px"><b>頁尾固定文字</b>　接在社群區塊後面（是真文字不是圖，可含連結）</p>
       <textarea id="tail" rows="4"></textarea>
     </details>
   </div>
@@ -132,12 +134,8 @@ const DEFAULT_SLOTS = [
   ["16_brand_v4u","V4U 薇選禮","fixed","https://www.lala-v.com/categories/v4u"],
   ["17_brand_more","and more...","monthly","https://www.lala-v.com/"],
   ["18_gift","節慶時刻｜送出一份獨一無二的禮物","monthly","https://www.lala-v.com/products/wwwhavefuncomsmiley-color-gift-box-with-bag"],
-  ["19_social_title","追蹤我們・一起發現好物","none",""],
-  ["20_social_line","LINE","fixed","https://line.me/R/ti/p/%40940lqvkn"],
-  ["21_social_ig","Instagram","fixed","https://www.instagram.com/lalavcollection/?hl=zh-tw"],
-  ["22_social_fb","Facebook","fixed","https://www.facebook.com/lalavcollection/"],
-  ["23_footer","LaLa V Collection 安心嚴選 美麗加倍","none",""],
 ];
+// 社群段與頁尾不再切圖，改成工具內建 HTML 區塊（見 DEFAULT_SOCIAL / DEFAULT_TAIL），輸出時接在圖片表格後面
 const DEFAULT_TAIL = [
 '<table role="presentation" width="750" cellpadding="0" cellspacing="0" border="0" align="center" style="width:750px;max-width:100%;margin:0 auto;border-collapse:collapse;">',
 '  <tr><td style="background:#f6eae4;text-align:center;padding:28px 28px 30px;font-family:\'PingFang TC\',\'Noto Sans TC\',\'Microsoft JhengHei\',sans-serif;color:#8d5f5b;">',
@@ -149,7 +147,17 @@ const DEFAULT_TAIL = [
 '  </td></tr>',
 '</table>'
 ].join('\n');
-const LS_CFG="lalav_edm_cfg_v1", LS_MONTHLY="lalav_edm_monthly_v1", LS_TAIL="lalav_edm_tail_v2";
+const DEFAULT_SOCIAL = [
+'<table role="presentation" width="750" cellpadding="0" cellspacing="0" border="0" align="center" style="width:750px;max-width:100%;margin:0 auto;border-collapse:collapse;">',
+'  <tr><td style="background:#ffffff;text-align:center;padding:42px 100px 38px;font-family:\'PingFang TC\',\'Noto Sans TC\',\'Microsoft JhengHei\',sans-serif;">',
+'    <div style="font-size:26px;color:#855554;letter-spacing:3px;font-weight:700;margin-bottom:22px;">追蹤我們・一起發現好物</div>',
+'    <a href="https://line.me/R/ti/p/%40940lqvkn" target="_blank" rel="noopener" style="display:block;margin:12px auto;border:1px solid #bc8772;border-radius:50px;padding:13px 20px;color:#915a50;font-family:Georgia,\'Times New Roman\',serif;letter-spacing:4px;font-size:20px;background:#fff9f5;text-decoration:none;">LINE</a>',
+'    <a href="https://www.instagram.com/lalavcollection/?hl=zh-tw" target="_blank" rel="noopener" style="display:block;margin:12px auto;border:1px solid #bc8772;border-radius:50px;padding:13px 20px;color:#915a50;font-family:Georgia,\'Times New Roman\',serif;letter-spacing:4px;font-size:20px;background:#fff9f5;text-decoration:none;">INSTAGRAM</a>',
+'    <a href="https://www.facebook.com/lalavcollection/" target="_blank" rel="noopener" style="display:block;margin:12px auto;border:1px solid #bc8772;border-radius:50px;padding:13px 20px;color:#915a50;font-family:Georgia,\'Times New Roman\',serif;letter-spacing:4px;font-size:20px;background:#fff9f5;text-decoration:none;">FACEBOOK</a>',
+'  </td></tr>',
+'</table>'
+].join('\n');
+const LS_CFG="lalav_edm_cfg_v1", LS_MONTHLY="lalav_edm_monthly_v1", LS_TAIL="lalav_edm_tail_v2", LS_SOCIAL="lalav_edm_social_v1";
 
 let SLOTS=[], urls=[], mapping=[];   // mapping[slotIndex] = urls 索引，-1 = 略過此版位
 
@@ -162,6 +170,10 @@ function loadCfg(){
   const tailEl=document.getElementById('tail');
   tailEl.value = (t!==null ? t : DEFAULT_TAIL);
   tailEl.oninput=()=>{ try{localStorage.setItem(LS_TAIL,tailEl.value)}catch(e){} };
+  let sc=null; try{sc=localStorage.getItem(LS_SOCIAL)}catch(e){}
+  const socEl=document.getElementById('social');
+  socEl.value = (sc!==null ? sc : DEFAULT_SOCIAL);
+  socEl.oninput=()=>{ try{localStorage.setItem(LS_SOCIAL,socEl.value)}catch(e){} };
 }
 function saveCfg(){ try{localStorage.setItem(LS_CFG,JSON.stringify(SLOTS))}catch(e){} }
 function getMonthly(){ try{return JSON.parse(localStorage.getItem(LS_MONTHLY)||"{}")}catch(e){return {}} }
@@ -184,8 +196,10 @@ function resetCfg(){
   SLOTS=DEFAULT_SLOTS.map(r=>r.slice()); saveCfg();
   document.getElementById('cfg').value=SLOTS.map(r=>r.join(" | ")).join("\n");
   try{localStorage.removeItem(LS_TAIL)}catch(e){}
+  try{localStorage.removeItem(LS_SOCIAL)}catch(e){}
   document.getElementById('tail').value=DEFAULT_TAIL;
-  renderSlots(); msg('cfgMsg','ok','已還原預設（含頁尾固定文字）');
+  document.getElementById('social').value=DEFAULT_SOCIAL;
+  renderSlots(); msg('cfgMsg','ok','已還原預設（含社群區塊與頁尾固定文字）');
 }
 
 function parseSrc(){
@@ -305,8 +319,12 @@ function build(){
     return '  <tr><td>'+cell+'</td></tr>';
   }).filter(Boolean).join("\n");
   const html='<table role="presentation" width="750" cellpadding="0" cellspacing="0" border="0" align="center" style="width:750px;max-width:100%;margin:0 auto;border-collapse:collapse;font-size:0;line-height:0;">\n'+rows+'\n</table>';
+  const social=(document.getElementById('social').value||'').trim();
   const tail=(document.getElementById('tail').value||'').trim();
-  document.getElementById('out').value = tail ? (html+'\n\n'+tail) : html;
+  let outHtml=html;
+  if(social) outHtml+='\n\n'+social;
+  if(tail) outHtml+='\n\n'+tail;
+  document.getElementById('out').value=outHtml;
   let note='完成！輸出 '+emitted+' 列。';
   if(skipped.length) note+=' 略過版位：'+skipped.join(", ")+'。';
   if(dups.length) note+=' ⚠ 同一張圖用在多個版位：'+dups.join(", ")+'，確認是否刻意。';
