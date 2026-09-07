@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>LaLa V 電子報 HTML 產生器</title>
+<script src="auth.js"></script>
 <style>
   :root{color-scheme:light}
   *{box-sizing:border-box}
@@ -50,6 +51,9 @@
   .colorrow label{display:flex;align-items:center;gap:6px;font-size:12.5px;color:#6b5a52}
   .colorrow input[type=color]{width:34px;height:26px;padding:0;border:1px solid #d9c6ba;border-radius:5px;background:#fff;cursor:pointer}
   .colorrow input.hex{width:82px;border:1px solid #d9c6ba;border-radius:5px;padding:4px 6px;font:12px ui-monospace,Menlo,monospace;text-transform:lowercase;color:#3f342f;background:#fff}
+  .verrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #f0e5dd;font-size:13px}
+  .verrow:last-child{border-bottom:0}
+  .verrow button.ghost{padding:5px 12px;font-size:12px}
 </style>
 </head>
 <body>
@@ -65,6 +69,22 @@
       <li>只填當月會變的連結（主視覺、會員優惠、4 個活動區塊、送禮區、更多品牌），其餘固定連結會自動帶入</li>
       <li>按「產生 HTML」→ 複製 → 貼進 SHOPLINE 網誌／頁面的「HTML / 原始碼」模式</li>
     </ol>
+  </div>
+
+  <div class="card">
+    <h2>雲端共用 <span>版位、區塊、顏色、膠囊圖存雲端，所有登入的人重整就同步</span></h2>
+    <div id="cloudMsg" class="msg" style="background:#efe7df;color:#6b5a52">連線中…</div>
+    <div id="cloudEdit" style="display:none;margin-top:10px">
+      <div class="row-actions" style="margin-top:0">
+        <input type="text" id="verLabel" placeholder="版本標籤（選填，例：9月版）" style="flex:1;min-width:180px;border:1px solid #d9c6ba;border-radius:8px;padding:8px 10px;font-size:13px;background:#fff;color:#3f342f">
+        <button onclick="cloudSave()">☁ 儲存到雲端</button>
+      </div>
+      <p class="sub" style="margin:8px 0 0;font-size:12px">這台電腦的暫存只是草稿；按「儲存到雲端」才會讓大家看到、並存進版本歷史（留最近 10 版）。</p>
+    </div>
+    <div id="cloudRO" class="sub" style="display:none;margin-top:8px">你是唯讀身份：可以看最新版、產生 HTML，但不能儲存。要改設定請找管理員。</div>
+    <details style="margin-top:12px"><summary>版本歷史（最近 5 版）</summary>
+      <div id="verList" style="margin-top:8px"><div class="sub" style="margin:0">載入中…</div></div>
+    </details>
   </div>
 
   <div class="card">
@@ -487,7 +507,116 @@ function copyOut(){
 
 function msg(id,kind,text){ const e=document.getElementById(id); e.className="msg "+(kind==="ok"?"ok":"bad"); e.textContent=text; }
 
-loadCfg(); renderSlots();
+// ── 雲端共用（Supabase）──────────────────────────────────────
+const ADMIN_EMAIL='esuse.adobe@gmail.com';
+let sb=null, canEdit=false;
+
+function waitAuthClient(){
+  return new Promise((ok,fail)=>{
+    let n=0; const t=setInterval(()=>{
+      if(window._authClient){ clearInterval(t); ok(window._authClient); }
+      else if(++n>150){ clearInterval(t); fail(new Error('登入模組未就緒')); }
+    },100);
+  });
+}
+function cloudMsg(txt,kind){
+  const e=document.getElementById('cloudMsg'); if(!e) return;
+  e.textContent=txt; e.className='msg'+(kind==='bad'?' bad':kind==='ok'?' ok':'');
+  if(!kind){ e.style.background='#efe7df'; e.style.color='#6b5a52'; } else { e.style.background=''; e.style.color=''; }
+}
+function gatherState(){
+  return {
+    slots: (JSON.parse(localStorage.getItem(LS_CFG)||'null')) || SLOTS,
+    monthly: getMonthly(),
+    brand: { html: document.getElementById('brand').value, colors: brandColors(), pillsPaste: document.getElementById('brandpills').value },
+    social:{ html: document.getElementById('social').value, colors: socialColors() },
+    tail:  { html: document.getElementById('tail').value,   colors: tailColors() }
+  };
+}
+function seedLocalFromCloud(d){
+  if(!d || typeof d!=='object') return false;
+  if(Array.isArray(d.slots)) localStorage.setItem(LS_CFG, JSON.stringify(d.slots));
+  if(d.monthly && typeof d.monthly==='object') localStorage.setItem(LS_MONTHLY, JSON.stringify(d.monthly));
+  if(d.brand){ if(typeof d.brand.html==='string') localStorage.setItem(LS_BRAND,d.brand.html);
+    if(d.brand.colors) localStorage.setItem(LS_BRAND_C,JSON.stringify(d.brand.colors));
+    if(typeof d.brand.pillsPaste==='string') localStorage.setItem(LS_BRAND_PILLS,d.brand.pillsPaste); }
+  if(d.social){ if(typeof d.social.html==='string') localStorage.setItem(LS_SOCIAL,d.social.html);
+    if(d.social.colors) localStorage.setItem(LS_SOCIAL_C,JSON.stringify(d.social.colors)); }
+  if(d.tail){ if(typeof d.tail.html==='string') localStorage.setItem(LS_TAIL,d.tail.html);
+    if(d.tail.colors) localStorage.setItem(LS_TAIL_C,JSON.stringify(d.tail.colors)); }
+  return true;
+}
+async function cloudLoad(){
+  const { data, error } = await sb.from('edm_builder_state').select('data,updated_at,updated_by').eq('id',1).maybeSingle();
+  if(error) throw error;
+  const has = data && data.data && Object.keys(data.data).length;
+  if(has){
+    seedLocalFromCloud(data.data);
+    cloudMsg('☁ 已套用雲端版本（更新於 '+new Date(data.updated_at).toLocaleString('zh-TW')+(data.updated_by?'，by '+data.updated_by:'')+'）');
+  } else {
+    cloudMsg('☁ 雲端目前是空的，顯示的是內建預設值。'+(canEdit?'調整後按「儲存到雲端」建立第一版。':''));
+  }
+}
+async function cloudSave(){
+  if(!canEdit){ cloudMsg('唯讀模式，只有管理員能儲存','bad'); return; }
+  const label=(document.getElementById('verLabel').value||'').trim() || new Date().toLocaleString('zh-TW');
+  const state=gatherState();
+  cloudMsg('儲存中…');
+  let email=''; try{ const {data:{session}}=await sb.auth.getSession(); email=(session&&session.user&&session.user.email||''); }catch(e){}
+  const up = await sb.from('edm_builder_state').upsert({ id:1, data:state, updated_at:new Date().toISOString(), updated_by:email });
+  if(up.error){ cloudMsg('儲存失敗：'+up.error.message,'bad'); return; }
+  const ins = await sb.from('edm_builder_versions').insert({ label, data:state, created_by:email });
+  if(ins.error) cloudMsg('設定已存，但版本歷史寫入失敗：'+ins.error.message,'bad');
+  else cloudMsg('☁ 已儲存並建立版本「'+label+'」，其他人重新整理就會看到。','ok');
+  document.getElementById('verLabel').value='';
+  try{ await pruneVersions(); }catch(e){}
+  renderVersions();
+}
+async function pruneVersions(){
+  const { data } = await sb.from('edm_builder_versions').select('id').order('created_at',{ascending:false});
+  if(data && data.length>10){
+    await sb.from('edm_builder_versions').delete().in('id', data.slice(10).map(r=>r.id));
+  }
+}
+async function renderVersions(){
+  const box=document.getElementById('verList'); if(!box || !sb) return;
+  const { data, error } = await sb.from('edm_builder_versions').select('id,label,created_at,created_by').order('created_at',{ascending:false}).limit(5);
+  if(error){ box.innerHTML='<div class="sub" style="margin:0">版本歷史讀取失敗：'+esc(error.message)+'</div>'; return; }
+  if(!data || !data.length){ box.innerHTML='<div class="sub" style="margin:0">還沒有版本。管理員按「儲存到雲端」會建立第一版。</div>'; return; }
+  box.innerHTML = data.map(function(v){
+    const t=new Date(v.created_at).toLocaleString('zh-TW');
+    return '<div class="verrow"><div><b>'+esc(v.label||t)+'</b> <span class="sub" style="margin:0">'+t+(v.created_by?' · '+esc(v.created_by):'')+'</span></div>'
+      + (canEdit?'<button class="ghost" onclick="restoreVersion('+v.id+')">回復這版</button>':'') + '</div>';
+  }).join('');
+}
+async function restoreVersion(id){
+  if(!canEdit) return;
+  if(!confirm('把目前設定換成這個版本？（確認後還要按「儲存到雲端」才會 publish 給大家）')) return;
+  const { data, error } = await sb.from('edm_builder_versions').select('data,label,created_at').eq('id',id).maybeSingle();
+  if(error || !data){ cloudMsg('讀取版本失敗','bad'); return; }
+  seedLocalFromCloud(data.data);
+  loadCfg(); renderSlots();
+  document.getElementById('verLabel').value='回復自 '+(data.label||new Date(data.created_at).toLocaleString('zh-TW'));
+  cloudMsg('已把該版本套到畫面。確認沒問題後按「☁ 儲存到雲端」讓大家看到。','ok');
+}
+
+async function boot(){
+  loadCfg(); renderSlots();                  // 先用本機／預設把畫面撐起來
+  try{
+    sb = await waitAuthClient();
+    let email=''; try{ const {data:{session}}=await sb.auth.getSession(); email=(session&&session.user&&session.user.email||'').toLowerCase(); }catch(e){}
+    canEdit = (email===ADMIN_EMAIL);
+    const ce=document.getElementById('cloudEdit'), cr=document.getElementById('cloudRO');
+    if(ce) ce.style.display = canEdit?'':'none';
+    if(cr) cr.style.display = canEdit?'none':'';
+    await cloudLoad();
+    loadCfg(); renderSlots();                // 套用雲端後重繪
+    renderVersions();
+  }catch(e){
+    cloudMsg('雲端未連上（'+(e && e.message || e)+'）。目前用本機／預設值，改動不會共用。','bad');
+  }
+}
+boot();
 </script>
 </body>
 </html>
