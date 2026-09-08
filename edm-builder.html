@@ -509,8 +509,20 @@ function msg(id,kind,text){ const e=document.getElementById(id); e.className="ms
 
 // ── 雲端共用（Supabase）──────────────────────────────────────
 const ADMIN_EMAIL='esuse.adobe@gmail.com';
+const SB_URL='https://tokhhoyzztaynppcatci.supabase.co';
+const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRva2hob3l6enRheW5wcGNhdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMDAyODMsImV4cCI6MjA5MDg3NjI4M30.PQB4lJGF3OMatv5wIedCu3zIWq0urrFbniBRYTbNtUU';
+const SHARE_MODE=/[?&]share\b/.test(location.search);
 let sb=null, canEdit=false;
 
+function loadSupaSDK(){
+  if(window.supabase && window.supabase.createClient) return Promise.resolve();
+  return new Promise((ok,fail)=>{
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+    s.onload=ok; s.onerror=()=>fail(new Error('Supabase SDK 載入失敗'));
+    document.head.appendChild(s);
+  });
+}
 function waitAuthClient(){
   return new Promise((ok,fail)=>{
     let n=0; const t=setInterval(()=>{
@@ -603,12 +615,20 @@ async function restoreVersion(id){
 async function boot(){
   loadCfg(); renderSlots();                  // 先用本機／預設把畫面撐起來
   try{
-    sb = await waitAuthClient();
-    let email=''; try{ const {data:{session}}=await sb.auth.getSession(); email=(session&&session.user&&session.user.email||'').toLowerCase(); }catch(e){}
-    canEdit = (email===ADMIN_EMAIL);
+    if(SHARE_MODE){
+      // 分享模式（外包用，網址加 ?share）：不需登入，用匿名 client 只讀雲端最新版
+      await loadSupaSDK();
+      sb = window.supabase.createClient(SB_URL, SB_ANON);
+      canEdit = false;
+    } else {
+      sb = await waitAuthClient();
+      let email=''; try{ const {data:{session}}=await sb.auth.getSession(); email=(session&&session.user&&session.user.email||'').toLowerCase(); }catch(e){}
+      canEdit = (email===ADMIN_EMAIL);
+    }
     const ce=document.getElementById('cloudEdit'), cr=document.getElementById('cloudRO');
     if(ce) ce.style.display = canEdit?'':'none';
-    if(cr) cr.style.display = canEdit?'none':'';
+    if(cr){ cr.style.display = canEdit?'none':'';
+            if(SHARE_MODE) cr.textContent='分享模式（免登入）：看到的是雲端最新版，可以產生 HTML，但不能存回雲端。'; }
     await cloudLoad();
     loadCfg(); renderSlots();                // 套用雲端後重繪
     renderVersions();
