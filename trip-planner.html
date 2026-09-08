@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<title>旅程手冊 · 飛比特工具箱</title>
+<meta name="theme-color" content="#0f766e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="旅程手冊">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230f766e'/%3E%3Ctext x='50' y='68' font-size='56' text-anchor='middle'%3E%E2%9C%88%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<link rel="manifest" href='data:application/json,{"name":"旅程手冊","short_name":"旅程手冊","display":"standalone","background_color":"%23f8fafc","theme_color":"%230f766e","start_url":"./trip-planner.html","icons":[{"src":"data:image/svg+xml,%253Csvg xmlns=%2527http://www.w3.org/2000/svg%2527 viewBox=%25270 0 100 100%2527%253E%253Crect width=%2527100%2527 height=%2527100%2527 rx=%252722%2527 fill=%2527%25230f766e%2527/%253E%253Ctext x=%252750%2527 y=%252768%2527 font-size=%252756%2527 text-anchor=%2527middle%2527%253E%25E2%259C%2588%25EF%25B8%258F%253C/text%253E%253C/svg%253E","sizes":"512x512","type":"image/svg+xml"}]}'>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<style>
+:root{
+  --bg:#f1f5f9; --card:#ffffff; --ink:#0f172a; --ink2:#475569; --ink3:#94a3b8;
+  --line:#e2e8f0; --brand:#0f766e; --brand-soft:#ccfbf1; --brand-ink:#134e4a;
+  --accent:#f97316; --danger:#dc2626; --ok:#16a34a; --warn:#b45309; --warn-bg:#fef3c7;
+  --shadow:0 1px 3px rgba(15,23,42,.08),0 1px 2px rgba(15,23,42,.04);
+  --nav-h:60px; --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  background:var(--bg); color:var(--ink); font-size:15px; line-height:1.55;
+  padding-bottom:calc(var(--nav-h) + var(--safe-b) + 12px);
+  overscroll-behavior-y:contain;
+}
+a{color:var(--brand);text-decoration:none}
+button{font-family:inherit;cursor:pointer}
+img{max-width:100%}
+h1,h2,h3,h4{margin:0}
+.hide{display:none!important}
+
+/* ---------- top bar ---------- */
+.topbar{
+  position:sticky;top:0;z-index:40;background:var(--brand);color:#fff;
+  padding:calc(env(safe-area-inset-top,0px) + 8px) 12px 8px;
+  display:flex;align-items:center;gap:8px;
+}
+.topbar select{
+  flex:1;min-width:0;background:rgba(255,255,255,.15);border:none;color:#fff;
+  font-size:15px;font-weight:700;padding:7px 9px;border-radius:9px;appearance:none;
+}
+.topbar select option{color:#000}
+.icon-btn{
+  background:rgba(255,255,255,.15);border:none;color:#fff;width:38px;height:38px;
+  border-radius:9px;font-size:17px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+}
+.sync-dot{width:9px;height:9px;border-radius:50%;background:#facc15;flex-shrink:0;transition:.3s}
+.sync-dot.live{background:#4ade80}.sync-dot.off{background:#f87171}
+
+/* ---------- fx strip ---------- */
+.fxstrip{
+  background:var(--brand-ink);color:#d1fae5;font-size:12.5px;
+  padding:6px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+}
+.fxstrip b{color:#fff}
+.fxstrip input{
+  width:74px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);
+  color:#fff;border-radius:6px;padding:3px 6px;font-size:12.5px;
+}
+.fxstrip .muted{color:#5eead4;font-size:11px}
+
+/* ---------- layout ---------- */
+.wrap{max-width:720px;margin:0 auto;padding:12px 12px 0}
+.page{display:none}.page.active{display:block;animation:fade .18s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);margin-bottom:12px}
+.card-pad{padding:13px 14px}
+.sec-title{font-size:13px;font-weight:800;color:var(--ink3);letter-spacing:.04em;margin:18px 4px 8px;text-transform:uppercase}
+
+/* ---------- buttons ---------- */
+.btn{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:9px;padding:8px 12px;font-size:13.5px;font-weight:600;display:inline-flex;align-items:center;gap:5px;justify-content:center}
+.btn:active{transform:scale(.97)}
+.btn-brand{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn-accent{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-ghost{background:transparent;border-color:transparent;color:var(--brand)}
+.btn-danger{color:var(--danger);border-color:#fecaca}
+.btn-sm{padding:5px 9px;font-size:12px;border-radius:8px}
+.btn-block{display:flex;width:100%}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ---------- chips / filters ---------- */
+.chip-row{display:flex;gap:7px;overflow-x:auto;padding:4px 0 8px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.chip-row::-webkit-scrollbar{display:none}
+.chip{flex-shrink:0;padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:13px;font-weight:600;color:var(--ink2)}
+.chip.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.chip.day{min-width:66px;flex-direction:column;display:flex;align-items:center;line-height:1.25;padding:6px 12px}
+.chip.day .d{font-size:11px;font-weight:600;opacity:.8}
+.chip.day .n{font-size:14px;font-weight:800}
+.chip.day.today{border-color:var(--accent);box-shadow:0 0 0 2px #fed7aa}
+.chip.day.today.on{background:var(--accent);border-color:var(--accent)}
+.toggle-row{display:flex;gap:8px;margin:2px 0 10px}
+.toggle{flex:1;padding:9px;border-radius:10px;border:1px solid var(--line);background:#fff;font-size:12.5px;font-weight:700;color:var(--ink2);text-align:center}
+.toggle.on{background:var(--brand-soft);border-color:var(--brand);color:var(--brand-ink)}
+
+/* ---------- itinerary ---------- */
+.day-head{display:flex;align-items:center;gap:8px;margin:6px 4px 10px}
+.day-head .big{font-size:19px;font-weight:900}
+.day-head .sub{font-size:12.5px;color:var(--ink3);font-weight:600}
+.day-head .route{margin-left:auto}
+
+.spot{position:relative;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);margin-bottom:9px;overflow:hidden}
+.spot.done{opacity:.62}
+.spot.done .spot-name{text-decoration:line-through;text-decoration-color:var(--ink3)}
+.spot-main{display:flex;gap:11px;padding:12px 12px 12px 14px}
+.spot-cat{position:absolute;left:0;top:0;bottom:0;width:4px}
+.cat-景點{background:#0ea5e9}.cat-餐食{background:#f97316}.cat-交通{background:#64748b}
+.cat-購物{background:#a855f7}.cat-住宿{background:#14b8a6}.cat-其他{background:#94a3b8}
+.spot-time{flex-shrink:0;font-size:13px;font-weight:800;color:var(--brand-ink);width:44px;padding-top:1px}
+.spot-body{flex:1;min-width:0}
+.spot-name{font-size:15.5px;font-weight:700;word-break:break-word}
+.spot-meta{font-size:12px;color:var(--ink3);margin-top:2px;display:flex;flex-wrap:wrap;gap:8px}
+.spot-note{font-size:13px;color:var(--ink2);margin-top:6px;white-space:pre-wrap}
+.spot-alert{margin-top:7px;background:var(--warn-bg);border:1px solid #fde68a;color:var(--warn);border-radius:9px;padding:7px 9px;font-size:12.5px;font-weight:600;white-space:pre-wrap}
+.spot-alert b{display:block;font-size:11px;letter-spacing:.05em;opacity:.8}
+.spot-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.spot-tag{font-size:11.5px;background:#f3e8ff;color:#7e22ce;border-radius:6px;padding:2px 7px;font-weight:600}
+.spot-links{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+.spot-links a,.spot-links button{font-size:12px;font-weight:700;border-radius:8px;padding:6px 10px;border:1px solid var(--line);background:#fff;color:var(--brand);display:inline-flex;gap:4px;align-items:center}
+.spot-check{flex-shrink:0;width:30px;height:30px;border-radius:50%;border:2px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;color:#fff}
+.spot-check.on{background:var(--ok);border-color:var(--ok)}
+.spot-foot{display:flex;gap:6px;border-top:1px dashed var(--line);padding:7px 12px;background:#fafcfc}
+.spot-foot button{font-size:11.5px;color:var(--ink3);background:none;border:none;font-weight:600}
+
+.transit{display:flex;align-items:center;gap:8px;margin:-2px 0 7px 22px;padding-left:12px;border-left:2px dotted var(--line)}
+.transit button{font-size:11.5px;color:var(--ink3);background:#eef2f6;border:none;border-radius:7px;padding:4px 9px;font-weight:600}
+.transit .info{font-size:11.5px;color:var(--ink2);font-weight:600}
+
+/* ---------- generic list card ---------- */
+.li{display:flex;gap:11px;padding:12px 13px;border-bottom:1px solid var(--line)}
+.li:last-child{border-bottom:none}
+.li-thumb{width:52px;height:52px;border-radius:10px;object-fit:cover;background:#f1f5f9;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px}
+.li-body{flex:1;min-width:0}
+.li-title{font-weight:700;font-size:14.5px}
+.li-sub{font-size:12px;color:var(--ink3);margin-top:2px;white-space:pre-wrap}
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px;background:#f1f5f9;color:var(--ink2);margin-right:5px}
+.pill.warn{background:var(--warn-bg);color:var(--warn)}
+.pill.ok{background:#dcfce7;color:#15803d}
+
+/* ---------- expenses ---------- */
+.bal-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px}
+.bal{background:#f8fafc;border:1px solid var(--line);border-radius:11px;padding:9px;text-align:center}
+.bal .who{font-size:12px;font-weight:700;color:var(--ink2)}
+.bal .amt{font-size:14px;font-weight:900;margin-top:2px}
+.bal .amt.pos{color:var(--ok)}.bal .amt.neg{color:var(--danger)}
+.bal .lbl{font-size:10px;color:var(--ink3)}
+.settle-tx{display:flex;align-items:center;gap:9px;padding:11px 12px;border:1px solid var(--line);border-radius:11px;margin-bottom:7px;background:#fff}
+.settle-tx.paid{opacity:.5}
+.settle-tx .flow{font-weight:800;font-size:13.5px}
+.settle-tx .amt{margin-left:auto;font-weight:900;font-size:14px;text-align:right}
+.settle-tx .amt small{display:block;font-weight:600;font-size:10px;color:var(--ink3)}
+.settle-tx .mk{font-size:11px;font-weight:700;border:1px solid var(--line);border-radius:7px;padding:5px 8px;background:#fff;color:var(--ink2);flex-shrink:0}
+.settle-tx.paid .mk{background:var(--ok);color:#fff;border-color:var(--ok)}
+
+/* ---------- FAB ---------- */
+.fab{position:fixed;right:16px;bottom:calc(var(--nav-h) + var(--safe-b) + 16px);z-index:35;
+  width:54px;height:54px;border-radius:50%;background:var(--accent);color:#fff;border:none;
+  font-size:26px;box-shadow:0 6px 18px rgba(249,115,22,.45);display:flex;align-items:center;justify-content:center}
+.fab:active{transform:scale(.92)}
+
+/* ---------- bottom nav ---------- */
+.bnav{position:fixed;left:0;right:0;bottom:0;z-index:40;background:#fff;border-top:1px solid var(--line);
+  display:flex;padding-bottom:var(--safe-b);height:calc(var(--nav-h) + var(--safe-b))}
+.bnav button{flex:1;background:none;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--ink3);font-size:10.5px;font-weight:700;padding-top:6px}
+.bnav button .ic{font-size:19px;line-height:1}
+.bnav button.on{color:var(--brand)}
+
+/* ---------- modal ---------- */
+.mask{position:fixed;inset:0;z-index:60;background:rgba(15,23,42,.5);display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:#fff;width:100%;max-width:560px;max-height:92vh;overflow-y:auto;border-radius:20px 20px 0 0;padding:18px 16px calc(20px + var(--safe-b));-webkit-overflow-scrolling:touch}
+.sheet h3{font-size:17px;font-weight:800;margin-bottom:12px}
+.f{margin-bottom:12px}
+.f label{display:block;font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:4px}
+.f input,.f select,.f textarea{width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 10px;font-size:14px;font-family:inherit;background:#fff}
+.f textarea{min-height:62px;resize:vertical}
+.f-row{display:flex;gap:9px}.f-row>.f{flex:1}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{flex:1;min-width:64px;border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px;font-size:12.5px;font-weight:700;color:var(--ink2)}
+.seg button.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.mchips{display:flex;flex-wrap:wrap;gap:6px}
+.mchips label{display:flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;font-weight:600}
+.mchips input{width:auto}
+.empty{text-align:center;color:var(--ink3);padding:38px 12px;font-size:13.5px}
+.empty .ic{font-size:34px;display:block;margin-bottom:8px}
+.banner{position:fixed;left:0;right:0;top:0;z-index:80;padding:11px 14px;color:#fff;font-size:13px;font-weight:600;text-align:center}
+.barcode-big{font-family:"Libre Barcode 39",monospace;letter-spacing:2px}
+.help{font-size:12px;color:var(--ink3);line-height:1.6}
+.help code{background:#f1f5f9;padding:1px 5px;border-radius:4px;font-size:11px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="sync-dot" id="syncDot" title="同步狀態"></span>
+  <select id="tripSel" onchange="switchTrip(this.value)"></select>
+  <button class="icon-btn" onclick="openTripMenu()" aria-label="行程設定">⚙️</button>
+  <button class="icon-btn" onclick="openShare()" aria-label="分享">👥</button>
+</div>
+<div class="fxstrip" id="fxStrip"></div>
+
+<div class="wrap">
+  <!-- ITINERARY -->
+  <section class="page active" id="pg-trip">
+    <div class="chip-row" id="dayChips"></div>
+    <div class="toggle-row">
+      <div class="toggle" id="tgToday" onclick="toggleFilter('today')">📍 只看今天</div>
+      <div class="toggle" id="tgDone" onclick="toggleFilter('done')">🙈 隱藏已完成</div>
+    </div>
+    <div id="itin"></div>
+  </section>
+
+  <!-- SHOPPING -->
+  <section class="page" id="pg-shop">
+    <div class="chip-row" id="shopFilter"></div>
+    <div class="card" id="shopList"></div>
+  </section>
+
+  <!-- EXPENSES -->
+  <section class="page" id="pg-money">
+    <div id="moneyHead"></div>
+    <div class="sec-title">結算（最少轉帳）</div>
+    <div id="settle"></div>
+    <div class="sec-title">所有支出</div>
+    <div class="card" id="expList"></div>
+  </section>
+
+  <!-- COUPONS -->
+  <section class="page" id="pg-coupon">
+    <div class="card" id="couponList"></div>
+  </section>
+
+  <!-- MORE -->
+  <section class="page" id="pg-more">
+    <div class="sec-title">重要證件・訂房・班機</div>
+    <div class="card" id="docList"></div>
+    <div class="btn-row" style="margin:8px 0 4px"><button class="btn btn-sm btn-ghost" onclick="editDoc(null)">＋ 新增一筆</button></div>
+
+    <div class="sec-title">當區注意事項</div>
+    <div class="card card-pad help" id="areaAlerts"></div>
+    <div class="btn-row" style="margin:8px 0 4px"><button class="btn btn-sm btn-ghost" onclick="editAreaAlert(null)">＋ 新增區域提醒</button></div>
+
+    <div class="sec-title">打包清單</div>
+    <div class="card" id="packList"></div>
+    <div class="btn-row" style="margin:8px 0 4px">
+      <button class="btn btn-sm btn-ghost" onclick="addPack()">＋ 加一項</button>
+      <button class="btn btn-sm btn-ghost" onclick="resetPack()">帶入預設清單</button>
+    </div>
+
+    <div class="sec-title">攻略筆記</div>
+    <div class="card" id="guideList"></div>
+    <div class="btn-row" style="margin:8px 0 4px"><button class="btn btn-sm btn-ghost" onclick="editGuide(null)">＋ 新增攻略</button></div>
+
+    <div class="sec-title">工具</div>
+    <div class="card card-pad">
+      <div class="btn-row">
+        <button class="btn btn-sm" onclick="openFxSettings()">💱 匯率設定</button>
+        <button class="btn btn-sm" onclick="openMembers()">🧑‍🤝‍🧑 成員</button>
+        <button class="btn btn-sm" onclick="exportJSON()">⬇️ 匯出備份</button>
+        <button class="btn btn-sm" onclick="importJSON()">⬆️ 匯入備份</button>
+        <button class="btn btn-sm" onclick="newTrip()">✨ 新旅程</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteTrip()">🗑 刪除此旅程</button>
+      </div>
+      <p class="help" style="margin-top:10px">加到手機主畫面：iPhone 用 Safari 分享鍵→「加入主畫面」；Android Chrome 選單→「安裝應用程式」。開起來就像 App。</p>
+    </div>
+  </section>
+</div>
+
+<button class="fab" id="fab" onclick="fabAction()">＋</button>
+
+<nav class="bnav">
+  <button data-pg="trip" class="on" onclick="nav('trip')"><span class="ic">🗺</span>行程</button>
+  <button data-pg="shop" onclick="nav('shop')"><span class="ic">🛍</span>待買</button>
+  <button data-pg="money" onclick="nav('money')"><span class="ic">💴</span>分帳</button>
+  <button data-pg="coupon" onclick="nav('coupon')"><span class="ic">🎟</span>優惠券</button>
+  <button data-pg="more" onclick="nav('more')"><span class="ic">☰</span>更多</button>
+</nav>
+
+<div id="modalRoot"></div>
+
+<script>
+/* ============================================================
+   旅程手冊 · trip-planner.html  v1.0
+   單檔 PWA。資料存 localStorage，好友共享走 Firebase Realtime DB。
+   與舊版 travel-planner.html 完全獨立（不同檔案、不同 storage key、
+   建議接不同 Firebase 專案）。
+   ============================================================ */
+
+/* ---------- FIREBASE（換成你新開的專案）---------- */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAZCkywvEHvBj6nTps9jLoDmNIpH8heOTg",
+  authDomain: "jennifer-trips.firebaseapp.com",
+  databaseURL: "https://jennifer-trips-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "jennifer-trips",
+  storageBucket: "jennifer-trips.firebasestorage.app",
+  messagingSenderId: "225283746648",
+  appId: "1:225283746648:web:6fc5b77fe58c428de5532d"
+};
+
+let _db=null,_ref=null,_room=null,_syncing=false,_saveT=null;
+function fbReady(){ return FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey.indexOf('PASTE')<0; }
+function initFB(){
+  if(_db) return true;
+  if(!fbReady()) return false;
+  try{ _db=firebase.database(firebase.initializeApp(FIREBASE_CONFIG)); return true; }
+  catch(e){ console.warn('FB init fail',e); return false; }
+}
+function setDot(s){ const d=document.getElementById('syncDot'); d.className='sync-dot'+(s==='live'?' live':s==='off'?' off':''); }
+
+function joinRoom(room){
+  if(!initFB()) return;
+  _room=room; _ref=_db.ref('trips/'+room); setDot('connecting');
+  _ref.on('value',snap=>{
+    const data=snap.val(); if(!data) return;
+    _syncing=true;
+    try{
+      const i=S.trips.findIndex(t=>t.id===data.id);
+      if(i>=0) S.trips[i]=data; else S.trips.unshift(data);
+      S.currentId=data.id; persist(); renderAll();
+    }finally{ _syncing=false; }
+    setDot('live');
+  },()=>setDot('off'));
+}
+function pushRemote(){
+  if(!_ref||_syncing) return;
+  clearTimeout(_saveT);
+  _saveT=setTimeout(()=>{
+    const t=trip(); if(!t||!_ref) return;
+    _ref.transaction(server=> server ? mergeTrip(server,t) : t, null, false)
+      .catch(e=>{ setDot('off'); toast('雲端同步失敗：'+(e.message||'檢查網路或 Firebase 規則'),'#dc2626'); });
+  },600);
+}
+/* 合併策略：以 id 為鍵，兩邊union；時間戳較新的欄位優先 */
+function byId(a,b){ const m=new Map(); (a||[]).forEach(x=>x&&x.id&&m.set(x.id,x)); (b||[]).forEach(x=>x&&x.id&&m.set(x.id,x)); return [...m.values()]; }
+function mergeDays(sv,lo){
+  const m=new Map(); (sv||[]).forEach(d=>m.set(d.date,{...d,spots:d.spots||[]}));
+  (lo||[]).forEach(d=>{ if(m.has(d.date)){ const s=m.get(d.date); m.set(d.date,{...s,...d,spots:byId(s.spots,d.spots)}); } else m.set(d.date,d); });
+  return [...m.values()].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+}
+function mergeTrip(sv,lo){
+  if(!sv||sv.id!==lo.id) return lo;
+  const poKey=p=>p.from+'|'+p.to;
+  const po=[...(sv.paidOff||[]),...(lo.paidOff||[])].filter((p,i,a)=>a.findIndex(x=>poKey(x)===poKey(p))===i);
+  return {...sv,...lo,
+    days:mergeDays(sv.days,lo.days),
+    shopping:byId(sv.shopping,lo.shopping),
+    expenses:byId(sv.expenses,lo.expenses),
+    coupons:byId(sv.coupons,lo.coupons),
+    docs:byId(sv.docs,lo.docs),
+    packing:byId(sv.packing,lo.packing),
+    guides:byId(sv.guides,lo.guides),
+    areaAlerts:byId(sv.areaAlerts,lo.areaAlerts),
+    paidOff:po,
+    members:[...new Set([...(sv.members||[]),...(lo.members||[])])]
+  };
+}
+
+/* ---------- STATE ---------- */
+const KEY='feebit_trip_v1';
+const FX_FALLBACK={JPY:0.216,USD:32.4,KRW:0.0235,EUR:35.2,HKD:4.15,THB:0.92};
+const CURRENCIES=['JPY','TWD','USD','KRW','EUR','HKD','THB'];
+const CATS=['景點','餐食','交通','購物','住宿','其他'];
+const CAT_ICON={景點:'📸',餐食:'🍜',交通:'🚉',購物:'🛍',住宿:'🏨',其他:'📌'};
+const SHOP_CATS=['藥妝','食品','美妝保養','電器','服飾','玩具/扭蛋','紀念品','其他'];
+const DEFAULT_PACK=['護照+影本','機票/訂房確認','信用卡(開海外)','日幣現金','ICOCA/Suica','eSIM/網卡','行動電源','萬用轉接頭','厚外套','發熱衣x3','發熱褲x2','厚襪x4','圍巾+手套','護手霜+護唇膏','常備藥(腸胃/止痛/過敏)','水泡貼','折疊購物袋','行李秤','小雨傘'];
+
+let S={trips:[],currentId:null,fx:{},fxAt:null};
+let _day=null;                 // 目前選的日期
+let _filter={today:false,done:false};
+
+function persist(){ try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){} }
+function save(){ persist(); pushRemote(); }
+function load(){ try{ const d=localStorage.getItem(KEY); if(d) S=JSON.parse(d); }catch(e){} if(!S.trips)S.trips=[]; if(!S.fx)S.fx={}; }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function trip(){ return S.trips.find(t=>t.id===S.currentId)||null; }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+/* ---------- FX ---------- */
+function rate(cur){
+  if(!cur||cur==='TWD') return 1;
+  const t=trip();
+  if(t&&t.fxLocked&&t.fxLocked[cur]) return t.fxLocked[cur];
+  return S.fx[cur]||FX_FALLBACK[cur]||1;
+}
+function toTWD(amt,cur){ return Math.round((Number(amt)||0)*rate(cur)); }
+function sym(c){ return {JPY:'¥',TWD:'NT$',USD:'US$',KRW:'₩',EUR:'€',HKD:'HK$',THB:'฿'}[c]||c; }
+function fmtT(n){ return 'NT$'+Math.round(n).toLocaleString(); }
+
+async function fetchFX(){
+  try{
+    const r=await fetch('https://open.er-api.com/v6/latest/TWD');
+    const j=await r.json();
+    if(j&&j.rates){
+      CURRENCIES.forEach(c=>{ if(c!=='TWD'&&j.rates[c]) S.fx[c]=+(1/j.rates[c]).toFixed(4); });
+      S.fxAt=j.time_last_update_utc||new Date().toISOString();
+      persist(); renderFxStrip(); if(document.getElementById('pg-money').classList.contains('active')) renderMoney();
+    }
+  }catch(e){ /* 離線就用上次或 fallback */ }
+}
+function renderFxStrip(){
+  const t=trip();
+  const locked=t&&t.fxLocked&&t.fxLocked.JPY;
+  const jr=rate('JPY');
+  const when=S.fxAt?('更新 '+new Date(S.fxAt).toLocaleDateString('zh-TW',{month:'numeric',day:'numeric'})):'尚未更新';
+  document.getElementById('fxStrip').innerHTML=
+    `<b>💱 ¥1 = NT$${jr.toFixed(3)}</b>`+
+    (locked?` <span class="pill ok" style="background:#0d5c53;color:#a7f3d0">分帳鎖定匯率</span>`:` <span class="muted">${esc(when)}·即時</span>`)+
+    ` <span class="muted" style="margin-left:auto">點「更多→匯率設定」調整</span>`;
+}
+
+/* ---------- NAV / RENDER ROOT ---------- */
+function nav(pg){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('pg-'+pg).classList.add('active');
+  document.querySelectorAll('.bnav button').forEach(b=>b.classList.toggle('on',b.dataset.pg===pg));
+  document.getElementById('fab').style.display=(pg==='coupon'||pg==='more')?'none':'flex';
+  window.scrollTo(0,0);
+  if(pg==='money') renderMoney();
+  if(pg==='shop') renderShop();
+  if(pg==='coupon') renderCoupons();
+  if(pg==='more') renderMore();
+}
+function fabAction(){
+  const pg=document.querySelector('.bnav button.on').dataset.pg;
+  if(pg==='trip') editSpot(_day,null);
+  else if(pg==='shop') editShop(null);
+  else if(pg==='money') editExpense(null);
+}
+function renderAll(){
+  renderTripSel(); renderFxStrip(); renderDayChips(); renderItin();
+  renderShop(); renderMoney(); renderCoupons(); renderMore();
+}
+function renderTripSel(){
+  document.getElementById('tripSel').innerHTML=S.trips.map(t=>`<option value="${t.id}" ${t.id===S.currentId?'selected':''}>${esc(t.name)}</option>`).join('');
+}
+function switchTrip(id){ S.currentId=id; _day=null; _filter.today=false; save(); syncRoom(); renderAll(); nav('trip'); }
+function syncRoom(){
+  const t=trip();
+  if(_ref&&_room!==(t&&t.room)){ _ref.off(); _ref=null; _room=null; setDot(''); }
+  if(t&&t.room&&fbReady()&&_room!==t.room) joinRoom(t.room);
+}
+
+/* ---------- DAY CHIPS + FILTER ---------- */
+function tripDays(){ const t=trip(); return t&&t.days?[...t.days].sort((a,b)=>(a.date||'').localeCompare(b.date||'')):[]; }
+function wdOf(date,arr){ const g=new Date(date+'T00:00').getDay(); return isNaN(g)?'':arr[g]; }
+function renderDayChips(){
+  const days=tripDays(); const tdy=todayStr();
+  if(!days.length){ document.getElementById('dayChips').innerHTML=''; return; }
+  if(!_day||!days.some(d=>d.date===_day)){
+    const inRange=days.find(d=>d.date===tdy);
+    _day=inRange?inRange.date:days[0].date;
+  }
+  document.getElementById('dayChips').innerHTML=days.map((d,i)=>{
+    const wd=wdOf(d.date,['日','一','二','三','四','五','六']);
+    const md=d.date?d.date.slice(5).replace('-','/'):'--';
+    const undone=(d.spots||[]).filter(s=>!s.done).length;
+    return `<div class="chip day ${d.date===_day?'on':''} ${d.date===tdy?'today':''}" onclick="pickDay('${d.date}')">
+      <span class="d">D${i+1}·${wd}</span><span class="n">${md}</span>
+      <span class="d">${undone?undone+'項':'✓完成'}</span></div>`;
+  }).join('');
+  document.getElementById('tgToday').classList.toggle('on',_filter.today);
+  document.getElementById('tgDone').classList.toggle('on',_filter.done);
+}
+function pickDay(d){ _day=d; _filter.today=false; renderDayChips(); renderItin(); }
+function toggleFilter(k){
+  _filter[k]=!_filter[k];
+  if(k==='today'&&_filter[k]){ const t=todayStr(); if(tripDays().some(d=>d.date===t)) _day=t; }
+  renderDayChips(); renderItin();
+}
+
+/* ---------- ITINERARY ---------- */
+function mapSearchUrl(s){
+  if(s.mapUrl) return s.mapUrl;
+  return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(s.name||'');
+}
+function dirUrl(from,to){
+  return 'https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(from)+
+    '&destination='+encodeURIComponent(to)+'&travelmode=transit';
+}
+function dayRouteUrl(day){
+  const pts=(day.spots||[]).map(s=>s.name).filter(Boolean).map(encodeURIComponent);
+  if(pts.length<2) return null;
+  return 'https://www.google.com/maps/dir/'+pts.join('/');
+}
+function matchedAreaAlerts(name){
+  const t=trip(); if(!t||!t.areaAlerts) return [];
+  return t.areaAlerts.filter(a=>a.area&&name&&name.indexOf(a.area)>=0);
+}
+function renderItin(){
+  const t=trip(); const box=document.getElementById('itin');
+  if(!t){ box.innerHTML='<div class="empty"><span class="ic">✈️</span>還沒有旅程，點右上 ⚙️ 新增</div>'; return; }
+  const days=tripDays();
+  const show= _filter.today ? days.filter(d=>d.date===todayStr())
+            : days.filter(d=>d.date===_day);
+  if(!show.length){ box.innerHTML='<div class="empty"><span class="ic">📅</span>今天不在旅程日期內</div>'; return; }
+  box.innerHTML=show.map(day=>{
+    let spots=[...(day.spots||[])].sort((a,b)=>(a.time||'99').localeCompare(b.time||'99'));
+    const total=spots.length;
+    if(_filter.done) spots=spots.filter(s=>!s.done);
+    const di=days.indexOf(day);
+    const wd=wdOf(day.date,['週日','週一','週二','週三','週四','週五','週六']);
+    const doneN=(day.spots||[]).filter(s=>s.done).length;
+    const route=dayRouteUrl(day);
+    let html=`<div class="day-head">
+      <span class="big">Day ${di+1}</span>
+      <span class="sub">${esc(day.date)} ${wd}　${doneN}/${total} 完成</span>
+      ${route?`<a class="btn btn-sm route" href="${route}" target="_blank" rel="noopener">🗺 今日路線</a>`:''}
+    </div>`;
+    if(!spots.length){ html+='<div class="empty" style="padding:22px"><span class="ic">🌙</span>'+(_filter.done?'今天都完成了！':'這天還沒排行程')+'</div>'; return html; }
+    spots.forEach((s,idx)=>{
+      html+=renderSpot(s,day.date);
+      const nx=spots[idx+1];
+      if(nx) html+=renderTransit(s,nx,day.date);
+    });
+    return html;
+  }).join('');
+}
+function renderSpot(s,date){
+  const cat=s.cat||'其他';
+  const alerts=[...(s.alerts||[]),...matchedAreaAlerts(s.name).map(a=>a.text)];
+  const meta=[];
+  if(s.openHours) meta.push('🕐 '+esc(s.openHours));
+  if(s.price) meta.push('🎫 '+esc(s.price));
+  const links=[
+    `<a href="${mapSearchUrl(s)}" target="_blank" rel="noopener">📍 地點</a>`
+  ];
+  return `<div class="spot ${s.done?'done':''}" id="sp-${s.id}">
+    <span class="spot-cat cat-${cat}"></span>
+    <div class="spot-main">
+      <div class="spot-time">${esc(s.time||'')}</div>
+      <div class="spot-body">
+        <div class="spot-name">${CAT_ICON[cat]||''} ${esc(s.name||'未命名')}</div>
+        ${meta.length?`<div class="spot-meta">${meta.join('')}</div>`:''}
+        ${s.note?`<div class="spot-note">${esc(s.note)}</div>`:''}
+        ${alerts.map(a=>`<div class="spot-alert"><b>⚠️ 注意</b>${esc(a)}</div>`).join('')}
+        ${(s.buy&&s.buy.length)?`<div class="spot-tags">${s.buy.map(b=>`<span class="spot-tag">🛍 ${esc(b)}</span>`).join('')}</div>`:''}
+        <div class="spot-links">${links.join('')}</div>
+      </div>
+      <div class="spot-check ${s.done?'on':''}" onclick="toggleDone('${date}','${s.id}')">${s.done?'✓':''}</div>
+    </div>
+    <div class="spot-foot">
+      <button onclick="editSpot('${date}','${s.id}')">✏️ 編輯</button>
+      <button onclick="delSpot('${date}','${s.id}')">🗑 刪除</button>
+    </div>
+  </div>`;
+}
+function renderTransit(a,b,date){
+  const tr=a.transitAfter;
+  if(!tr||!tr.mode){
+    return `<div class="transit"><button onclick="editTransit('${date}','${a.id}')">＋ 交通</button>
+      <a class="info" href="${dirUrl(a.name,b.name)}" target="_blank" rel="noopener" style="margin-left:auto">🧭 路線</a></div>`;
+  }
+  const ic={walk:'🚶',train:'🚃',subway:'🚇',bus:'🚌',taxi:'🚕',other:'➡️'}[tr.mode]||'➡️';
+  const bits=[tr.mins?tr.mins+'分':'',tr.fare?('¥'+Number(tr.fare).toLocaleString()):'',tr.note].filter(Boolean);
+  return `<div class="transit"><span class="info">${ic} ${esc(bits.join(' · ')||'移動')}</span>
+    <button onclick="editTransit('${date}','${a.id}')">編輯</button>
+    <a class="info" href="${dirUrl(a.name,b.name)}" target="_blank" rel="noopener" style="margin-left:auto">🧭 路線</a></div>`;
+}
+function toggleDone(date,id){
+  const t=trip(); const d=t.days.find(x=>x.date===date); const s=d&&d.spots.find(x=>x.id===id);
+  if(!s) return; s.done=!s.done; save(); renderDayChips(); renderItin();
+}
+function delSpot(date,id){
+  if(!confirm('刪除這個行程點？')) return;
+  const t=trip(); const d=t.days.find(x=>x.date===date);
+  d.spots=d.spots.filter(x=>x.id!==id); save(); renderItin(); renderDayChips();
+}
+
+/* ---------- MODAL CORE ---------- */
+function modal(html){
+  document.getElementById('modalRoot').innerHTML=
+    `<div class="mask" onclick="if(event.target===this)closeModal()"><div class="sheet">${html}</div></div>`;
+  document.body.style.overflow='hidden';
+}
+function closeModal(){ document.getElementById('modalRoot').innerHTML=''; document.body.style.overflow=''; }
+function toast(msg,color){
+  const b=document.createElement('div'); b.className='banner'; b.style.background=color||'#16a34a'; b.textContent=msg;
+  document.body.appendChild(b); setTimeout(()=>b.remove(),3200);
+}
+
+/* ---------- SPOT EDIT ---------- */
+function editSpot(date,id){
+  const t=trip(); if(!t) return;
+  if(!date) date=_day||tripDays()[0]?.date;
+  const d=t.days.find(x=>x.date===date)||{spots:[]};
+  const s=id?d.spots.find(x=>x.id===id):{cat:'景點',alerts:[],buy:[]};
+  const dayOpts=tripDays().map(x=>`<option value="${x.date}" ${x.date===date?'selected':''}>${x.date}</option>`).join('');
+  modal(`<h3>${id?'編輯':'新增'}行程點</h3>
+    <div class="f-row">
+      <div class="f" style="flex:0 0 96px"><label>時間</label><input id="sp-time" type="time" value="${esc(s.time||'')}"></div>
+      <div class="f"><label>日期</label><select id="sp-date">${dayOpts}</select></div>
+    </div>
+    <div class="f"><label>名稱</label><input id="sp-name" value="${esc(s.name||'')}" placeholder="例：大阪城天守閣"></div>
+    <div class="f"><label>分類</label><div class="seg" id="sp-cat">${CATS.map(c=>`<button type="button" class="${(s.cat||'景點')===c?'on':''}" onclick="segPick(this)">${c}</button>`).join('')}</div></div>
+    <div class="f-row">
+      <div class="f"><label>營業時間</label><input id="sp-hours" value="${esc(s.openHours||'')}" placeholder="10:00–18:00 週二休"></div>
+      <div class="f"><label>門票/預算</label><input id="sp-price" value="${esc(s.price||'')}" placeholder="¥1,200"></div>
+    </div>
+    <div class="f"><label>Google Maps 連結（留白會用名稱搜尋）</label><input id="sp-map" value="${esc(s.mapUrl||'')}" placeholder="貼 maps.app.goo.gl 連結"></div>
+    <div class="f"><label>備註</label><textarea id="sp-note" placeholder="交通方式、要點的餐、排隊撇步…">${esc(s.note||'')}</textarea></div>
+    <div class="f"><label>注意事項（一行一則，會標紅）</label><textarea id="sp-alerts" placeholder="年末公休 12/29–1/1&#10;要提前一個月訂位">${esc((s.alerts||[]).join('\n'))}</textarea></div>
+    <div class="f"><label>順便要買（逗號分隔，選填）</label><input id="sp-buy" value="${esc((s.buy||[]).join(', '))}" placeholder="龍貓扭蛋, 限定餅乾"></div>
+    <div class="btn-row">
+      <button class="btn btn-brand btn-block" onclick="saveSpot('${id||''}','${date}')">儲存</button>
+      <button class="btn btn-block" onclick="closeModal()">取消</button>
+    </div>`);
+}
+function segPick(btn){ btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); }
+function segVal(id){ const on=document.querySelector('#'+id+' button.on'); return on?on.textContent:''; }
+function saveSpot(id,oldDate){
+  const t=trip();
+  const nd=document.getElementById('sp-date').value;
+  const obj={
+    id:id||uid(),
+    time:document.getElementById('sp-time').value,
+    name:document.getElementById('sp-name').value.trim(),
+    cat:segVal('sp-cat')||'景點',
+    openHours:document.getElementById('sp-hours').value.trim(),
+    price:document.getElementById('sp-price').value.trim(),
+    mapUrl:document.getElementById('sp-map').value.trim(),
+    note:document.getElementById('sp-note').value.trim(),
+    alerts:document.getElementById('sp-alerts').value.split('\n').map(x=>x.trim()).filter(Boolean),
+    buy:document.getElementById('sp-buy').value.split(',').map(x=>x.trim()).filter(Boolean),
+  };
+  if(!obj.name){ toast('請填名稱','#dc2626'); return; }
+  // 保留原本的完成狀態與交通資訊
+  if(id){
+    const prev=t.days.flatMap(x=>x.spots).find(x=>x.id===id);
+    if(prev){ obj.done=prev.done; obj.transitAfter=prev.transitAfter||null; }
+    const od=t.days.find(x=>x.date===oldDate); if(od) od.spots=od.spots.filter(x=>x.id!==id);
+  }
+  let d=t.days.find(x=>x.date===nd); if(!d){ d={id:uid(),date:nd,spots:[]}; t.days.push(d); }
+  d.spots.push(obj);
+  _day=nd; save(); closeModal(); renderDayChips(); renderItin();
+}
+
+/* ---------- TRANSIT ---------- */
+function editTransit(date,id){
+  const t=trip(); const s=t.days.find(x=>x.date===date).spots.find(x=>x.id===id);
+  const tr=s.transitAfter||{mode:'subway'};
+  const modes=[['walk','🚶步行'],['train','🚃電車'],['subway','🚇地鐵'],['bus','🚌巴士'],['taxi','🚕計程車'],['other','➡️其他']];
+  modal(`<h3>交通（到下一站）</h3>
+    <div class="f"><label>方式</label><div class="seg" id="tr-mode">${modes.map(m=>`<button type="button" class="${tr.mode===m[0]?'on':''}" data-v="${m[0]}" onclick="segPick(this)">${m[1]}</button>`).join('')}</div></div>
+    <div class="f-row">
+      <div class="f"><label>時間(分)</label><input id="tr-mins" type="number" value="${esc(tr.mins||'')}"></div>
+      <div class="f"><label>車資(¥)</label><input id="tr-fare" type="number" value="${esc(tr.fare||'')}"></div>
+    </div>
+    <div class="f"><label>備註（路線/轉乘/出口/末班車）</label><textarea id="tr-note">${esc(tr.note||'')}</textarea></div>
+    <div class="btn-row">
+      <button class="btn btn-brand btn-block" onclick="saveTransit('${date}','${id}')">儲存</button>
+      ${s.transitAfter?`<button class="btn btn-danger" onclick="clearTransit('${date}','${id}')">清除</button>`:''}
+      <button class="btn" onclick="closeModal()">取消</button>
+    </div>`);
+}
+function saveTransit(date,id){
+  const t=trip(); const s=t.days.find(x=>x.date===date).spots.find(x=>x.id===id);
+  const mBtn=document.querySelector('#tr-mode button.on');
+  s.transitAfter={
+    mode:mBtn?mBtn.dataset.v:'subway',
+    mins:document.getElementById('tr-mins').value.trim(),
+    fare:document.getElementById('tr-fare').value.trim(),
+    note:document.getElementById('tr-note').value.trim()
+  };
+  save(); closeModal(); renderItin();
+}
+function clearTransit(date,id){
+  const t=trip(); const s=t.days.find(x=>x.date===date).spots.find(x=>x.id===id);
+  s.transitAfter=null; save(); closeModal(); renderItin();
+}
+
+/* ---------- SHOPPING ---------- */
+let _shopFilter='ALL';
+function renderShop(){
+  const t=trip(); const box=document.getElementById('shopList');
+  const fbar=document.getElementById('shopFilter');
+  if(!t){ box.innerHTML=''; return; }
+  const items=t.shopping||[];
+  const cats=['ALL',...new Set(items.map(i=>i.cat).filter(Boolean)),'✓已買'];
+  fbar.innerHTML=cats.map(c=>`<div class="chip ${_shopFilter===c?'on':''}" onclick="_shopFilter='${c}';renderShop()">${c==='ALL'?'全部':c}</div>`).join('');
+  let show=items;
+  if(_shopFilter==='✓已買') show=items.filter(i=>i.done);
+  else if(_shopFilter!=='ALL') show=items.filter(i=>i.cat===_shopFilter);
+  if(!show.length){ box.innerHTML='<div class="empty"><span class="ic">🛍</span>還沒有待買清單，點右下 ＋ 新增</div>'; return; }
+  box.innerHTML=show.map(i=>{
+    const tw=i.price&&i.cur!=='TWD'?` <span class="li-sub">≈ ${fmtT(toTWD(i.price,i.cur||'JPY'))}</span>`:'';
+    return `<div class="li">
+      <div class="li-thumb">${i.photo?`<img src="${i.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:10px">`:'🛍'}</div>
+      <div class="li-body">
+        <div class="li-title" style="${i.done?'text-decoration:line-through;color:#94a3b8':''}">${esc(i.name)}</div>
+        <div class="li-sub">
+          ${i.cat?`<span class="pill">${esc(i.cat)}</span>`:''}
+          ${i.where?`📍 ${esc(i.where)}　`:''}
+          ${i.price?`${sym(i.cur||'JPY')}${Number(i.price).toLocaleString()}`:''}${tw}
+          ${i.who?`　·${esc(i.who)}`:''}
+        </div>
+        ${i.note?`<div class="li-sub">${esc(i.note)}</div>`:''}
+        <div class="btn-row" style="margin-top:7px">
+          <button class="btn btn-sm" onclick="toggleShop('${i.id}')">${i.done?'↩ 未買':'✓ 買了'}</button>
+          <button class="btn btn-sm" onclick="editShop('${i.id}')">編輯</button>
+          <button class="btn btn-sm btn-danger" onclick="delShop('${i.id}')">刪除</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function toggleShop(id){ const t=trip(); const i=t.shopping.find(x=>x.id===id); i.done=!i.done; save(); renderShop(); }
+function delShop(id){ if(!confirm('刪除？'))return; const t=trip(); t.shopping=t.shopping.filter(x=>x.id!==id); save(); renderShop(); }
+function editShop(id){
+  const t=trip(); if(!t.shopping) t.shopping=[];
+  const i=id?t.shopping.find(x=>x.id===id):{cur:'JPY',cat:'藥妝'};
+  const mem=t.members||[];
+  modal(`<h3>${id?'編輯':'新增'}待買</h3>
+    <div class="f"><label>品名</label><input id="s-name" value="${esc(i.name||'')}"></div>
+    <div class="f"><label>照片</label><input id="s-photo" type="file" accept="image/*" onchange="pickPhoto(this,'s-photo-data')"><div id="s-photo-data" data-v="${i.photo||''}"></div></div>
+    <div class="f-row">
+      <div class="f"><label>分類</label><select id="s-cat">${SHOP_CATS.map(c=>`<option ${i.cat===c?'selected':''}>${c}</option>`).join('')}</select></div>
+      <div class="f" style="flex:0 0 92px"><label>幣別</label><select id="s-cur">${CURRENCIES.map(c=>`<option ${(i.cur||'JPY')===c?'selected':''}>${c}</option>`).join('')}</select></div>
+      <div class="f" style="flex:0 0 96px"><label>價格</label><input id="s-price" type="number" value="${esc(i.price||'')}"></div>
+    </div>
+    <div class="f"><label>地點 / 店家</label><input id="s-where" value="${esc(i.where||'')}" placeholder="黑門市場 Os drug"></div>
+    <div class="f"><label>誰要買</label><select id="s-who"><option value="">—</option>${mem.map(m=>`<option ${i.who===m?'selected':''}>${esc(m)}</option>`).join('')}</select></div>
+    <div class="f"><label>備註</label><textarea id="s-note">${esc(i.note||'')}</textarea></div>
+    <div class="btn-row">
+      <button class="btn btn-brand btn-block" onclick="saveShop('${id||''}')">儲存</button>
+      <button class="btn btn-block" onclick="closeModal()">取消</button>
+    </div>`);
+}
+function pickPhoto(input,targetId){
+  const f=input.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    const img=new Image();
+    img.onload=()=>{
+      const mx=900,sc=Math.min(1,mx/img.width);
+      const cv=document.createElement('canvas'); cv.width=img.width*sc; cv.height=img.height*sc;
+      cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+      document.getElementById(targetId).dataset.v=cv.toDataURL('image/jpeg',0.8);
+    };
+    img.src=r.result;
+  };
+  r.readAsDataURL(f);
+}
+function saveShop(id){
+  const t=trip();
+  const obj={
+    id:id||uid(),
+    name:document.getElementById('s-name').value.trim(),
+    photo:document.getElementById('s-photo-data').dataset.v||'',
+    cat:document.getElementById('s-cat').value,
+    cur:document.getElementById('s-cur').value,
+    price:document.getElementById('s-price').value.trim(),
+    where:document.getElementById('s-where').value.trim(),
+    who:document.getElementById('s-who').value,
+    note:document.getElementById('s-note').value.trim(),
+    done:id?(t.shopping.find(x=>x.id===id)||{}).done:false
+  };
+  if(!obj.name){ toast('請填品名','#dc2626'); return; }
+  if(id) t.shopping=t.shopping.map(x=>x.id===id?obj:x); else t.shopping.push(obj);
+  save(); closeModal(); renderShop();
+}
+
+/* ---------- EXPENSES + SETTLEMENT ---------- */
+function members(){ const t=trip(); return (t&&t.members&&t.members.length)?t.members:['我']; }
+function renderMoney(){
+  const t=trip(); if(!t) return;
+  const exp=t.expenses||[]; const mem=members();
+  const totalT=exp.reduce((s,e)=>s+toTWD(e.amount,e.cur),0);
+  document.getElementById('moneyHead').innerHTML=`<div class="card card-pad">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div><div style="font-size:12px;color:#94a3b8;font-weight:700">團體總支出</div>
+      <div style="font-size:22px;font-weight:900">${fmtT(totalT)}</div>
+      <div style="font-size:11px;color:#94a3b8">${exp.length} 筆 · 分帳匯率 ¥1=NT$${rate('JPY').toFixed(3)}${t.fxLocked&&t.fxLocked.JPY?'（鎖定）':'（即時）'}</div></div>
+      <button class="btn btn-sm" onclick="openFxSettings()">調匯率</button>
+    </div></div>`;
+
+  // balances (TWD): paid - owed
+  const bal={}; mem.forEach(m=>bal[m]=0);
+  exp.forEach(e=>{
+    const amtT=toTWD(e.amount,e.cur);
+    if(bal[e.paidBy]==null) bal[e.paidBy]=0;
+    bal[e.paidBy]+=amtT;
+    const parts=(e.splitWith&&e.splitWith.length)?e.splitWith:mem;
+    if(e.splitMode==='custom'&&e.customSplits){
+      Object.entries(e.customSplits).forEach(([m,v])=>{ if(bal[m]==null)bal[m]=0; bal[m]-=toTWD(v,e.cur); });
+    }else{
+      const each=amtT/parts.length;
+      parts.forEach(m=>{ if(bal[m]==null)bal[m]=0; bal[m]-=each; });
+    }
+  });
+  Object.keys(bal).forEach(m=>bal[m]=Math.round(bal[m]));
+
+  document.getElementById('moneyHead').innerHTML+=`<div class="card card-pad"><div class="bal-grid">
+    ${Object.keys(bal).map(m=>{
+      const b=bal[m]; const cls=b>0?'pos':b<0?'neg':'';
+      return `<div class="bal"><div class="who">${esc(m)}</div>
+        <div class="amt ${cls}">${b>0?'+':''}${fmtT(Math.abs(b)*(b<0?-1:1)).replace('NT$','')}</div>
+        <div class="lbl">${b>0?'該收回':b<0?'要付出':'結清'} NT$</div></div>`;
+    }).join('')}
+  </div></div>`;
+
+  // min cash flow
+  const tx=minCashFlow(bal);
+  const box=document.getElementById('settle');
+  box.innerHTML= tx.length?tx.map(x=>{
+    const paid=(t.paidOff||[]).some(p=>p.from===x.from&&p.to===x.to);
+    const yen=Math.round(x.amt/rate('JPY'));
+    return `<div class="settle-tx ${paid?'paid':''}">
+      <span class="flow">${esc(x.from)} → ${esc(x.to)}</span>
+      <span class="amt">${fmtT(x.amt)}<small>≈ ¥${yen.toLocaleString()}</small></span>
+      <button class="mk" onclick="togglePaid('${esc(x.from)}','${esc(x.to)}',${x.amt})">${paid?'✓ 已還':'標記已還'}</button>
+    </div>`;
+  }).join(''):'<div class="empty" style="padding:20px"><span class="ic">✅</span>目前不用喬錢</div>';
+
+  const el=document.getElementById('expList');
+  el.innerHTML= exp.length? exp.slice().reverse().map(e=>{
+    const parts=(e.splitWith&&e.splitWith.length)?e.splitWith:mem;
+    const each=e.splitMode==='custom'?null:Math.round(toTWD(e.amount,e.cur)/parts.length);
+    return `<div class="li">
+      <div class="li-body">
+        <div class="li-title">${esc(e.title||'支出')}　<span style="float:right">${sym(e.cur)}${Number(e.amount).toLocaleString()}</span></div>
+        <div class="li-sub">${esc(e.paidBy)} 先付${e.cur!=='TWD'?`　≈ ${fmtT(toTWD(e.amount,e.cur))}`:''}${e.date?`　·${e.date}`:''}</div>
+        <div class="li-sub">分攤：${parts.map(esc).join('、')}${each!=null?`　每人 ≈ ${fmtT(each)}`:'　(自訂金額)'}</div>
+        ${e.note?`<div class="li-sub">📝 ${esc(e.note)}</div>`:''}
+        <div class="btn-row" style="margin-top:7px">
+          <button class="btn btn-sm" onclick="editExpense('${e.id}')">編輯</button>
+          <button class="btn btn-sm btn-danger" onclick="delExpense('${e.id}')">刪除</button>
+        </div>
+      </div></div>`;
+  }).join(''):'<div class="empty"><span class="ic">💴</span>還沒有支出</div>';
+}
+function minCashFlow(bal){
+  const cred=[],deb=[];
+  Object.entries(bal).forEach(([m,v])=>{ if(v>0)cred.push([m,v]); else if(v<0)deb.push([m,-v]); });
+  cred.sort((a,b)=>b[1]-a[1]); deb.sort((a,b)=>b[1]-a[1]);
+  const tx=[]; let i=0,j=0;
+  while(i<deb.length&&j<cred.length){
+    const pay=Math.min(deb[i][1],cred[j][1]);
+    if(pay>0.5) tx.push({from:deb[i][0],to:cred[j][0],amt:Math.round(pay)});
+    deb[i][1]-=pay; cred[j][1]-=pay;
+    if(deb[i][1]<=0.5)i++; if(cred[j][1]<=0.5)j++;
+  }
+  return tx;
+}
+function togglePaid(from,to,amt){
+  const t=trip(); if(!t.paidOff)t.paidOff=[];
+  const k=t.paidOff.findIndex(p=>p.from===from&&p.to===to);
+  if(k>=0) t.paidOff.splice(k,1); else t.paidOff.push({from,to,amt});
+  save(); renderMoney();
+}
+function delExpense(id){ if(!confirm('刪除這筆支出？'))return; const t=trip(); t.expenses=t.expenses.filter(x=>x.id!==id); save(); renderMoney(); }
+function editExpense(id){
+  const t=trip(); if(!t){ toast('先建立旅程','#dc2626'); return; }
+  if(!t.expenses)t.expenses=[];
+  const mem=members();
+  const e=id?t.expenses.find(x=>x.id===id):{cur:'JPY',paidBy:mem[0],splitWith:[...mem],splitMode:'even',date:todayStr()};
+  modal(`<h3>${id?'編輯':'新增'}支出</h3>
+    <div class="f"><label>項目</label><input id="e-title" value="${esc(e.title||'')}" placeholder="晚餐 燒肉力丸"></div>
+    <div class="f-row">
+      <div class="f" style="flex:0 0 92px"><label>幣別</label><select id="e-cur">${CURRENCIES.map(c=>`<option ${(e.cur||'JPY')===c?'selected':''}>${c}</option>`).join('')}</select></div>
+      <div class="f"><label>金額</label><input id="e-amt" type="number" inputmode="decimal" value="${esc(e.amount||'')}"></div>
+      <div class="f" style="flex:0 0 130px"><label>日期</label><input id="e-date" type="date" value="${esc(e.date||todayStr())}"></div>
+    </div>
+    <div class="f"><label>誰先付</label><select id="e-paid">${mem.map(m=>`<option ${e.paidBy===m?'selected':''}>${esc(m)}</option>`).join('')}</select></div>
+    <div class="f"><label>誰要分攤</label><div class="mchips" id="e-split">
+      ${mem.map(m=>`<label><input type="checkbox" value="${esc(m)}" ${(!e.splitWith||e.splitWith.includes(m))?'checked':''}>${esc(m)}</label>`).join('')}
+    </div></div>
+    <div class="f"><label>分法</label><div class="seg" id="e-mode">
+      <button type="button" class="${e.splitMode!=='custom'?'on':''}" data-v="even" onclick="segPick(this);document.getElementById('e-custom').classList.add('hide')">平均分</button>
+      <button type="button" class="${e.splitMode==='custom'?'on':''}" data-v="custom" onclick="segPick(this);document.getElementById('e-custom').classList.remove('hide')">自訂金額</button>
+    </div></div>
+    <div class="f ${e.splitMode==='custom'?'':'hide'}" id="e-custom"><label>各自金額（同幣別）</label>
+      ${mem.map(m=>`<div class="f-row" style="align-items:center;margin-bottom:6px"><span style="flex:0 0 70px;font-size:13px">${esc(m)}</span><input data-m="${esc(m)}" class="ecs" type="number" value="${esc(e.customSplits&&e.customSplits[m]||'')}"></div>`).join('')}
+    </div>
+    <div class="f"><label>備註</label><input id="e-note" value="${esc(e.note||'')}"></div>
+    <div class="btn-row">
+      <button class="btn btn-brand btn-block" onclick="saveExpense('${id||''}')">儲存</button>
+      <button class="btn btn-block" onclick="closeModal()">取消</button>
+    </div>`);
+}
+function saveExpense(id){
+  const t=trip();
+  const mode=document.querySelector('#e-mode button.on').dataset.v;
+  const splitWith=[...document.querySelectorAll('#e-split input:checked')].map(x=>x.value);
+  const cs={}; document.querySelectorAll('.ecs').forEach(x=>{ if(x.value) cs[x.dataset.m]=+x.value; });
+  const obj={
+    id:id||uid(),
+    title:document.getElementById('e-title').value.trim(),
+    cur:document.getElementById('e-cur').value,
+    amount:+document.getElementById('e-amt').value||0,
+    date:document.getElementById('e-date').value,
+    paidBy:document.getElementById('e-paid').value,
+    splitWith, splitMode:mode, customSplits:mode==='custom'?cs:null,
+    note:document.getElementById('e-note').value.trim()
+  };
+  if(!obj.amount){ toast('請填金額','#dc2626'); return; }
+  if(!splitWith.length){ toast('至少選一人分攤','#dc2626'); return; }
+  if(id) t.expenses=t.expenses.map(x=>x.id===id?obj:x); else t.expenses.push(obj);
+  save(); closeModal(); renderMoney();
+}
+
+/* ---------- COUPONS ---------- */
+function renderCoupons(){
+  const t=trip(); const box=document.getElementById('couponList'); if(!t) return;
+  const cs=t.coupons||[];
+  box.innerHTML=(cs.length?cs.map(c=>{
+    const exp=c.expiry&&c.expiry<todayStr();
+    return `<div class="li">
+      <div class="li-thumb">${c.image?`<img src="${c.image}" style="width:100%;height:100%;object-fit:cover;border-radius:10px">`:'🎟'}</div>
+      <div class="li-body">
+        <div class="li-title" style="${c.used||exp?'color:#94a3b8;text-decoration:line-through':''}">${esc(c.title)}</div>
+        <div class="li-sub">
+          ${c.code?`<span class="pill">${esc(c.code)}</span>`:''}
+          ${c.spot?`📍 ${esc(c.spot)}　`:''}
+          ${c.expiry?`<span class="pill ${exp?'warn':''}">${exp?'已過期 ':'期限 '}${esc(c.expiry)}</span>`:''}
+        </div>
+        ${c.note?`<div class="li-sub">${esc(c.note)}</div>`:''}
+        <div class="btn-row" style="margin-top:7px">
+          ${c.image?`<button class="btn btn-sm" onclick="showImg('${c.id}')">🔍 放大出示</button>`:''}
+          <button class="btn btn-sm" onclick="toggleCoupon('${c.id}')">${c.used?'↩ 未用':'✓ 用掉'}</button>
+          <button class="btn btn-sm" onclick="editCoupon('${c.id}')">編輯</button>
+          <button class="btn btn-sm btn-danger" onclick="delCoupon('${c.id}')">刪除</button>
+        </div>
+      </div></div>`;
+  }).join(''):'<div class="empty"><span class="ic">🎟</span>還沒有優惠券</div>')
+   +`<div class="card-pad"><button class="btn btn-block btn-ghost" onclick="editCoupon(null)">＋ 新增優惠券</button></div>`;
+}
+function toggleCoupon(id){ const t=trip(); const c=t.coupons.find(x=>x.id===id); c.used=!c.used; save(); renderCoupons(); }
+function delCoupon(id){ if(!confirm('刪除？'))return; const t=trip(); t.coupons=t.coupons.filter(x=>x.id!==id); save(); renderCoupons(); }
+function showImg(id){ const c=trip().coupons.find(x=>x.id===id); modal(`<h3>${esc(c.title)}</h3><img src="${c.image}" style="width:100%;border-radius:12px"><div class="btn-row" style="margin-top:12px"><button class="btn btn-block" onclick="closeModal()">關閉</button></div>`); }
+function editCoupon(id){
+  const t=trip(); if(!t.coupons)t.coupons=[];
+  const c=id?t.coupons.find(x=>x.id===id):{};
+  modal(`<h3>${id?'編輯':'新增'}優惠券</h3>
+    <div class="f"><label>名稱</label><input id="c-title" value="${esc(c.title||'')}" placeholder="LaLaport名古屋港 外國人優惠"></div>
+    <div class="f"><label>條碼 / 代碼（選填）</label><input id="c-code" value="${esc(c.code||'')}"></div>
+    <div class="f"><label>截圖 / 條碼圖（出示用）</label><input id="c-img" type="file" accept="image/*" onchange="pickPhoto(this,'c-img-data')"><div id="c-img-data" data-v="${c.image||''}"></div></div>
+    <div class="f-row">
+      <div class="f"><label>使用期限</label><input id="c-exp" type="date" value="${esc(c.expiry||'')}"></div>
+      <div class="f"><label>綁定地點</label><input id="c-spot" value="${esc(c.spot||'')}"></div>
+    </div>
+    <div class="f"><label>備註</label><textarea id="c-note">${esc(c.note||'')}</textarea></div>
+    <div class="btn-row">
+      <button class="btn btn-brand btn-block" onclick="saveCoupon('${id||''}')">儲存</button>
+      <button class="btn btn-block" onclick="closeModal()">取消</button>
+    </div>`);
+}
+function saveCoupon(id){
+  const t=trip();
+  const obj={id:id||uid(),
+    title:document.getElementById('c-title').value.trim(),
+    code:document.getElementById('c-code').value.trim(),
+    image:document.getElementById('c-img-data').dataset.v||'',
+    expiry:document.getElementById('c-exp').value,
+    spot:document.getElementById('c-spot').value.trim(),
+    note:document.getElementById('c-note').value.trim(),
+    used:id?(t.coupons.find(x=>x.id===id)||{}).used:false};
+  if(!obj.title){ toast('請填名稱','#dc2626'); return; }
+  if(id) t.coupons=t.coupons.map(x=>x.id===id?obj:x); else t.coupons.push(obj);
+  save(); closeModal(); renderCoupons();
+}
+
+/* ---------- MORE：docs / area alerts / packing / guides ---------- */
+function renderMore(){
+  const t=trip(); if(!t) return;
+  document.getElementById('docList').innerHTML=(t.docs||[]).length?(t.docs).map(d=>`<div class="li"><div class="li-body">
+    <div class="li-title">${esc(d.title)} <span class="pill">${esc(d.type||'')}</span></div>
+    <div class="li-sub">${esc(d.text)}</div>
+    <div class="btn-row" style="margin-top:6px"><button class="btn btn-sm" onclick="editDoc('${d.id}')">編輯</button><button class="btn btn-sm btn-danger" onclick="delDoc('${d.id}')">刪除</button></div>
+  </div></div>`).join(''):'<div class="empty" style="padding:20px"><span class="ic">📄</span>可放班機/訂房/密碼鎖</div>';
+
+  document.getElementById('areaAlerts').innerHTML=(t.areaAlerts||[]).length?(t.areaAlerts).map(a=>
+    `<div style="padding:6px 0;border-bottom:1px dashed var(--line)"><b>${esc(a.area)}</b>：${esc(a.text)}
+     <button class="btn btn-sm" style="margin-left:6px" onclick="editAreaAlert('${a.id}')">改</button>
+     <button class="btn btn-sm btn-danger" onclick="delAreaAlert('${a.id}')">刪</button></div>`).join('')
+    :'名稱含此關鍵字的行程點，會自動帶出這段提醒。例：奈良公園 / 黑門市場 / 環球影城。';
+
+  document.getElementById('packList').innerHTML=(t.packing||[]).length?(t.packing).map(p=>
+    `<div class="li" style="padding:9px 13px"><div class="li-body" style="display:flex;align-items:center;gap:9px">
+      <div class="spot-check ${p.done?'on':''}" style="width:24px;height:24px;font-size:13px" onclick="togglePack('${p.id}')">${p.done?'✓':''}</div>
+      <span style="${p.done?'text-decoration:line-through;color:#94a3b8':''};flex:1">${esc(p.text)}</span>
+      <button class="btn btn-sm btn-danger" onclick="delPack('${p.id}')">×</button>
+    </div></div>`).join(''):'<div class="empty" style="padding:16px">還沒有打包清單</div>';
+
+  document.getElementById('guideList').innerHTML=(t.guides||[]).length?(t.guides).map(g=>`<div class="li"><div class="li-body">
+    <div class="li-title">${esc(g.title)}</div><div class="li-sub">${esc(g.text)}</div>
+    <div class="btn-row" style="margin-top:6px"><button class="btn btn-sm" onclick="editGuide('${g.id}')">編輯</button><button class="btn btn-sm btn-danger" onclick="delGuide('${g.id}')">刪除</button></div>
+  </div></div>`).join(''):'<div class="empty" style="padding:20px"><span class="ic">📓</span>放排隊攻略、退稅流程等</div>';
+}
+function editDoc(id){ const t=trip(); if(!t.docs)t.docs=[]; const d=id?t.docs.find(x=>x.id===id):{type:'班機'};
+  modal(`<h3>${id?'編輯':'新增'}資料</h3>
+   <div class="f"><label>標題</label><input id="d-t" value="${esc(d.title||'')}"></div>
+   <div class="f"><label>類別</label><input id="d-y" value="${esc(d.type||'')}" placeholder="班機 / 訂房 / 保險 / 其他"></div>
+   <div class="f"><label>內容</label><textarea id="d-x" style="min-height:120px">${esc(d.text||'')}</textarea></div>
+   <div class="btn-row"><button class="btn btn-brand btn-block" onclick="saveDoc('${id||''}')">儲存</button><button class="btn btn-block" onclick="closeModal()">取消</button></div>`); }
+function saveDoc(id){ const t=trip(); const o={id:id||uid(),title:val('d-t'),type:val('d-y'),text:val('d-x')};
+  if(!o.title){toast('請填標題','#dc2626');return;} if(id)t.docs=t.docs.map(x=>x.id===id?o:x);else t.docs.push(o); save();closeModal();renderMore(); }
+function delDoc(id){ if(!confirm('刪除？'))return; const t=trip(); t.docs=t.docs.filter(x=>x.id!==id); save(); renderMore(); }
+
+function editAreaAlert(id){ const t=trip(); if(!t.areaAlerts)t.areaAlerts=[]; const a=id?t.areaAlerts.find(x=>x.id===id):{};
+  modal(`<h3>${id?'編輯':'新增'}區域提醒</h3>
+   <div class="f"><label>關鍵字（會比對行程點名稱）</label><input id="a-k" value="${esc(a.area||'')}" placeholder="奈良公園"></div>
+   <div class="f"><label>提醒內容</label><textarea id="a-x">${esc(a.text||'')}</textarea></div>
+   <div class="btn-row"><button class="btn btn-brand btn-block" onclick="saveAreaAlert('${id||''}')">儲存</button><button class="btn btn-block" onclick="closeModal()">取消</button></div>`); }
+function saveAreaAlert(id){ const t=trip(); const o={id:id||uid(),area:val('a-k'),text:val('a-x')};
+  if(!o.area||!o.text){toast('都要填','#dc2626');return;} if(id)t.areaAlerts=t.areaAlerts.map(x=>x.id===id?o:x);else t.areaAlerts.push(o); save();closeModal();renderMore();renderItin(); }
+function delAreaAlert(id){ if(!confirm('刪除？'))return; const t=trip(); t.areaAlerts=t.areaAlerts.filter(x=>x.id!==id); save(); renderMore(); renderItin(); }
+
+function addPack(){ const t=trip(); const v=prompt('要帶什麼？'); if(!v)return; if(!t.packing)t.packing=[]; t.packing.push({id:uid(),text:v.trim(),done:false}); save(); renderMore(); }
+function togglePack(id){ const t=trip(); const p=t.packing.find(x=>x.id===id); p.done=!p.done; save(); renderMore(); }
+function delPack(id){ const t=trip(); t.packing=t.packing.filter(x=>x.id!==id); save(); renderMore(); }
+function resetPack(){ const t=trip(); if((t.packing||[]).length&&!confirm('用預設清單覆蓋現有打包清單？'))return;
+  t.packing=DEFAULT_PACK.map(x=>({id:uid(),text:x,done:false})); save(); renderMore(); }
+
+function editGuide(id){ const t=trip(); if(!t.guides)t.guides=[]; const g=id?t.guides.find(x=>x.id===id):{};
+  modal(`<h3>${id?'編輯':'新增'}攻略</h3>
+   <div class="f"><label>標題</label><input id="g-t" value="${esc(g.title||'')}"></div>
+   <div class="f"><label>內容</label><textarea id="g-x" style="min-height:160px">${esc(g.text||'')}</textarea></div>
+   <div class="btn-row"><button class="btn btn-brand btn-block" onclick="saveGuide('${id||''}')">儲存</button><button class="btn btn-block" onclick="closeModal()">取消</button></div>`); }
+function saveGuide(id){ const t=trip(); const o={id:id||uid(),title:val('g-t'),text:val('g-x')};
+  if(!o.title){toast('請填標題','#dc2626');return;} if(id)t.guides=t.guides.map(x=>x.id===id?o:x);else t.guides.push(o); save();closeModal();renderMore(); }
+function delGuide(id){ if(!confirm('刪除？'))return; const t=trip(); t.guides=t.guides.filter(x=>x.id!==id); save(); renderMore(); }
+function val(id){ return document.getElementById(id).value.trim(); }
+
+/* ---------- FX SETTINGS ---------- */
+function openFxSettings(){
+  const t=trip();
+  const locked=t&&t.fxLocked&&t.fxLocked.JPY;
+  modal(`<h3>匯率設定</h3>
+   <p class="help">「即時匯率」每次開 App 會自動更新，用來估算花費。<br>
+   <b>分帳鎖定匯率</b>：三人講好一個固定數字（例：¥1=NT$0.21），整趟分帳都用它算，不受浮動影響、對帳不吵架。</p>
+   <div class="f"><label>目前即時匯率 ¥1 = NT$</label><input id="fx-live" type="number" step="0.0001" value="${(S.fx.JPY||FX_FALLBACK.JPY)}"></div>
+   <div class="f"><label><input type="checkbox" id="fx-lock" ${locked?'checked':''} style="width:auto;margin-right:6px">分帳改用鎖定匯率</label>
+     <input id="fx-locked" type="number" step="0.0001" placeholder="0.21" value="${locked||''}"></div>
+   <div class="btn-row">
+     <button class="btn btn-brand btn-block" onclick="saveFx()">儲存</button>
+     <button class="btn btn-block" onclick="fetchFX().then(()=>{closeModal();toast('已抓最新匯率')})">立即更新即時匯率</button>
+   </div>`);
+}
+function saveFx(){
+  const t=trip();
+  S.fx.JPY=+document.getElementById('fx-live').value||FX_FALLBACK.JPY;
+  if(document.getElementById('fx-lock').checked){
+    const v=+document.getElementById('fx-locked').value;
+    if(!v){ toast('請填鎖定匯率數字','#dc2626'); return; }
+    t.fxLocked=Object.assign({},t.fxLocked,{JPY:v});
+  }else{ if(t.fxLocked) delete t.fxLocked.JPY; }
+  save(); closeModal(); renderFxStrip(); renderMoney();
+}
+
+/* ---------- MEMBERS / TRIP MENU / SHARE ---------- */
+function memberRow(name){
+  return `<div class="f-row" style="margin-bottom:6px"><input class="memi" value="${esc(name||'')}"><button class="btn btn-danger" onclick="this.parentElement.remove()">×</button></div>`;
+}
+function addMemberRow(){ document.getElementById('mem-box').insertAdjacentHTML('beforeend',memberRow('')); }
+function openMembers(){
+  const t=trip(); const mem=t.members||[];
+  modal(`<h3>旅行成員</h3>
+   <p class="help">分帳會用到。這趟預設三人，可改名。</p>
+   <div class="f" id="mem-box">${mem.map(m=>memberRow(m)).join('')}</div>
+   <button class="btn btn-sm" onclick="addMemberRow()">＋ 加一位</button>
+   <div class="btn-row" style="margin-top:12px"><button class="btn btn-brand btn-block" onclick="saveMembers()">儲存</button><button class="btn btn-block" onclick="closeModal()">取消</button></div>`);
+}
+function saveMembers(){
+  const t=trip();
+  t.members=[...document.querySelectorAll('.memi')].map(x=>x.value.trim()).filter(Boolean);
+  if(!t.members.length) t.members=['我'];
+  save(); closeModal(); renderMoney();
+}
+function openTripMenu(){
+  const t=trip();
+  modal(`<h3>行程設定</h3>
+   ${t?`<div class="f"><label>旅程名稱</label><input id="tm-name" value="${esc(t.name)}"></div>
+   <div class="f-row"><div class="f"><label>開始</label><input id="tm-s" type="date" value="${esc(t.startDate||'')}"></div>
+   <div class="f"><label>結束</label><input id="tm-e" type="date" value="${esc(t.endDate||'')}"></div></div>
+   <div class="f"><label>目的地</label><input id="tm-dest" value="${esc(t.destination||'')}"></div>
+   <div class="btn-row"><button class="btn btn-brand btn-block" onclick="saveTripMeta()">儲存並補齊日期</button></div>
+   <hr style="margin:14px 0;border:none;border-top:1px solid var(--line)">`:''}
+   <div class="btn-row">
+     <button class="btn btn-block" onclick="newTrip()">✨ 開新旅程</button>
+     <button class="btn btn-block" onclick="loadSeed()">📥 帶入 2026 名古屋大阪範本</button>
+   </div>
+   <div class="btn-row" style="margin-top:8px"><button class="btn btn-block" onclick="closeModal()">關閉</button></div>`);
+}
+function saveTripMeta(){
+  const t=trip();
+  t.name=val('tm-name')||t.name; t.startDate=val('tm-s'); t.endDate=val('tm-e'); t.destination=val('tm-dest');
+  if(t.startDate&&t.endDate){
+    let d=new Date(t.startDate),e=new Date(t.endDate);
+    while(d<=e){ const ds=d.toISOString().slice(0,10); if(!t.days.some(x=>x.date===ds)) t.days.push({id:uid(),date:ds,spots:[]}); d.setDate(d.getDate()+1); }
+    t.days.sort((a,b)=>a.date.localeCompare(b.date));
+  }
+  save(); closeModal(); renderAll();
+}
+function openShare(){
+  const t=trip(); if(!t) return;
+  if(!fbReady()){
+    modal(`<h3>好友共享</h3><p class="help">要先設定 Firebase 才能即時同步。請 Jennifer 依部署說明把新專案的設定貼進 <code>FIREBASE_CONFIG</code>。設定好後，這裡就能產生共享房號，把連結給朋友即可三人即時同步。</p>
+    <div class="btn-row"><button class="btn btn-block" onclick="closeModal()">知道了</button></div>`); return;
+  }
+  if(!t.room) t.room=uid()+uid();
+  const url=location.origin+location.pathname+'?join='+t.room;
+  save(); syncRoom();
+  modal(`<h3>好友共享</h3>
+   <p class="help">把下面連結傳給同行的人，他們打開就會自動加入這趟，之後行程/待買/分帳都即時同步。</p>
+   <div class="f"><textarea readonly style="min-height:70px" onclick="this.select()">${url}</textarea></div>
+   <div class="btn-row">
+     <button class="btn btn-brand btn-block" onclick="navigator.clipboard.writeText('${url}').then(()=>toast('已複製連結'))">複製連結</button>
+     <button class="btn btn-block" onclick="closeModal()">關閉</button>
+   </div>`);
+}
+
+/* ---------- TRIP CRUD ---------- */
+function blankTrip(name){
+  return {id:uid(),name:name||'新旅程',destination:'',startDate:'',endDate:'',
+    members:['Jennifer','同伴A','同伴B'],
+    days:[],shopping:[],expenses:[],paidOff:[],coupons:[],docs:[],packing:[],guides:[],areaAlerts:[],
+    room:null,fxLocked:null};
+}
+function newTrip(){
+  const n=prompt('旅程名稱？','新旅程'); if(n===null) return;
+  const t=blankTrip(n.trim()||'新旅程'); S.trips.unshift(t); S.currentId=t.id; _day=null;
+  save(); closeModal(); renderAll(); nav('trip');
+  openTripMenu();
+}
+function deleteTrip(){
+  if(S.trips.length<=1){ toast('至少要留一個旅程','#dc2626'); return; }
+  if(!confirm('確定刪除「'+trip().name+'」？此裝置資料會移除。')) return;
+  S.trips=S.trips.filter(t=>t.id!==S.currentId); S.currentId=S.trips[0].id; _day=null;
+  save(); renderAll();
+}
+function exportJSON(){
+  const blob=new Blob([JSON.stringify(trip(),null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=(trip().name||'trip')+'.json'; a.click();
+}
+function importJSON(){
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='.json,application/json';
+  inp.onchange=()=>{ const f=inp.files[0]; if(!f)return; const r=new FileReader();
+    r.onload=()=>{ try{ const o=JSON.parse(r.result); o.id=o.id||uid(); const i=S.trips.findIndex(t=>t.id===o.id);
+      if(i>=0)S.trips[i]=o; else S.trips.unshift(o); S.currentId=o.id; save(); renderAll(); toast('已匯入'); }
+      catch(e){ toast('檔案格式錯誤','#dc2626'); } };
+    r.readAsText(f); };
+  inp.click();
+}
+
+/* ---------- SEED：2026 名古屋・奈良・大阪 跨年 ---------- */
+function loadSeed(){
+  if(!confirm('帶入範本？會新增一個「2026 名古屋大阪跨年」旅程。')) return;
+  const t=blankTrip('2026 名古屋大阪跨年');
+  t.destination='名古屋・奈良・大阪'; t.startDate='2026-12-25'; t.endDate='2027-01-02';
+  t.fxLocked={JPY:0.21};
+  t.areaAlerts=[
+    {id:uid(),area:'奈良公園',text:'不要摸母鹿與小鹿。鹿會搶食，紙袋、地圖、票券收好。餵完鹿仙貝馬上攤手表示沒有了。'},
+    {id:uid(),area:'黑門市場',text:'嚴禁邊走邊吃，要在攤位前或店家內用區吃完。多為現金、觀光客多顧好隨身包。'},
+    {id:uid(),area:'環球影城',text:'20000mAh 以上行動電源安檢會被要求寄存(¥1200)。任天堂/哈利波特區飲水點少、無販賣機，自備水。禁忌之旅等要投幣寄物櫃，備 ¥100 硬幣數枚。'},
+    {id:uid(),area:'道頓堀',text:'跨年前後人潮爆量，扒手多。近鐵日本橋末班/加班車時間先查好。'},
+    {id:uid(),area:'吉卜力',text:'記名制，入場核對護照本人。大倉庫需依票面指定時段進場、逾時視同放棄。'},
+  ];
+  t.docs=[
+    {id:uid(),title:'去程 CI0154',type:'班機',text:'中華航空 CI 0154　2026/12/25\n07:35 桃園 T2 → 11:05 名古屋中部 T1\n報到建議 05:30 前到'},
+    {id:uid(),title:'回程 CI0173',type:'班機',text:'中華航空 CI 0173　2027/01/02\n19:00 關西 T1 → 21:05 桃園 T2\n退稅+安檢抓早，暫定 16:00 到機場'},
+    {id:uid(),title:'名古屋飯店',type:'訂房',text:'Sotetsu Fresa Inn Nagoya-Shinkansenguchi\n名古屋市 中村区 椿町 19-16\n12/25 in – 12/29 out　Check-in 15:00–24:00\n雙人房×1＋單人房×1　禁菸不含早　¥92,984（尚未分帳）'},
+    {id:uid(),title:'大阪飯店',type:'訂房',text:'Nihonbashi House nb-1（シャンクレール日本橋）\n大阪市 中央区 日本橋一丁目 10-12\n12/29 in – 2027/1/2 out　Check-in 16:00 後\n密碼鎖免鑰匙　5人公寓房　房費已刷卡付清均分'},
+    {id:uid(),title:'旅遊保險（東京海上日動）',type:'保險',text:'入境後於 Visit Japan Web 頁面投保，7天版約 ¥2,960/人\n生效：投保次日凌晨。各自投保。'},
+  ];
+  t.packing=DEFAULT_PACK.map(x=>({id:uid(),text:x,done:false}));
+  t.guides=[
+    {id:uid(),title:'ひつまぶし花岡 排隊法',text:'不接受一般線上預約（三個月內已滿）。做法：當天到店門口填「預約簿」。預約簿前一晚 21:00 開放填。網友經驗：11:30 去畫記，約 14:30 才輪到。認現金。'},
+    {id:uid(),title:'USJ 跨年退稅',text:'滿 ¥5,500 可退。退稅點在出園左邊 studio gifts / TAX FREE REFUND。當天買當天退，離園前辦完。約 14:00 開到閉園，18–19 點後大排隊。食物、爆米花桶、抽獎券不能退；商品別拆標籤。跨年夜 19:00–23:59 買的不能退稅。'},
+    {id:uid(),title:'名古屋 週末地鐵一日券',text:'ドニチエコきっぷ ¥620，僅六日/假日。12/26(六) 適用。多個景點出示可打折（名古屋城、水族館等）。'},
+  ];
+  const D=(date,spots)=>({id:uid(),date,spots:spots.map(s=>Object.assign({id:uid(),cat:'景點',done:false,alerts:[],buy:[]},s))});
+  t.days=[
+    D('2026-12-25',[
+      {time:'05:00',name:'桃園機場 T2 集合',cat:'交通',note:'CI0154 07:35 起飛，提早 2 小時到'},
+      {time:'11:05',name:'名古屋中部國際機場 抵達',cat:'交通',note:'T1 入境。出關＋領行李抓 2 小時'},
+      {time:'14:40',name:'名鐵→名古屋車站（太閣通口）',cat:'交通',note:'機場→名古屋約 30–50 分\n① 名鐵特急 ¥980 / 40分\n② ミュースカイ ¥980+指定席¥450 / 30分'},
+      {time:'15:00',name:'Sotetsu Fresa Inn 放行李',cat:'住宿',openHours:'Check-in 15:00–24:00',note:'椿町 19-16'},
+      {time:'16:10',name:'榮站周邊散策',note:'3COINS＋plus 榮店 10:00–20:00 / Uniqlo 榮店 / Loft'},
+      {time:'17:30',name:'晚餐 ひつまぶし花岡',cat:'餐食',price:'¥4,000–6,000',openHours:'11:00–15:00 / 18:00–21:00',alerts:['只收現金。線上預約已滿，要當天到店填預約簿（前晚 21:00 開放）。詳見攻略。']},
+      {time:'20:00',name:'Harbs 榮本店',cat:'餐食',openHours:'11:00–21:00',alerts:['20:00 前要進去！'],note:'名古屋發源，水果千層必吃'},
+      {time:'20:30',name:'綠洲21 / 橡子共和國 栄公園店',note:'龍貓扭蛋 ¥500，在綠洲21最下層廣場旁',buy:['龍貓扭蛋']},
+      {time:'22:00',name:'回飯店（超商補水）',cat:'住宿'},
+    ]),
+    D('2026-12-26',[
+      {time:'08:00',name:'名古屋車站出發（買 ドニチエコきっぷ ¥620）',cat:'交通',note:'東山線→榮，走到榮町站轉名鐵瀨戶線→尾張瀨戶 ¥510 / 37分'},
+      {time:'09:10',name:'中外陶園 藥師窯',openHours:'10:00–17:00 週二休',alerts:['出發前務必確認「年始年末」休息日。','2027 生肖（未/羊）部分商品 9 月後可線上先訂，能訂就先訂，現場真的休息可談寄飯店。'],buy:['2027 生肖置物']},
+      {time:'09:40',name:'巨大招財貓 & 招財貓大道',note:'常滑站東口'},
+      {time:'10:00',name:'招財貓博物館',price:'¥300',openHours:'10:00–17:00 週二休'},
+      {time:'11:00',name:'吾妻軒本店 和菓子',cat:'餐食',openHours:'09:00–19:30 週二休'},
+      {time:'12:00',name:'午餐（尾張瀨戶 or 名古屋城周邊）',cat:'餐食'},
+      {time:'13:00',name:'名古屋城',price:'¥500（出示地鐵券打折）',openHours:'09:00–16:30（最後入場16:00）',alerts:['休園：12/29–31、1/1。今天(12/26)有開。']},
+      {time:'14:30',name:'二之丸庭園 / 二之丸茶亭',openHours:'茶亭 09:00–16:30'},
+      {time:'18:00',name:'晚餐 矢場丼 名古屋站名鐵店',cat:'餐食'},
+      {time:'20:30',name:'Sky Promenade 空中長廊',price:'假日 ¥1,200',openHours:'11:00–22:00',note:'雨天可略'},
+      {time:'22:00',name:'回飯店',cat:'住宿'},
+    ]),
+    D('2026-12-27',[
+      {time:'07:30',name:'名古屋車站出發往吉卜力',cat:'交通',alerts:['入場嚴格照預約時段，務必提早出門。'],note:'東山線→藤が丘，轉リニモ→愛・地球博記念公園'},
+      {time:'08:50',name:'吉卜力公園 Ghibli Park',price:'大散步券Premium 假日 ¥7,800 +系統費¥110',openHours:'09:00–17:00',alerts:['票 10/10 台灣時間 13:00 開賣（賣兩個月後入場分），Boo-Woo 會員先註冊。','記名制，帶護照。大倉庫要選 9/10/11/12/13/14 時段，指定時刻起 1 小時內進場。','購票後不能改期、不能退。'],note:'動線：魔女之谷→大倉庫→どんどこ森→貓公車→もののけの里→青春之丘\n貓公車券當日現場售票機買（8:30–17:30）¥1,000'},
+      {time:'12:00',name:'午餐 園內餐廳',cat:'餐食',note:'大倉庫「大陸橫斷飛行咖啡廳」：飛行披薩、味噌豬排三明治\n魔女之谷「飛天烤爐」：牧羊人派、神秘咖哩\n青春之丘「琪琪的麵包店」：中午前常售罄'},
+      {time:'17:20',name:'離場，往長島',cat:'交通',note:'リニモ→藤が丘→地鐵→名鐵；近鐵名古屋→近鐵長島 急行約17分/準急約25分，轉公車 ¥250 / 10分到名花之里'},
+      {time:'18:50',name:'名花之里（なばなの里）冬季燈海',price:'約 ¥3,000（含 ¥1,000 抵用券）',alerts:['先在 FamilyMart / 7-11 買好票再去，現場窗口要排 30 分以上。','12/27 為正常營業（12/23–25 才是特別營業）。'],note:'日本最大冬季燈海'},
+    ]),
+    D('2026-12-28',[
+      {time:'08:40',name:'熱田神宮',openHours:'全天開放；寶物館 09:00–16:30',price:'寶物館 ¥500（可略）',note:'三大神宮之一，晨參較清幽'},
+      {time:'11:30',name:'午餐 Maruya 本店 名駅3丁目店 或 大須商店街',cat:'餐食',price:'¥4,000–5,000',alerts:['Maruya 開放前一個月訂位（約 11/28 起），用 tabelog 或 Google 訂。訂不到就改大須商店街。']},
+      {time:'12:30',name:'大須商店街',note:'名古屋最大商店街，電器、古著、美食'},
+      {time:'13:00',name:'龜嶽林萬松寺',openHours:'10:00–18:00'},
+      {time:'13:30',name:'大須外郎糕 / 鯛福茶庵 八代目澤屋 / ROCKIN\'ROBIN',cat:'餐食',note:'邊逛邊吃小點'},
+      {time:'16:30',name:'名古屋港水族館',price:'¥2,030',openHours:'09:30–17:30（最後入館 16:30）',note:'虎鯨、海豚秀，留 2 小時；9 月查表演時間'},
+      {time:'18:30',name:'萬代扭蛋博物館',price:'免費',openHours:'11:00–19:00 週一休',note:'JETTY 購物中心 2F',buy:['扭蛋']},
+      {time:'19:15',name:'LaLaport 名古屋港 AQULS',openHours:'10:00–20:00',alerts:['服務台出示護照＋優惠券，換「休足時間」1 片＋外國人優惠券。']},
+      {time:'20:00',name:'晚餐 LaLaport 內 / 世界の山ちゃん 雞翅',cat:'餐食'},
+      {time:'22:00',name:'回飯店',cat:'住宿'},
+    ]),
+    D('2026-12-29',[
+      {time:'08:00',name:'Sotetsu Fresa Inn 退房',cat:'住宿',openHours:'Check-out 11:00'},
+      {time:'08:30',name:'名古屋→奈良（近鐵特急）',cat:'交通',note:'近鐵特急往大和八木轉車，約 2 小時，需加購特急券'},
+      {time:'10:45',name:'近鐵奈良站 寄行李',cat:'交通',price:'置物櫃 ¥600–1,000',note:'檢票口內 1 處、外 2 處。備 ¥100 硬幣（無兌幣機）。備案：711 ecbo cloak'},
+      {time:'11:00',name:'東向商店街 / 奈良伴手禮百貨',cat:'購物'},
+      {time:'13:00',name:'春日大社',price:'一般參拜免費',alerts:['本殿「特別參拜」12/21–1/5 停辦，這天沒有 ¥700 的深入本殿看國寶釣燈籠，只能一般參拜。'],note:'世界文化遺產'},
+      {time:'13:30',name:'奈良公園 餵鹿',price:'鹿仙貝 ¥200',alerts:['不要摸母鹿與小鹿。票券、地圖、紙袋收好。']},
+      {time:'14:30',name:'大佛布丁本舖 東大寺門前店',cat:'餐食',openHours:'10:00–19:00',buy:['大佛布丁']},
+      {time:'15:30',name:'東大寺 大佛殿',price:'¥800',openHours:'大佛殿 08:00–17:00',note:'大佛柱洞可鑽求好運。依水園週二休（今天二，沒開）'},
+      {time:'18:30',name:'近鐵日本橋站（大阪）',cat:'交通',note:'近鐵奈良線 約 40 分。飯店最近 7 號出入口'},
+      {time:'19:00',name:'Nihonbashi House 入住',cat:'住宿',openHours:'Check-in 16:00 後',note:'密碼鎖免鑰匙'},
+      {time:'20:00',name:'黑門市場 Os drug 藥妝 / 難波心齋橋散策',cat:'購物',openHours:'Os drug 09:00–18:50',alerts:['Os drug 只收現金、無免稅。'],buy:['藥妝補貨']},
+    ]),
+    D('2026-12-30',[
+      {time:'08:00',name:'早餐 黑門市場',cat:'餐食',openHours:'約 08:00–16:00 現金',alerts:['嚴禁邊走邊吃，攤位前或內用區吃完。'],note:'高橋食品豆漿、石橋關東煮'},
+      {time:'09:30',name:'大阪城公園（天守閣外拍照）',alerts:['天守閣 12/28–1/1 休館，只能在周邊公園拍。']},
+      {time:'12:00',name:'今宮戎神社 / 玉出超市 惠美須店',note:'今宮戎求生意興隆；玉出 24 小時、便宜'},
+      {time:'13:30',name:'午餐 道頓堀（一蘭 / 藏壽司 / 大阪燒千房）',cat:'餐食'},
+      {time:'15:00',name:'道頓堀・心齋橋・難波掃貨',cat:'購物',note:'固力果看板、唐吉訶德、藥妝、3COINS、Seria、PARCO、大丸\n迪士尼商店心齋橋店已歇業'},
+      {time:'17:00',name:'夫婦善哉 紅豆湯',cat:'餐食',openHours:'10:00–22:00',note:'低消一人一份'},
+      {time:'19:00',name:'晚餐 燒肉（力丸吃到飽 / 和牛苑 / 一牛）',cat:'餐食',alerts:['力丸南海難波店：跨年期間僅 12/31、1/1 休。Google 頁面可訂位。']},
+    ]),
+    D('2026-12-31',[
+      {time:'10:30',name:'早餐 Dekasan 三明治店',cat:'餐食',openHours:'11:00–18:00',note:'建議 10:30 到排隊'},
+      {time:'12:00',name:'天保山購物中心 午餐',cat:'餐食',openHours:'10:30–21:00',note:'出示海遊館票在天保山market place有折扣'},
+      {time:'13:00',name:'海遊館',price:'¥2,700',alerts:['要先網路買「日時指定」eチッケト選時段（利用日 30 天前開賣），現場窗口跨年前會排很久。抓 15:00 場次。'],note:'留 2.5–3 小時'},
+      {time:'17:00',name:'搭 Captain Line 船 → 環球影城',cat:'交通',price:'單程 ¥1,100',alerts:['12/1 起上官網查跨年當天船班開到幾點、末班時間。常態最晚約 17–18 點。','海遊館也可買「海遊館＋船票」套票 ¥3,600–4,600。'],note:'約 10–20 分到 USJ 碼頭'},
+      {time:'19:00',name:'環球影城 跨年 NO LIMIT! Countdown',cat:'景點',price:'派對票約 ¥16,900起；+快速通關約 ¥24,000–25,000',alerts:['官方抽籤：一次抽 10 月中旬申請、10 月下旬公布、隔幾天內付款；二次抽再晚一輪。Klook 約 11/1、KKday 約 11/14 開賣（會秒殺）。9 月下旬官網公布正式時程，要盯。','大晦日 17:00–19:00 清園，19:00 起憑派對票入場，玩到隔天 2:00。','小學生也是全票、無兒童價。'],note:'詳見「環球影城攻略」筆記'},
+      {time:'00:00',name:'🎆 Happy New Year 2027',cat:'景點'},
+      {time:'01:30',name:'櫻島站 → 近鐵日本橋',cat:'交通',alerts:['近鐵日本橋只營業到約 03:00。電車 3:00–5:00 停駛，抓好時間。']},
+    ]),
+    D('2027-01-01',[
+      {time:'09:30',name:'環球影城 第二天',cat:'景點',price:'1日券（指定日，需先買，元旦超貴超多人）',alerts:['元旦人潮爆量。開園前到、先抽任天堂區整理券、下載 USJ App 看等候時間。'],note:'7:30 開園 / 8:00 安檢入場（依官方公告）'},
+      {time:'13:00',name:'午餐 園內（錯峰或小餐車）',cat:'餐食'},
+      {time:'17:00',name:'離場 / City Walk 晚餐',cat:'餐食',note:'牛かつ勝牛、阿甘蝦、551 蓬萊'},
+      {time:'19:00',name:'櫻島 → 近鐵日本橋',cat:'交通'},
+    ]),
+    D('2027-01-02',[
+      {time:'09:00',name:'Nihonbashi House 退房',cat:'住宿',openHours:'Check-out 10:00'},
+      {time:'09:45',name:'住吉大社 新年參拜',price:'免費',openHours:'約 06:00–16:00',alerts:['初詣人潮多，行李看好；太鼓橋（反弓橋）陡，小心走。'],note:'鳥居→太鼓橋→本殿→五所御前找五大力石→楠珺社招福貓→御守御朱印',buy:['招福貓']},
+      {time:'11:30',name:'凹累（りんくう，機場前一站）AEON 最後補貨',cat:'購物',note:'看有無特定品牌福袋'},
+      {time:'16:00',name:'關西國際機場',cat:'交通',alerts:['CI0173 19:00 起飛。退稅＋安檢抓早，視退稅排隊狀況可再提前。']},
+      {time:'21:05',name:'桃園機場 抵達',cat:'交通',note:'平安到家'},
+    ]),
+  ];
+  t.guides.push({id:uid(),title:'環球影城攻略（跨年 Day1 + 元旦 Day2）',text:
+'【前置】\n- 門票：跨年派對票＋快速通關（抽籤/Klook/KKday）\n- 下載 USJ 官方 App 看即時等候與整理券\n- 備 ¥100 硬幣數枚（禁忌之旅、太空幻想列車、鬼滅之刃 要投幣寄物）\n- 帶輕便雨衣（侏羅紀乘船、大白鯊左排、水世界前排會濕）\n- 行動電源 >20000mAh 會被要求寄存 ¥1,200\n\n【跨年夜 Day1 動線範例】17:00 搭船到 → 18:00 排隊 → 19:00 入場 → 好萊塢美夢/太空幻想 → 21:00 柯南4D 或 小小兵 → 22:00 小小兵晚餐 Happiness Café → 23:00 侏羅紀飛天翼龍 → 00:00 跨年煙火 → 01:00 大白鯊/補設施 → 02:00 回飯店（不購物免退稅）\n\n【元旦 Day2】7:30 開園前到 → 8:00 入場 → 9:00 抽任天堂整理券 → 10:00 奇諾比奧咖啡早午餐 → 11:00 瑪利歐賽車 → 12:00 咚奇剛礦車 → 13:00 水世界（免預約）→ 14:00 派對遊行 40 分 → 16:00 柯南4D/環球奇境 → 17:00 哈利波特拍照購物 → 18:00 禁忌之旅/鷹馬 → 19:00 三根掃帚晚餐 → 21:00 退稅、關園\n\n【退稅】滿 ¥5,500 退。出園左邊 studio gifts / TAX FREE REFUND。當天買當天退、離園前辦完。約 14:00 開到閉園。食物、爆米花桶、抽獎券不退；別拆標籤。跨年夜 19:00–23:59 買的不退。'});
+  S.trips.unshift(t); S.currentId=t.id; _day='2026-12-25';
+  save(); closeModal(); renderAll(); nav('trip');
+  toast('已帶入名古屋大阪範本');
+}
+
+/* ---------- INIT ---------- */
+function init(){
+  load();
+  initFB();
+  const p=new URLSearchParams(location.search);
+  const joining=p.get('join')&&fbReady();
+  if(joining){
+    joinRoom(p.get('join'));
+    history.replaceState(null,'',location.pathname);
+  }
+  if(!S.trips.length&&!joining){
+    // 第一次開、且不是透過共享連結進來：直接帶入這趟範本
+    loadSeedSilently();
+  }
+  if(!S.currentId&&S.trips.length) S.currentId=S.trips[0].id;
+  renderAll();
+  syncRoom();
+  fetchFX();
+}
+function loadSeedSilently(){
+  // 與 loadSeed 相同但不 confirm / 不 toast（首次啟動用）
+  const _c=window.confirm; window.confirm=()=>true;
+  const _t=window.toast; window.toast=()=>{};
+  try{ loadSeed(); }catch(e){ console.warn(e); S.trips.push(blankTrip('我的旅程')); }
+  window.confirm=_c; window.toast=_t;
+  closeModal();
+}
+window.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>
