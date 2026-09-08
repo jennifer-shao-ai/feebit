@@ -80,6 +80,13 @@
         <button onclick="cloudSave()">☁ 儲存到雲端</button>
       </div>
       <p class="sub" style="margin:8px 0 0;font-size:12px">這台電腦的暫存只是草稿；按「儲存到雲端」才會讓大家看到、並存進版本歷史（留最近 10 版）。</p>
+      <div style="margin-top:12px;padding:10px 12px;background:#f3ebe4;border-radius:8px">
+        <div style="font-size:12.5px;color:#6b5a52;margin-bottom:5px">外包免登入分享網址（會自動載入你儲存的雲端最新版）：</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <code id="shareUrl" style="user-select:all;font-size:12px;background:#fff;border:1px solid #d9c6ba;border-radius:6px;padding:5px 8px;flex:1;min-width:200px;word-break:break-all">—</code>
+          <button class="ghost" style="padding:5px 12px;font-size:12px" onclick="copyShareUrl()">複製</button>
+        </div>
+      </div>
     </div>
     <div id="cloudRO" class="sub" style="display:none;margin-top:8px">你是唯讀身份：可以看最新版、產生 HTML，但不能儲存。要改設定請找管理員。</div>
     <details style="margin-top:12px"><summary>版本歷史（最近 5 版）</summary>
@@ -523,6 +530,14 @@ function loadSupaSDK(){
     document.head.appendChild(s);
   });
 }
+function shareLink(){ return location.origin + location.pathname + '?share'; }
+function copyShareUrl(){
+  const u=shareLink();
+  (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject())
+    .then(()=>cloudMsg('外包網址已複製：'+u,'ok'))
+    .catch(()=>{ const t=document.createElement('textarea'); t.value=u; document.body.appendChild(t); t.select();
+      try{document.execCommand('copy');}catch(e){} t.remove(); cloudMsg('外包網址已複製：'+u,'ok'); });
+}
 function waitAuthClient(){
   return new Promise((ok,fail)=>{
     let n=0; const t=setInterval(()=>{
@@ -626,6 +641,7 @@ async function boot(){
       canEdit = (email===ADMIN_EMAIL);
     }
     const ce=document.getElementById('cloudEdit'), cr=document.getElementById('cloudRO');
+    const su=document.getElementById('shareUrl'); if(su) su.textContent=shareLink();
     if(ce) ce.style.display = canEdit?'':'none';
     if(cr){ cr.style.display = canEdit?'none':'';
             if(SHARE_MODE) cr.textContent='分享模式（免登入）：看到的是雲端最新版，可以產生 HTML，但不能存回雲端。'; }
