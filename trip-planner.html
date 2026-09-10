@@ -192,6 +192,21 @@ h1,h2,h3,h4{margin:0}
 .barcode-big{font-family:"Libre Barcode 39",monospace;letter-spacing:2px}
 .help{font-size:12px;color:var(--ink3);line-height:1.6}
 .help code{background:#f1f5f9;padding:1px 5px;border-radius:4px;font-size:11px}
+
+/* ---------- images ---------- */
+.imgs{display:flex;flex-wrap:wrap;gap:7px;margin-top:7px}
+.imgs .thumb{position:relative;width:66px;height:66px;flex-shrink:0}
+.imgs .thumb img{width:100%;height:100%;object-fit:cover;border-radius:9px;border:1px solid var(--line)}
+.imgs .thumb .x{position:absolute;top:-6px;right:-6px;width:19px;height:19px;border-radius:50%;background:var(--danger);color:#fff;font-size:12px;line-height:19px;text-align:center;font-weight:800}
+.spot-photos{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+.spot-photos img{width:86px;height:86px;object-fit:cover;border-radius:9px;border:1px solid var(--line)}
+.li-photos{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.li-photos img{width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.filebtn{display:inline-flex;align-items:center;gap:6px;border:1px dashed #cbd5e1;border-radius:9px;padding:9px 13px;font-size:13px;font-weight:700;color:var(--ink2);background:#fafafa}
+.filebtn input{display:none}
+.img-view{position:fixed;inset:0;z-index:95;background:rgba(0,0,0,.93);display:flex;align-items:center;justify-content:center;padding:14px;flex-direction:column;gap:12px}
+.img-view img{max-width:100%;max-height:82vh;border-radius:8px}
+.img-view button{background:#fff;border:none;border-radius:9px;padding:9px 18px;font-weight:700}
 </style>
 </head>
 <body>
@@ -259,6 +274,8 @@ h1,h2,h3,h4{margin:0}
     <div class="sec-title">工具</div>
     <div class="card card-pad">
       <div class="btn-row">
+        <button class="btn btn-sm" onclick="openSyncCode()">☁️ 我的雲端同步</button>
+        <button class="btn btn-sm" onclick="openShare()">👥 好友共享</button>
         <button class="btn btn-sm" onclick="openFxSettings()">💱 匯率設定</button>
         <button class="btn btn-sm" onclick="openMembers()">🧑‍🤝‍🧑 成員</button>
         <button class="btn btn-sm" onclick="exportJSON()">⬇️ 匯出備份</button>
@@ -266,7 +283,7 @@ h1,h2,h3,h4{margin:0}
         <button class="btn btn-sm" onclick="newTrip()">✨ 新旅程</button>
         <button class="btn btn-sm btn-danger" onclick="deleteTrip()">🗑 刪除此旅程</button>
       </div>
-      <p class="help" style="margin-top:10px">加到手機主畫面：iPhone 用 Safari 分享鍵→「加入主畫面」；Android Chrome 選單→「安裝應用程式」。開起來就像 App。</p>
+      <p class="help" style="margin-top:10px">換手機/瀏覽器看不到資料？用「☁️ 我的雲端同步」設一組代碼，每台裝置輸入同一組即可互通。<br>加到主畫面：iPhone Safari 分享鍵→「加入主畫面」；Android Chrome 選單→「安裝應用程式」。</p>
     </div>
   </section>
 </div>
@@ -277,7 +294,7 @@ h1,h2,h3,h4{margin:0}
   <button data-pg="trip" class="on" onclick="nav('trip')"><span class="ic">🗺</span>行程</button>
   <button data-pg="shop" onclick="nav('shop')"><span class="ic">🛍</span>待買</button>
   <button data-pg="money" onclick="nav('money')"><span class="ic">💴</span>分帳</button>
-  <button data-pg="coupon" onclick="nav('coupon')"><span class="ic">🎟</span>優惠券</button>
+  <button data-pg="coupon" onclick="nav('coupon')"><span class="ic">🎟</span>票券</button>
   <button data-pg="more" onclick="nav('more')"><span class="ic">☰</span>更多</button>
 </nav>
 
@@ -285,10 +302,14 @@ h1,h2,h3,h4{margin:0}
 
 <script>
 /* ============================================================
-   旅程手冊 · trip-planner.html  v1.0
-   單檔 PWA。資料存 localStorage，好友共享走 Firebase Realtime DB。
+   旅程手冊 · trip-planner.html  v1.1
+   單檔 PWA。資料存 localStorage；每個旅程一律有 room，開 App 即
+   自動雲端同步（Firebase Realtime DB）。跨裝置用「雲端同步碼」。
    與舊版 travel-planner.html 完全獨立（不同檔案、不同 storage key、
-   建議接不同 Firebase 專案）。
+   不同 Firebase 專案）。
+   v1.1：分帳改以外幣為主+每人先付/該分攤明細、今日路線修正、
+        票券/優惠券可多圖、行程點/證件/攻略/區域提醒可放圖、
+        自動雲端同步+同步碼、範本補上各段交通站點。
    ============================================================ */
 
 /* ---------- FIREBASE（換成你新開的專案）---------- */
@@ -335,6 +356,11 @@ function pushRemote(){
       .catch(e=>{ setDot('off'); toast('雲端同步失敗：'+(e.message||'檢查網路或 Firebase 規則'),'#dc2626'); });
   },600);
 }
+// 把「我有哪些旅程 + 各自的 room」寫到 idx/<同步碼>，讓其他裝置輸入同步碼就能整批拉回
+function pushIndex(){
+  if(!S.syncCode||!initFB()) return;
+  try{ _db.ref('idx/'+S.syncCode).set(S.trips.map(t=>({id:t.id,name:t.name||'',room:t.room||''}))); }catch(e){}
+}
 /* 合併策略：以 id 為鍵，兩邊union；時間戳較新的欄位優先 */
 function byId(a,b){ const m=new Map(); (a||[]).forEach(x=>x&&x.id&&m.set(x.id,x)); (b||[]).forEach(x=>x&&x.id&&m.set(x.id,x)); return [...m.values()]; }
 function mergeDays(sv,lo){
@@ -374,8 +400,13 @@ let _day=null;                 // 目前選的日期
 let _filter={today:false,done:false};
 
 function persist(){ try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){} }
-function save(){ persist(); pushRemote(); }
-function load(){ try{ const d=localStorage.getItem(KEY); if(d) S=JSON.parse(d); }catch(e){} if(!S.trips)S.trips=[]; if(!S.fx)S.fx={}; }
+function save(){ persist(); pushRemote(); pushIndex(); }
+function load(){
+  try{ const d=localStorage.getItem(KEY); if(d) S=JSON.parse(d); }catch(e){}
+  if(!S.trips)S.trips=[]; if(!S.fx)S.fx={}; if(S.syncCode==null)S.syncCode='';
+  // 每個旅程一律有 room（舊資料補上），開 App 就會自動雲端同步，不用先按分享
+  S.trips.forEach(t=>{ if(!t.room) t.room='r'+uid()+uid(); });
+}
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 function trip(){ return S.trips.find(t=>t.id===S.currentId)||null; }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -419,7 +450,7 @@ function nav(pg){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('pg-'+pg).classList.add('active');
   document.querySelectorAll('.bnav button').forEach(b=>b.classList.toggle('on',b.dataset.pg===pg));
-  document.getElementById('fab').style.display=(pg==='coupon'||pg==='more')?'none':'flex';
+  document.getElementById('fab').style.display=(pg==='more')?'none':'flex';
   window.scrollTo(0,0);
   if(pg==='money') renderMoney();
   if(pg==='shop') renderShop();
@@ -431,6 +462,7 @@ function fabAction(){
   if(pg==='trip') editSpot(_day,null);
   else if(pg==='shop') editShop(null);
   else if(pg==='money') editExpense(null);
+  else if(pg==='coupon') editCoupon(null);
 }
 function renderAll(){
   renderTripSel(); renderFxStrip(); renderDayChips(); renderItin();
@@ -475,18 +507,38 @@ function toggleFilter(k){
 }
 
 /* ---------- ITINERARY ---------- */
+// 去掉開頭 emoji/符號、括號說明，多地點只取第一個 → 讓 Google Maps 能定位
+function cleanPlace(name){
+  return String(name||'')
+    .replace(/^[^\p{L}\p{N}]+/u,'')
+    .replace(/[（(][^)）]*[)）]/g,'')
+    .split(/[\/、,，]|　|\s+(?:or|OR|→|>)\s+/)[0]
+    .trim();
+}
+// 早餐/回飯店/散策… 這類無法定位的字眼，畫路線時略過
+const VAGUE_RE=/(早餐|午餐|晚餐|下午茶|點心|宵夜|自理|機上|集合|出發|抵達|返家|回飯店|check[\s-]?in|check[\s-]?out|退房|入住|散策|逛逛|逛街|掃貨|補貨|周邊|附近|待|看有|備案|之一|如有時間)/i;
 function mapSearchUrl(s){
   if(s.mapUrl) return s.mapUrl;
-  return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(s.name||'');
+  return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(cleanPlace(s.name)||s.name||'');
 }
 function dirUrl(from,to){
-  return 'https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(from)+
-    '&destination='+encodeURIComponent(to)+'&travelmode=transit';
+  return 'https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(cleanPlace(from))+
+    '&destination='+encodeURIComponent(cleanPlace(to))+'&travelmode=transit';
 }
 function dayRouteUrl(day){
-  const pts=(day.spots||[]).map(s=>s.name).filter(Boolean).map(encodeURIComponent);
-  if(pts.length<2) return null;
-  return 'https://www.google.com/maps/dir/'+pts.join('/');
+  let names=(day.spots||[])
+    .filter(s=>s.name && !VAGUE_RE.test(s.name))
+    .map(s=>cleanPlace(s.name))
+    .filter(n=>n.length>=2);
+  names=names.filter((n,i)=>n!==names[i-1]);          // 去相鄰重複
+  if(names.length<2) return null;
+  if(names.length>10) names=names.slice(0,10);         // Google Maps 免費上限
+  const enc=names.map(encodeURIComponent);
+  let u='https://www.google.com/maps/dir/?api=1&travelmode=transit'
+       +'&origin='+enc[0]+'&destination='+enc[enc.length-1];
+  const way=enc.slice(1,-1).join('%7C');
+  if(way) u+='&waypoints='+way;
+  return u;
 }
 function matchedAreaAlerts(name){
   const t=trip(); if(!t||!t.areaAlerts) return [];
@@ -540,6 +592,7 @@ function renderSpot(s,date){
         ${s.note?`<div class="spot-note">${esc(s.note)}</div>`:''}
         ${alerts.map(a=>`<div class="spot-alert"><b>⚠️ 注意</b>${esc(a)}</div>`).join('')}
         ${(s.buy&&s.buy.length)?`<div class="spot-tags">${s.buy.map(b=>`<span class="spot-tag">🛍 ${esc(b)}</span>`).join('')}</div>`:''}
+        ${(()=>{const ph=s.photos||(s.photo?[s.photo]:[]);return ph.length?`<div class="spot-photos">${ph.map(d=>`<img src="${d}" onclick="viewImg(this)">`).join('')}</div>`:'';})()}
         <div class="spot-links">${links.join('')}</div>
       </div>
       <div class="spot-check ${s.done?'on':''}" onclick="toggleDone('${date}','${s.id}')">${s.done?'✓':''}</div>
@@ -584,12 +637,69 @@ function toast(msg,color){
   document.body.appendChild(b); setTimeout(()=>b.remove(),3200);
 }
 
+/* ---------- IMAGE HELPERS ---------- */
+let _imgBuf=[];               // 編輯 modal 期間的圖片緩衝（dataURL 陣列）
+let _imgMulti=false;
+function compressImg(file){
+  return new Promise(res=>{
+    const r=new FileReader();
+    r.onload=()=>{
+      const im=new Image();
+      im.onload=()=>{
+        const w=im.width||760,h=im.height||760;
+        const sc=Math.min(1,760/Math.max(w,h));
+        const c=document.createElement('canvas');
+        c.width=Math.round(w*sc); c.height=Math.round(h*sc);
+        try{ c.getContext('2d').drawImage(im,0,0,c.width,c.height); res(c.toDataURL('image/jpeg',0.55)); }
+        catch(e){ res(r.result); }
+      };
+      im.onerror=()=>res(r.result);
+      im.src=r.result;
+    };
+    r.onerror=()=>res('');
+    r.readAsDataURL(file);
+  });
+}
+function imgPickerHTML(multi){
+  _imgMulti=!!multi;
+  return `<label class="filebtn">📷 ${multi?'加照片':'選擇照片'}
+    <input type="file" accept="image/*" ${multi?'multiple':''} onchange="onPickImg(this)"></label>
+    <div class="imgs" id="imgBufBox"></div>`;
+}
+async function onPickImg(input){
+  const files=[...input.files]; if(!files.length) return;
+  for(const f of files){
+    const d=await compressImg(f);
+    if(d){ if(_imgMulti) _imgBuf.push(d); else _imgBuf=[d]; }
+  }
+  input.value='';
+  renderImgBuf();
+  checkStorage();
+}
+function renderImgBuf(){
+  const box=document.getElementById('imgBufBox'); if(!box) return;
+  box.innerHTML=_imgBuf.map((d,i)=>`<div class="thumb"><img src="${d}" onclick="viewImg(this)"><span class="x" onclick="_imgBuf.splice(${i},1);renderImgBuf()">×</span></div>`).join('');
+}
+function viewImg(el){
+  const v=document.createElement('div'); v.className='img-view';
+  v.innerHTML=`<img src="${el.src}"><button onclick="this.parentElement.remove()">關閉</button>`;
+  v.onclick=e=>{ if(e.target===v) v.remove(); };
+  document.body.appendChild(v);
+}
+function checkStorage(){
+  try{
+    const kb=Math.round((JSON.stringify(S).length)/1024);
+    if(kb>4200) toast('提醒：本機存檔已 '+kb+'KB，接近上限，照片別放太多（之後可改用雲端相簿）','#b45309');
+  }catch(e){}
+}
+
 /* ---------- SPOT EDIT ---------- */
 function editSpot(date,id){
   const t=trip(); if(!t) return;
   if(!date) date=_day||tripDays()[0]?.date;
   const d=t.days.find(x=>x.date===date)||{spots:[]};
   const s=id?d.spots.find(x=>x.id===id):{cat:'景點',alerts:[],buy:[]};
+  _imgBuf=[...(s.photos||(s.photo?[s.photo]:[]))];
   const dayOpts=tripDays().map(x=>`<option value="${x.date}" ${x.date===date?'selected':''}>${x.date}</option>`).join('');
   modal(`<h3>${id?'編輯':'新增'}行程點</h3>
     <div class="f-row">
@@ -606,10 +716,12 @@ function editSpot(date,id){
     <div class="f"><label>備註</label><textarea id="sp-note" placeholder="交通方式、要點的餐、排隊撇步…">${esc(s.note||'')}</textarea></div>
     <div class="f"><label>注意事項（一行一則，會標紅）</label><textarea id="sp-alerts" placeholder="年末公休 12/29–1/1&#10;要提前一個月訂位">${esc((s.alerts||[]).join('\n'))}</textarea></div>
     <div class="f"><label>順便要買（逗號分隔，選填）</label><input id="sp-buy" value="${esc((s.buy||[]).join(', '))}" placeholder="龍貓扭蛋, 限定餅乾"></div>
+    <div class="f"><label>照片（店面、地圖截圖、餐點…可多張）</label>${imgPickerHTML(true)}</div>
     <div class="btn-row">
       <button class="btn btn-brand btn-block" onclick="saveSpot('${id||''}','${date}')">儲存</button>
       <button class="btn btn-block" onclick="closeModal()">取消</button>
     </div>`);
+  renderImgBuf();
 }
 function segPick(btn){ btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); }
 function segVal(id){ const on=document.querySelector('#'+id+' button.on'); return on?on.textContent:''; }
@@ -627,6 +739,7 @@ function saveSpot(id,oldDate){
     note:document.getElementById('sp-note').value.trim(),
     alerts:document.getElementById('sp-alerts').value.split('\n').map(x=>x.trim()).filter(Boolean),
     buy:document.getElementById('sp-buy').value.split(',').map(x=>x.trim()).filter(Boolean),
+    photos:[..._imgBuf],
   };
   if(!obj.name){ toast('請填名稱','#dc2626'); return; }
   // 保留原本的完成狀態與交通資訊
@@ -715,9 +828,10 @@ function editShop(id){
   const t=trip(); if(!t.shopping) t.shopping=[];
   const i=id?t.shopping.find(x=>x.id===id):{cur:'JPY',cat:'藥妝'};
   const mem=t.members||[];
+  _imgBuf=i.photo?[i.photo]:[];
   modal(`<h3>${id?'編輯':'新增'}待買</h3>
     <div class="f"><label>品名</label><input id="s-name" value="${esc(i.name||'')}"></div>
-    <div class="f"><label>照片</label><input id="s-photo" type="file" accept="image/*" onchange="pickPhoto(this,'s-photo-data')"><div id="s-photo-data" data-v="${i.photo||''}"></div></div>
+    <div class="f"><label>照片</label>${imgPickerHTML(false)}</div>
     <div class="f-row">
       <div class="f"><label>分類</label><select id="s-cat">${SHOP_CATS.map(c=>`<option ${i.cat===c?'selected':''}>${c}</option>`).join('')}</select></div>
       <div class="f" style="flex:0 0 92px"><label>幣別</label><select id="s-cur">${CURRENCIES.map(c=>`<option ${(i.cur||'JPY')===c?'selected':''}>${c}</option>`).join('')}</select></div>
@@ -730,28 +844,14 @@ function editShop(id){
       <button class="btn btn-brand btn-block" onclick="saveShop('${id||''}')">儲存</button>
       <button class="btn btn-block" onclick="closeModal()">取消</button>
     </div>`);
-}
-function pickPhoto(input,targetId){
-  const f=input.files[0]; if(!f) return;
-  const r=new FileReader();
-  r.onload=()=>{
-    const img=new Image();
-    img.onload=()=>{
-      const mx=900,sc=Math.min(1,mx/img.width);
-      const cv=document.createElement('canvas'); cv.width=img.width*sc; cv.height=img.height*sc;
-      cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
-      document.getElementById(targetId).dataset.v=cv.toDataURL('image/jpeg',0.8);
-    };
-    img.src=r.result;
-  };
-  r.readAsDataURL(f);
+  renderImgBuf();
 }
 function saveShop(id){
   const t=trip();
   const obj={
     id:id||uid(),
     name:document.getElementById('s-name').value.trim(),
-    photo:document.getElementById('s-photo-data').dataset.v||'',
+    photo:_imgBuf[0]||'',
     cat:document.getElementById('s-cat').value,
     cur:document.getElementById('s-cur').value,
     price:document.getElementById('s-price').value.trim(),
@@ -770,68 +870,90 @@ function members(){ const t=trip(); return (t&&t.members&&t.members.length)?t.me
 function renderMoney(){
   const t=trip(); if(!t) return;
   const exp=t.expenses||[]; const mem=members();
-  const totalT=exp.reduce((s,e)=>s+toTWD(e.amount,e.cur),0);
+
+  // 結算單位：全部同一種外幣 → 用該外幣直接算（不繞台幣，零換算誤差）；混幣 → 用台幣統一
+  const curSet=[...new Set(exp.map(e=>e.cur||'JPY'))];
+  const uni=curSet.length===1?curSet[0]:'TWD';
+  const inUni=(amt,cur)=> uni===cur ? Number(amt)||0 : toTWD(amt,cur);   // 混幣時才會換台幣
+  const uniSym=sym(uni);
+  const showTwd=uni!=='TWD';
+  const uniToTwd=n=> showTwd ? fmtT(n*rate(uni)) : '';
+  const fmtUni=n=>`${uniSym}${Math.round(n).toLocaleString()}`;
+
+  const total=exp.reduce((s,e)=>s+inUni(e.amount,e.cur),0);
   document.getElementById('moneyHead').innerHTML=`<div class="card card-pad">
-    <div style="display:flex;justify-content:space-between;align-items:center">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
       <div><div style="font-size:12px;color:#94a3b8;font-weight:700">團體總支出</div>
-      <div style="font-size:22px;font-weight:900">${fmtT(totalT)}</div>
-      <div style="font-size:11px;color:#94a3b8">${exp.length} 筆 · 分帳匯率 ¥1=NT$${rate('JPY').toFixed(3)}${t.fxLocked&&t.fxLocked.JPY?'（鎖定）':'（即時）'}</div></div>
+      <div style="font-size:23px;font-weight:900">${fmtUni(total)}</div>
+      ${showTwd?`<div style="font-size:12px;color:#94a3b8">≈ ${uniToTwd(total)}　（分帳匯率 ${uniSym}1=NT$${rate(uni).toFixed(3)}${t.fxLocked&&t.fxLocked[uni]?' 鎖定':' 即時'}）</div>`:''}
+      <div style="font-size:11px;color:#94a3b8">${exp.length} 筆${curSet.length>1?'　⚠️ 有多種幣別，改用台幣統一結算':''}</div></div>
       <button class="btn btn-sm" onclick="openFxSettings()">調匯率</button>
     </div></div>`;
 
-  // balances (TWD): paid - owed
-  const bal={}; mem.forEach(m=>bal[m]=0);
+  // 每人：先付 / 該分攤 / 淨額（都用結算單位）
+  const paid={},owe={};
+  mem.forEach(m=>{paid[m]=0;owe[m]=0;});
   exp.forEach(e=>{
-    const amtT=toTWD(e.amount,e.cur);
-    if(bal[e.paidBy]==null) bal[e.paidBy]=0;
-    bal[e.paidBy]+=amtT;
+    const amt=inUni(e.amount,e.cur);
+    if(paid[e.paidBy]==null){paid[e.paidBy]=0;owe[e.paidBy]=0;}
+    paid[e.paidBy]+=amt;
     const parts=(e.splitWith&&e.splitWith.length)?e.splitWith:mem;
     if(e.splitMode==='custom'&&e.customSplits){
-      Object.entries(e.customSplits).forEach(([m,v])=>{ if(bal[m]==null)bal[m]=0; bal[m]-=toTWD(v,e.cur); });
+      Object.entries(e.customSplits).forEach(([m,v])=>{ if(owe[m]==null){owe[m]=0;paid[m]=0;} owe[m]+=inUni(v,e.cur); });
     }else{
-      const each=amtT/parts.length;
-      parts.forEach(m=>{ if(bal[m]==null)bal[m]=0; bal[m]-=each; });
+      const each=amt/parts.length;
+      parts.forEach(m=>{ if(owe[m]==null){owe[m]=0;paid[m]=0;} owe[m]+=each; });
     }
   });
-  Object.keys(bal).forEach(m=>bal[m]=Math.round(bal[m]));
+  const bal={}; Object.keys(paid).forEach(m=>bal[m]=Math.round(paid[m]-owe[m]));
 
-  document.getElementById('moneyHead').innerHTML+=`<div class="card card-pad"><div class="bal-grid">
+  document.getElementById('moneyHead').innerHTML+=`<div class="card card-pad">
+    <div style="font-size:12px;color:#94a3b8;font-weight:700;margin-bottom:8px">每人結算（${uniSym}）</div>
     ${Object.keys(bal).map(m=>{
       const b=bal[m]; const cls=b>0?'pos':b<0?'neg':'';
-      return `<div class="bal"><div class="who">${esc(m)}</div>
-        <div class="amt ${cls}">${b>0?'+':''}${fmtT(Math.abs(b)*(b<0?-1:1)).replace('NT$','')}</div>
-        <div class="lbl">${b>0?'該收回':b<0?'要付出':'結清'} NT$</div></div>`;
+      const tag=b>0?'該收回':b<0?'要付出':'剛好結清';
+      return `<div style="display:flex;align-items:baseline;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line)">
+        <span style="font-weight:800;flex:0 0 68px">${esc(m)}</span>
+        <span style="font-size:12px;color:var(--ink3);flex:1">先付 ${fmtUni(paid[m]||0)} ・ 該分攤 ${fmtUni(owe[m]||0)}</span>
+        <span style="font-weight:900" class="${cls==='pos'?'':'neg'}"><span style="color:${b>0?'#16a34a':b<0?'#dc2626':'#94a3b8'}">${b>0?'+':''}${fmtUni(b)}</span></span>
+      </div>
+      <div style="text-align:right;font-size:11px;color:var(--ink3);margin:-2px 0 4px">${tag}${showTwd&&b!==0?'　≈ '+fmtT(Math.abs(b)*rate(uni)):''}</div>`;
     }).join('')}
-  </div></div>`;
+  </div>`;
 
-  // min cash flow
+  // 最少轉帳
   const tx=minCashFlow(bal);
-  const box=document.getElementById('settle');
-  box.innerHTML= tx.length?tx.map(x=>{
-    const paid=(t.paidOff||[]).some(p=>p.from===x.from&&p.to===x.to);
-    const yen=Math.round(x.amt/rate('JPY'));
-    return `<div class="settle-tx ${paid?'paid':''}">
-      <span class="flow">${esc(x.from)} → ${esc(x.to)}</span>
-      <span class="amt">${fmtT(x.amt)}<small>≈ ¥${yen.toLocaleString()}</small></span>
-      <button class="mk" onclick="togglePaid('${esc(x.from)}','${esc(x.to)}',${x.amt})">${paid?'✓ 已還':'標記已還'}</button>
-    </div>`;
-  }).join(''):'<div class="empty" style="padding:20px"><span class="ic">✅</span>目前不用喬錢</div>';
+  document.getElementById('settle').innerHTML=`
+    <p class="help" style="margin:0 0 8px 4px">「先付」剛好等於「該分攤」的人就結清了，不用再轉帳。剩下的用最少次數喬完：</p>
+    ${tx.length?tx.map(x=>{
+      const paidOff=(t.paidOff||[]).some(p=>p.from===x.from&&p.to===x.to);
+      return `<div class="settle-tx ${paidOff?'paid':''}">
+        <span class="flow">${esc(x.from)} → ${esc(x.to)}</span>
+        <span class="amt">${fmtUni(x.amt)}${showTwd?`<small>≈ ${fmtT(x.amt*rate(uni))}</small>`:''}</span>
+        <button class="mk" onclick="togglePaid('${esc(x.from)}','${esc(x.to)}',${x.amt})">${paidOff?'✓ 已還':'標記已還'}</button>
+      </div>`;
+    }).join(''):'<div class="empty" style="padding:20px"><span class="ic">✅</span>目前不用喬錢</div>'}`;
 
-  const el=document.getElementById('expList');
-  el.innerHTML= exp.length? exp.slice().reverse().map(e=>{
+  document.getElementById('expList').innerHTML= exp.length? exp.slice().reverse().map(e=>{
     const parts=(e.splitWith&&e.splitWith.length)?e.splitWith:mem;
-    const each=e.splitMode==='custom'?null:Math.round(toTWD(e.amount,e.cur)/parts.length);
-    return `<div class="li">
-      <div class="li-body">
-        <div class="li-title">${esc(e.title||'支出')}　<span style="float:right">${sym(e.cur)}${Number(e.amount).toLocaleString()}</span></div>
-        <div class="li-sub">${esc(e.paidBy)} 先付${e.cur!=='TWD'?`　≈ ${fmtT(toTWD(e.amount,e.cur))}`:''}${e.date?`　·${e.date}`:''}</div>
-        <div class="li-sub">分攤：${parts.map(esc).join('、')}${each!=null?`　每人 ≈ ${fmtT(each)}`:'　(自訂金額)'}</div>
-        ${e.note?`<div class="li-sub">📝 ${esc(e.note)}</div>`:''}
-        <div class="btn-row" style="margin-top:7px">
-          <button class="btn btn-sm" onclick="editExpense('${e.id}')">編輯</button>
-          <button class="btn btn-sm btn-danger" onclick="delExpense('${e.id}')">刪除</button>
-        </div>
-      </div></div>`;
+    const amt=inUni(e.amount,e.cur);
+    let splitLine;
+    if(e.splitMode==='custom'&&e.customSplits){
+      splitLine='自訂：'+Object.entries(e.customSplits).map(([m,v])=>`${esc(m)} ${sym(e.cur)}${Number(v).toLocaleString()}`).join('、');
+    }else{
+      const each=amt/parts.length;
+      splitLine=`${parts.map(esc).join('、')}　每人 ${fmtUni(each)}`;
+    }
+    return `<div class="li"><div class="li-body">
+      <div class="li-title">${esc(e.title||'支出')}<span style="float:right">${sym(e.cur)}${Number(e.amount).toLocaleString()}</span></div>
+      <div class="li-sub">${esc(e.paidBy)} 先付${e.cur!==uni?`　(≈ ${fmtUni(amt)})`:''}${e.date?`　·${e.date}`:''}</div>
+      <div class="li-sub">分攤 → ${splitLine}</div>
+      ${e.note?`<div class="li-sub">📝 ${esc(e.note)}</div>`:''}
+      <div class="btn-row" style="margin-top:7px">
+        <button class="btn btn-sm" onclick="editExpense('${e.id}')">編輯</button>
+        <button class="btn btn-sm btn-danger" onclick="delExpense('${e.id}')">刪除</button>
+      </div>
+    </div></div>`;
   }).join(''):'<div class="empty"><span class="ic">💴</span>還沒有支出</div>';
 }
 function minCashFlow(bal){
@@ -904,61 +1026,79 @@ function saveExpense(id){
   save(); closeModal(); renderMoney();
 }
 
-/* ---------- COUPONS ---------- */
+/* ---------- 票券 / 優惠券 ---------- */
+const TICKET_KINDS=['票券','優惠券','兌換券','訂位'];
+function ticketImgs(c){ return c.images&&c.images.length ? c.images : (c.image?[c.image]:[]); }
 function renderCoupons(){
   const t=trip(); const box=document.getElementById('couponList'); if(!t) return;
   const cs=t.coupons||[];
   box.innerHTML=(cs.length?cs.map(c=>{
     const exp=c.expiry&&c.expiry<todayStr();
+    const imgs=ticketImgs(c);
     return `<div class="li">
-      <div class="li-thumb">${c.image?`<img src="${c.image}" style="width:100%;height:100%;object-fit:cover;border-radius:10px">`:'🎟'}</div>
+      <div class="li-thumb">${imgs[0]?`<img src="${imgs[0]}" style="width:100%;height:100%;object-fit:cover;border-radius:10px" onclick="viewImg(this)">`:(c.kind==='優惠券'?'🎫':'🎟')}</div>
       <div class="li-body">
-        <div class="li-title" style="${c.used||exp?'color:#94a3b8;text-decoration:line-through':''}">${esc(c.title)}</div>
+        <div class="li-title" style="${c.used||exp?'color:#94a3b8;text-decoration:line-through':''}">
+          <span class="pill ${c.kind==='票券'?'ok':''}">${esc(c.kind||'票券')}</span>${esc(c.title)}</div>
         <div class="li-sub">
           ${c.code?`<span class="pill">${esc(c.code)}</span>`:''}
           ${c.spot?`📍 ${esc(c.spot)}　`:''}
+          ${c.useDate?`🗓 ${esc(c.useDate)}　`:''}
           ${c.expiry?`<span class="pill ${exp?'warn':''}">${exp?'已過期 ':'期限 '}${esc(c.expiry)}</span>`:''}
         </div>
         ${c.note?`<div class="li-sub">${esc(c.note)}</div>`:''}
+        ${imgs.length?`<div class="li-photos">${imgs.map(d=>`<img src="${d}" onclick="viewImg(this)">`).join('')}</div>`:''}
         <div class="btn-row" style="margin-top:7px">
-          ${c.image?`<button class="btn btn-sm" onclick="showImg('${c.id}')">🔍 放大出示</button>`:''}
+          ${imgs.length?`<button class="btn btn-sm btn-brand" onclick="showTicket('${c.id}')">🔍 放大出示</button>`:''}
           <button class="btn btn-sm" onclick="toggleCoupon('${c.id}')">${c.used?'↩ 未用':'✓ 用掉'}</button>
           <button class="btn btn-sm" onclick="editCoupon('${c.id}')">編輯</button>
           <button class="btn btn-sm btn-danger" onclick="delCoupon('${c.id}')">刪除</button>
         </div>
       </div></div>`;
-  }).join(''):'<div class="empty"><span class="ic">🎟</span>還沒有優惠券</div>')
-   +`<div class="card-pad"><button class="btn btn-block btn-ghost" onclick="editCoupon(null)">＋ 新增優惠券</button></div>`;
+  }).join(''):'<div class="empty"><span class="ic">🎟</span>還沒有票券或優惠券</div>')
+   +`<div class="card-pad"><button class="btn btn-block btn-ghost" onclick="editCoupon(null)">＋ 新增票券 / 優惠券</button></div>`;
 }
 function toggleCoupon(id){ const t=trip(); const c=t.coupons.find(x=>x.id===id); c.used=!c.used; save(); renderCoupons(); }
 function delCoupon(id){ if(!confirm('刪除？'))return; const t=trip(); t.coupons=t.coupons.filter(x=>x.id!==id); save(); renderCoupons(); }
-function showImg(id){ const c=trip().coupons.find(x=>x.id===id); modal(`<h3>${esc(c.title)}</h3><img src="${c.image}" style="width:100%;border-radius:12px"><div class="btn-row" style="margin-top:12px"><button class="btn btn-block" onclick="closeModal()">關閉</button></div>`); }
+function showTicket(id){
+  const c=trip().coupons.find(x=>x.id===id); const imgs=ticketImgs(c);
+  modal(`<h3>${esc(c.title)}</h3>
+    ${c.code?`<p style="text-align:center;font-size:16px;font-weight:800;letter-spacing:1px">${esc(c.code)}</p>`:''}
+    ${imgs.map(d=>`<img src="${d}" style="width:100%;border-radius:12px;margin-bottom:10px" onclick="viewImg(this)">`).join('')}
+    <div class="btn-row"><button class="btn btn-block" onclick="closeModal()">關閉</button></div>`);
+}
 function editCoupon(id){
   const t=trip(); if(!t.coupons)t.coupons=[];
-  const c=id?t.coupons.find(x=>x.id===id):{};
-  modal(`<h3>${id?'編輯':'新增'}優惠券</h3>
-    <div class="f"><label>名稱</label><input id="c-title" value="${esc(c.title||'')}" placeholder="LaLaport名古屋港 外國人優惠"></div>
-    <div class="f"><label>條碼 / 代碼（選填）</label><input id="c-code" value="${esc(c.code||'')}"></div>
-    <div class="f"><label>截圖 / 條碼圖（出示用）</label><input id="c-img" type="file" accept="image/*" onchange="pickPhoto(this,'c-img-data')"><div id="c-img-data" data-v="${c.image||''}"></div></div>
+  const c=id?t.coupons.find(x=>x.id===id):{kind:'票券'};
+  _imgBuf=[...ticketImgs(c)];
+  modal(`<h3>${id?'編輯':'新增'}票券 / 優惠券</h3>
+    <div class="f"><label>類型</label><div class="seg" id="c-kind">${TICKET_KINDS.map(k=>`<button type="button" class="${(c.kind||'票券')===k?'on':''}" onclick="segPick(this)">${k}</button>`).join('')}</div></div>
+    <div class="f"><label>名稱</label><input id="c-title" value="${esc(c.title||'')}" placeholder="吉卜力公園 大散步券 / LaLaport 外國人優惠"></div>
+    <div class="f"><label>訂位／訂票代碼、條碼號（選填）</label><input id="c-code" value="${esc(c.code||'')}"></div>
+    <div class="f"><label>圖片（訂票確認信截圖、QR、條碼…可多張）</label>${imgPickerHTML(true)}</div>
     <div class="f-row">
+      <div class="f"><label>使用日期 / 場次</label><input id="c-use" value="${esc(c.useDate||'')}" placeholder="12/27 大倉庫 11:00 場"></div>
       <div class="f"><label>使用期限</label><input id="c-exp" type="date" value="${esc(c.expiry||'')}"></div>
-      <div class="f"><label>綁定地點</label><input id="c-spot" value="${esc(c.spot||'')}"></div>
     </div>
+    <div class="f"><label>綁定地點</label><input id="c-spot" value="${esc(c.spot||'')}" placeholder="吉卜力公園"></div>
     <div class="f"><label>備註</label><textarea id="c-note">${esc(c.note||'')}</textarea></div>
     <div class="btn-row">
       <button class="btn btn-brand btn-block" onclick="saveCoupon('${id||''}')">儲存</button>
       <button class="btn btn-block" onclick="closeModal()">取消</button>
     </div>`);
+  renderImgBuf();
 }
 function saveCoupon(id){
   const t=trip();
   const obj={id:id||uid(),
-    title:document.getElementById('c-title').value.trim(),
-    code:document.getElementById('c-code').value.trim(),
-    image:document.getElementById('c-img-data').dataset.v||'',
+    kind:segVal('c-kind')||'票券',
+    title:val('c-title'),
+    code:val('c-code'),
+    images:[..._imgBuf],
+    useDate:val('c-use'),
     expiry:document.getElementById('c-exp').value,
-    spot:document.getElementById('c-spot').value.trim(),
-    note:document.getElementById('c-note').value.trim(),
+    spot:val('c-spot'),
+    note:val('c-note'),
     used:id?(t.coupons.find(x=>x.id===id)||{}).used:false};
   if(!obj.title){ toast('請填名稱','#dc2626'); return; }
   if(id) t.coupons=t.coupons.map(x=>x.id===id?obj:x); else t.coupons.push(obj);
@@ -971,11 +1111,13 @@ function renderMore(){
   document.getElementById('docList').innerHTML=(t.docs||[]).length?(t.docs).map(d=>`<div class="li"><div class="li-body">
     <div class="li-title">${esc(d.title)} <span class="pill">${esc(d.type||'')}</span></div>
     <div class="li-sub">${esc(d.text)}</div>
+    ${(d.photos&&d.photos.length)?`<div class="li-photos">${d.photos.map(x=>`<img src="${x}" onclick="viewImg(this)">`).join('')}</div>`:''}
     <div class="btn-row" style="margin-top:6px"><button class="btn btn-sm" onclick="editDoc('${d.id}')">編輯</button><button class="btn btn-sm btn-danger" onclick="delDoc('${d.id}')">刪除</button></div>
   </div></div>`).join(''):'<div class="empty" style="padding:20px"><span class="ic">📄</span>可放班機/訂房/密碼鎖</div>';
 
   document.getElementById('areaAlerts').innerHTML=(t.areaAlerts||[]).length?(t.areaAlerts).map(a=>
     `<div style="padding:6px 0;border-bottom:1px dashed var(--line)"><b>${esc(a.area)}</b>：${esc(a.text)}
+     ${(a.photos&&a.photos.length)?`<div class="li-photos">${a.photos.map(x=>`<img src="${x}" onclick="viewImg(this)">`).join('')}</div>`:''}
      <button class="btn btn-sm" style="margin-left:6px" onclick="editAreaAlert('${a.id}')">改</button>
      <button class="btn btn-sm btn-danger" onclick="delAreaAlert('${a.id}')">刪</button></div>`).join('')
     :'名稱含此關鍵字的行程點，會自動帶出這段提醒。例：奈良公園 / 黑門市場 / 環球影城。';
@@ -989,25 +1131,32 @@ function renderMore(){
 
   document.getElementById('guideList').innerHTML=(t.guides||[]).length?(t.guides).map(g=>`<div class="li"><div class="li-body">
     <div class="li-title">${esc(g.title)}</div><div class="li-sub">${esc(g.text)}</div>
+    ${(g.photos&&g.photos.length)?`<div class="li-photos">${g.photos.map(x=>`<img src="${x}" onclick="viewImg(this)">`).join('')}</div>`:''}
     <div class="btn-row" style="margin-top:6px"><button class="btn btn-sm" onclick="editGuide('${g.id}')">編輯</button><button class="btn btn-sm btn-danger" onclick="delGuide('${g.id}')">刪除</button></div>
   </div></div>`).join(''):'<div class="empty" style="padding:20px"><span class="ic">📓</span>放排隊攻略、退稅流程等</div>';
 }
 function editDoc(id){ const t=trip(); if(!t.docs)t.docs=[]; const d=id?t.docs.find(x=>x.id===id):{type:'班機'};
+  _imgBuf=[...(d.photos||[])];
   modal(`<h3>${id?'編輯':'新增'}資料</h3>
    <div class="f"><label>標題</label><input id="d-t" value="${esc(d.title||'')}"></div>
    <div class="f"><label>類別</label><input id="d-y" value="${esc(d.type||'')}" placeholder="班機 / 訂房 / 保險 / 其他"></div>
    <div class="f"><label>內容</label><textarea id="d-x" style="min-height:120px">${esc(d.text||'')}</textarea></div>
-   <div class="btn-row"><button class="btn btn-brand btn-block" onclick="saveDoc('${id||''}')">儲存</button><button class="btn btn-block" onclick="closeModal()">取消</button></div>`); }
-function saveDoc(id){ const t=trip(); const o={id:id||uid(),title:val('d-t'),type:val('d-y'),text:val('d-x')};
+   <div class="f"><label>照片（訂房確認信、護照影本、密碼鎖說明…可多張）</label>${imgPickerHTML(true)}</div>
+   <div class="btn-row"><button class="btn btn-brand btn-block" onclick="saveDoc('${id||''}')">儲存</button><button class="btn btn-block" onclick="closeModal()">取消</button></div>`);
+  renderImgBuf(); }
+function saveDoc(id){ const t=trip(); const o={id:id||uid(),title:val('d-t'),type:val('d-y'),text:val('d-x'),photos:[..._imgBuf]};
   if(!o.title){toast('請填標題','#dc2626');return;} if(id)t.docs=t.docs.map(x=>x.id===id?o:x);else t.docs.push(o); save();closeModal();renderMore(); }
 function delDoc(id){ if(!confirm('刪除？'))return; const t=trip(); t.docs=t.docs.filter(x=>x.id!==id); save(); renderMore(); }
 
 function editAreaAlert(id){ const t=trip(); if(!t.areaAlerts)t.areaAlerts=[]; const a=id?t.areaAlerts.find(x=>x.id===id):{};
+  _imgBuf=[...(a.photos||[])];
   modal(`<h3>${id?'編輯':'新增'}區域提醒</h3>
    <div class="f"><label>關鍵字（會比對行程點名稱）</label><input id="a-k" value="${esc(a.area||'')}" placeholder="奈良公園"></div>
    <div class="f"><label>提醒內容</label><textarea id="a-x">${esc(a.text||'')}</textarea></div>
-   <div class="btn-row"><button class="btn btn-brand btn-block" onclick="saveAreaAlert('${id||''}')">儲存</button><button class="btn btn-block" onclick="closeModal()">取消</button></div>`); }
-function saveAreaAlert(id){ const t=trip(); const o={id:id||uid(),area:val('a-k'),text:val('a-x')};
+   <div class="f"><label>照片（示意圖、地圖…可多張）</label>${imgPickerHTML(true)}</div>
+   <div class="btn-row"><button class="btn btn-brand btn-block" onclick="saveAreaAlert('${id||''}')">儲存</button><button class="btn btn-block" onclick="closeModal()">取消</button></div>`);
+  renderImgBuf(); }
+function saveAreaAlert(id){ const t=trip(); const o={id:id||uid(),area:val('a-k'),text:val('a-x'),photos:[..._imgBuf]};
   if(!o.area||!o.text){toast('都要填','#dc2626');return;} if(id)t.areaAlerts=t.areaAlerts.map(x=>x.id===id?o:x);else t.areaAlerts.push(o); save();closeModal();renderMore();renderItin(); }
 function delAreaAlert(id){ if(!confirm('刪除？'))return; const t=trip(); t.areaAlerts=t.areaAlerts.filter(x=>x.id!==id); save(); renderMore(); renderItin(); }
 
@@ -1018,11 +1167,14 @@ function resetPack(){ const t=trip(); if((t.packing||[]).length&&!confirm('用�
   t.packing=DEFAULT_PACK.map(x=>({id:uid(),text:x,done:false})); save(); renderMore(); }
 
 function editGuide(id){ const t=trip(); if(!t.guides)t.guides=[]; const g=id?t.guides.find(x=>x.id===id):{};
+  _imgBuf=[...(g.photos||[])];
   modal(`<h3>${id?'編輯':'新增'}攻略</h3>
    <div class="f"><label>標題</label><input id="g-t" value="${esc(g.title||'')}"></div>
    <div class="f"><label>內容</label><textarea id="g-x" style="min-height:160px">${esc(g.text||'')}</textarea></div>
-   <div class="btn-row"><button class="btn btn-brand btn-block" onclick="saveGuide('${id||''}')">儲存</button><button class="btn btn-block" onclick="closeModal()">取消</button></div>`); }
-function saveGuide(id){ const t=trip(); const o={id:id||uid(),title:val('g-t'),text:val('g-x')};
+   <div class="f"><label>照片（地圖、路線圖、參考截圖…可多張）</label>${imgPickerHTML(true)}</div>
+   <div class="btn-row"><button class="btn btn-brand btn-block" onclick="saveGuide('${id||''}')">儲存</button><button class="btn btn-block" onclick="closeModal()">取消</button></div>`);
+  renderImgBuf(); }
+function saveGuide(id){ const t=trip(); const o={id:id||uid(),title:val('g-t'),text:val('g-x'),photos:[..._imgBuf]};
   if(!o.title){toast('請填標題','#dc2626');return;} if(id)t.guides=t.guides.map(x=>x.id===id?o:x);else t.guides.push(o); save();closeModal();renderMore(); }
 function delGuide(id){ if(!confirm('刪除？'))return; const t=trip(); t.guides=t.guides.filter(x=>x.id!==id); save(); renderMore(); }
 function val(id){ return document.getElementById(id).value.trim(); }
@@ -1100,19 +1252,62 @@ function saveTripMeta(){
 function openShare(){
   const t=trip(); if(!t) return;
   if(!fbReady()){
-    modal(`<h3>好友共享</h3><p class="help">要先設定 Firebase 才能即時同步。請 Jennifer 依部署說明把新專案的設定貼進 <code>FIREBASE_CONFIG</code>。設定好後，這裡就能產生共享房號，把連結給朋友即可三人即時同步。</p>
+    modal(`<h3>好友共享</h3><p class="help">要先設定 Firebase 才能即時同步。把新專案的設定貼進 <code>FIREBASE_CONFIG</code> 後即可使用。</p>
     <div class="btn-row"><button class="btn btn-block" onclick="closeModal()">知道了</button></div>`); return;
   }
-  if(!t.room) t.room=uid()+uid();
+  if(!t.room) t.room='r'+uid()+uid();
   const url=location.origin+location.pathname+'?join='+t.room;
   save(); syncRoom();
   modal(`<h3>好友共享</h3>
-   <p class="help">把下面連結傳給同行的人，他們打開就會自動加入這趟，之後行程/待買/分帳都即時同步。</p>
-   <div class="f"><textarea readonly style="min-height:70px" onclick="this.select()">${url}</textarea></div>
+   <p class="help"><b>給同行的人</b>：把下面連結傳給他們，打開就自動加入「${esc(t.name)}」這一趟，行程／待買／分帳即時同步。</p>
+   <div class="f"><textarea readonly style="min-height:64px" onclick="this.select()">${url}</textarea></div>
    <div class="btn-row">
      <button class="btn btn-brand btn-block" onclick="navigator.clipboard.writeText('${url}').then(()=>toast('已複製連結'))">複製連結</button>
-     <button class="btn btn-block" onclick="closeModal()">關閉</button>
-   </div>`);
+   </div>
+   <hr style="margin:14px 0;border:none;border-top:1px solid var(--line)">
+   <p class="help"><b>你自己換手機／電腦</b>：用「雲端同步碼」一次帶走全部旅程 →</p>
+   <div class="btn-row"><button class="btn btn-block" onclick="openSyncCode()">☁️ 我的雲端同步</button>
+   <button class="btn btn-block" onclick="closeModal()">關閉</button></div>`);
+}
+function openSyncCode(){
+  modal(`<h3>☁️ 我的雲端同步</h3>
+   <p class="help">設一組只有你知道的代碼（例：<code>jen-japan-2026</code>）。你的每一台裝置／每個瀏覽器都輸入<b>同一組</b>，所有旅程就會互通。<br>朋友的共享連結是另一套，不受影響。</p>
+   <div class="f"><label>同步代碼（英數，至少 6 碼）</label><input id="sc" value="${esc(S.syncCode||'')}" placeholder="jen-japan-2026"></div>
+   <div class="btn-row"><button class="btn btn-brand btn-block" onclick="saveSyncCode()">設定並把本機旅程上傳雲端</button></div>
+   <div class="btn-row" style="margin-top:8px"><button class="btn btn-block" onclick="pullSyncCode()">這是新裝置：把雲端旅程拉下來</button></div>
+   ${!fbReady()?'<p class="help" style="color:#dc2626;margin-top:8px">尚未設定 Firebase，無法使用雲端同步。</p>':''}
+   <div class="btn-row" style="margin-top:8px"><button class="btn btn-block" onclick="closeModal()">關閉</button></div>`);
+}
+function saveSyncCode(){
+  const v=(document.getElementById('sc').value||'').trim();
+  if(v.length<6){ toast('至少 6 碼','#dc2626'); return; }
+  if(!initFB()){ toast('Firebase 未設定','#dc2626'); return; }
+  S.syncCode=v; persist(); pushIndex();
+  closeModal(); toast('已設定，本機旅程已上傳雲端');
+}
+function pullSyncCode(){
+  const v=(document.getElementById('sc').value||'').trim();
+  if(v.length<6){ toast('先填代碼','#dc2626'); return; }
+  if(!initFB()){ toast('Firebase 未設定','#dc2626'); return; }
+  _db.ref('idx/'+v).once('value').then(async snap=>{
+    const list=snap.val();
+    if(!list||!list.length){ toast('這組代碼雲端沒有旅程','#dc2626'); return; }
+    let n=0;
+    for(const it of list){
+      if(!it.room) continue;
+      try{
+        const s=await _db.ref('trips/'+it.room).once('value');
+        const d=s.val(); if(!d||!d.id) continue;
+        const i=S.trips.findIndex(x=>x.id===d.id);
+        if(i>=0) S.trips[i]=mergeTrip(S.trips[i],d); else S.trips.push(d);
+        n++;
+      }catch(e){}
+    }
+    S.syncCode=v;
+    if(S.trips.length&&!S.trips.some(x=>x.id===S.currentId)) S.currentId=S.trips[0].id;
+    persist(); renderAll(); syncRoom(); closeModal();
+    toast('已拉下 '+n+' 筆旅程');
+  }).catch(e=>toast('讀取失敗：'+(e.message||'檢查 Firebase 規則'),'#dc2626'));
 }
 
 /* ---------- TRIP CRUD ---------- */
@@ -1120,7 +1315,7 @@ function blankTrip(name){
   return {id:uid(),name:name||'新旅程',destination:'',startDate:'',endDate:'',
     members:['Jennifer','同伴A','同伴B'],
     days:[],shopping:[],expenses:[],paidOff:[],coupons:[],docs:[],packing:[],guides:[],areaAlerts:[],
-    room:null,fxLocked:null};
+    room:'r'+uid()+uid(),fxLocked:null};
 }
 function newTrip(){
   const n=prompt('旅程名稱？','新旅程'); if(n===null) return;
@@ -1179,9 +1374,9 @@ function loadSeed(){
   t.days=[
     D('2026-12-25',[
       {time:'05:00',name:'桃園機場 T2 集合',cat:'交通',note:'CI0154 07:35 起飛，提早 2 小時到'},
-      {time:'11:05',name:'名古屋中部國際機場 抵達',cat:'交通',note:'T1 入境。出關＋領行李抓 2 小時'},
+      {time:'11:05',name:'名古屋中部國際機場 抵達',cat:'交通',note:'T1 入境。出關＋領行李抓 2 小時',transitAfter:{mode:'train',mins:40,fare:980,note:'名鐵常滑・空港線 特急 or ミュースカイ（+指定席¥450, 30分）→ 名古屋車站（太閣通口）'}},
       {time:'14:40',name:'名鐵→名古屋車站（太閣通口）',cat:'交通',note:'機場→名古屋約 30–50 分\n① 名鐵特急 ¥980 / 40分\n② ミュースカイ ¥980+指定席¥450 / 30分'},
-      {time:'15:00',name:'Sotetsu Fresa Inn 放行李',cat:'住宿',openHours:'Check-in 15:00–24:00',note:'椿町 19-16'},
+      {time:'15:00',name:'Sotetsu Fresa Inn 放行李',cat:'住宿',openHours:'Check-in 15:00–24:00',note:'椿町 19-16',transitAfter:{mode:'subway',mins:6,fare:210,note:'地下鐵東山線（黃）名古屋 → 榮（2 站 5 分）。雨天走 ESCA 地下街 E1 入口進 B1'}},
       {time:'16:10',name:'榮站周邊散策',note:'3COINS＋plus 榮店 10:00–20:00 / Uniqlo 榮店 / Loft'},
       {time:'17:30',name:'晚餐 ひつまぶし花岡',cat:'餐食',price:'¥4,000–6,000',openHours:'11:00–15:00 / 18:00–21:00',alerts:['只收現金。線上預約已滿，要當天到店填預約簿（前晚 21:00 開放）。詳見攻略。']},
       {time:'20:00',name:'Harbs 榮本店',cat:'餐食',openHours:'11:00–21:00',alerts:['20:00 前要進去！'],note:'名古屋發源，水果千層必吃'},
@@ -1189,31 +1384,31 @@ function loadSeed(){
       {time:'22:00',name:'回飯店（超商補水）',cat:'住宿'},
     ]),
     D('2026-12-26',[
-      {time:'08:00',name:'名古屋車站出發（買 ドニチエコきっぷ ¥620）',cat:'交通',note:'東山線→榮，走到榮町站轉名鐵瀨戶線→尾張瀨戶 ¥510 / 37分'},
+      {time:'08:00',name:'名古屋車站出發（買 ドニチエコきっぷ ¥620）',cat:'交通',note:'東山線→榮，走到榮町站轉名鐵瀨戶線→尾張瀨戶 ¥510 / 37分',transitAfter:{mode:'train',mins:45,fare:730,note:'地下鐵東山線 名古屋→榮 ¥210；出站走到「榮町」站；名鐵瀨戶線（紫）榮町→尾張瀨戶 19 站 ¥510 / 37 分。先買 ドニチエコきっぷ ¥620'}},
       {time:'09:10',name:'中外陶園 藥師窯',openHours:'10:00–17:00 週二休',alerts:['出發前務必確認「年始年末」休息日。','2027 生肖（未/羊）部分商品 9 月後可線上先訂，能訂就先訂，現場真的休息可談寄飯店。'],buy:['2027 生肖置物']},
       {time:'09:40',name:'巨大招財貓 & 招財貓大道',note:'常滑站東口'},
       {time:'10:00',name:'招財貓博物館',price:'¥300',openHours:'10:00–17:00 週二休'},
       {time:'11:00',name:'吾妻軒本店 和菓子',cat:'餐食',openHours:'09:00–19:30 週二休'},
-      {time:'12:00',name:'午餐（尾張瀨戶 or 名古屋城周邊）',cat:'餐食'},
+      {time:'12:00',name:'午餐（尾張瀨戶 or 名古屋城周邊）',cat:'餐食',transitAfter:{mode:'train',mins:40,fare:700,note:'名鐵瀨戶線 尾張瀨戶→大曽根 ¥460 / 27 分；轉地下鐵名城線（淺紫）大曽根→名古屋城 ¥240 / 9 分'}},
       {time:'13:00',name:'名古屋城',price:'¥500（出示地鐵券打折）',openHours:'09:00–16:30（最後入場16:00）',alerts:['休園：12/29–31、1/1。今天(12/26)有開。']},
-      {time:'14:30',name:'二之丸庭園 / 二之丸茶亭',openHours:'茶亭 09:00–16:30'},
+      {time:'14:30',name:'二之丸庭園 / 二之丸茶亭',openHours:'茶亭 09:00–16:30',transitAfter:{mode:'subway',mins:9,fare:240,note:'名城線 名古屋城→榮（3 分）；轉東山線 榮→名古屋（2 站 5 分）'}},
       {time:'18:00',name:'晚餐 矢場丼 名古屋站名鐵店',cat:'餐食'},
       {time:'20:30',name:'Sky Promenade 空中長廊',price:'假日 ¥1,200',openHours:'11:00–22:00',note:'雨天可略'},
       {time:'22:00',name:'回飯店',cat:'住宿'},
     ]),
     D('2026-12-27',[
-      {time:'07:30',name:'名古屋車站出發往吉卜力',cat:'交通',alerts:['入場嚴格照預約時段，務必提早出門。'],note:'東山線→藤が丘，轉リニモ→愛・地球博記念公園'},
+      {time:'07:30',name:'名古屋車站出發往吉卜力',cat:'交通',alerts:['入場嚴格照預約時段，務必提早出門。'],note:'東山線→藤が丘，轉リニモ→愛・地球博記念公園',transitAfter:{mode:'train',mins:50,fare:680,note:'地下鐵東山線 名古屋→藤が丘 ¥330 / 約 28 分；轉リニモ（東部丘陵線）藤が丘→愛・地球博記念公園 ¥350 / 約 13 分'}},
       {time:'08:50',name:'吉卜力公園 Ghibli Park',price:'大散步券Premium 假日 ¥7,800 +系統費¥110',openHours:'09:00–17:00',alerts:['票 10/10 台灣時間 13:00 開賣（賣兩個月後入場分），Boo-Woo 會員先註冊。','記名制，帶護照。大倉庫要選 9/10/11/12/13/14 時段，指定時刻起 1 小時內進場。','購票後不能改期、不能退。'],note:'動線：魔女之谷→大倉庫→どんどこ森→貓公車→もののけの里→青春之丘\n貓公車券當日現場售票機買（8:30–17:30）¥1,000'},
       {time:'12:00',name:'午餐 園內餐廳',cat:'餐食',note:'大倉庫「大陸橫斷飛行咖啡廳」：飛行披薩、味噌豬排三明治\n魔女之谷「飛天烤爐」：牧羊人派、神秘咖哩\n青春之丘「琪琪的麵包店」：中午前常售罄'},
-      {time:'17:20',name:'離場，往長島',cat:'交通',note:'リニモ→藤が丘→地鐵→名鐵；近鐵名古屋→近鐵長島 急行約17分/準急約25分，轉公車 ¥250 / 10分到名花之里'},
+      {time:'17:20',name:'離場，往長島',cat:'交通',note:'リニモ→藤が丘→地鐵→名鐵；近鐵名古屋→近鐵長島 急行約17分/準急約25分，轉公車 ¥250 / 10分到名花之里',transitAfter:{mode:'train',mins:75,fare:1200,note:'リニモ→藤が丘→地下鐵東山線→名古屋；近鐵名古屋→近鐵長島（急行 17 分 / 準急 25 分）；轉三重交通巴士 ¥250 / 約 10 分 → なばなの里'}},
       {time:'18:50',name:'名花之里（なばなの里）冬季燈海',price:'約 ¥3,000（含 ¥1,000 抵用券）',alerts:['先在 FamilyMart / 7-11 買好票再去，現場窗口要排 30 分以上。','12/27 為正常營業（12/23–25 才是特別營業）。'],note:'日本最大冬季燈海'},
     ]),
     D('2026-12-28',[
-      {time:'08:40',name:'熱田神宮',openHours:'全天開放；寶物館 09:00–16:30',price:'寶物館 ¥500（可略）',note:'三大神宮之一，晨參較清幽'},
+      {time:'08:40',name:'熱田神宮',openHours:'全天開放；寶物館 09:00–16:30',price:'寶物館 ¥500（可略）',note:'三大神宮之一，晨參較清幽',transitAfter:{mode:'train',mins:20,fare:290,note:'名鐵 神宮前 → 金山 轉地下鐵名城線 → 矢場町（大須商店街）'}},
       {time:'11:30',name:'午餐 Maruya 本店 名駅3丁目店 或 大須商店街',cat:'餐食',price:'¥4,000–5,000',alerts:['Maruya 開放前一個月訂位（約 11/28 起），用 tabelog 或 Google 訂。訂不到就改大須商店街。']},
       {time:'12:30',name:'大須商店街',note:'名古屋最大商店街，電器、古著、美食'},
       {time:'13:00',name:'龜嶽林萬松寺',openHours:'10:00–18:00'},
-      {time:'13:30',name:'大須外郎糕 / 鯛福茶庵 八代目澤屋 / ROCKIN\'ROBIN',cat:'餐食',note:'邊逛邊吃小點'},
+      {time:'13:30',name:'大須外郎糕 / 鯛福茶庵 八代目澤屋 / ROCKIN\'ROBIN',cat:'餐食',note:'邊逛邊吃小點',transitAfter:{mode:'subway',mins:22,fare:240,note:'地下鐵鶴舞線 大須觀音→上前津；轉名港線 上前津→名古屋港'}},
       {time:'16:30',name:'名古屋港水族館',price:'¥2,030',openHours:'09:30–17:30（最後入館 16:30）',note:'虎鯨、海豚秀，留 2 小時；9 月查表演時間'},
       {time:'18:30',name:'萬代扭蛋博物館',price:'免費',openHours:'11:00–19:00 週一休',note:'JETTY 購物中心 2F',buy:['扭蛋']},
       {time:'19:15',name:'LaLaport 名古屋港 AQULS',openHours:'10:00–20:00',alerts:['服務台出示護照＋優惠券，換「休足時間」1 片＋外國人優惠券。']},
@@ -1221,20 +1416,20 @@ function loadSeed(){
       {time:'22:00',name:'回飯店',cat:'住宿'},
     ]),
     D('2026-12-29',[
-      {time:'08:00',name:'Sotetsu Fresa Inn 退房',cat:'住宿',openHours:'Check-out 11:00'},
+      {time:'08:00',name:'Sotetsu Fresa Inn 退房',cat:'住宿',openHours:'Check-out 11:00',transitAfter:{mode:'train',mins:130,fare:2400,note:'近鐵特急（ひのとり／アーバンライナー）名古屋 → 大和八木，轉普通 → 近鐵奈良。約 2 小時，含特急券約 ¥1,900+車資'}},
       {time:'08:30',name:'名古屋→奈良（近鐵特急）',cat:'交通',note:'近鐵特急往大和八木轉車，約 2 小時，需加購特急券'},
       {time:'10:45',name:'近鐵奈良站 寄行李',cat:'交通',price:'置物櫃 ¥600–1,000',note:'檢票口內 1 處、外 2 處。備 ¥100 硬幣（無兌幣機）。備案：711 ecbo cloak'},
       {time:'11:00',name:'東向商店街 / 奈良伴手禮百貨',cat:'購物'},
       {time:'13:00',name:'春日大社',price:'一般參拜免費',alerts:['本殿「特別參拜」12/21–1/5 停辦，這天沒有 ¥700 的深入本殿看國寶釣燈籠，只能一般參拜。'],note:'世界文化遺產'},
       {time:'13:30',name:'奈良公園 餵鹿',price:'鹿仙貝 ¥200',alerts:['不要摸母鹿與小鹿。票券、地圖、紙袋收好。']},
       {time:'14:30',name:'大佛布丁本舖 東大寺門前店',cat:'餐食',openHours:'10:00–19:00',buy:['大佛布丁']},
-      {time:'15:30',name:'東大寺 大佛殿',price:'¥800',openHours:'大佛殿 08:00–17:00',note:'大佛柱洞可鑽求好運。依水園週二休（今天二，沒開）'},
+      {time:'15:30',name:'東大寺 大佛殿',price:'¥800',openHours:'大佛殿 08:00–17:00',note:'大佛柱洞可鑽求好運。依水園週二休（今天二，沒開）',transitAfter:{mode:'train',mins:45,fare:680,note:'近鐵奈良線 快速急行 近鐵奈良 → 近鐵日本橋（不用轉車，約 40 分）'}},
       {time:'18:30',name:'近鐵日本橋站（大阪）',cat:'交通',note:'近鐵奈良線 約 40 分。飯店最近 7 號出入口'},
       {time:'19:00',name:'Nihonbashi House 入住',cat:'住宿',openHours:'Check-in 16:00 後',note:'密碼鎖免鑰匙'},
       {time:'20:00',name:'黑門市場 Os drug 藥妝 / 難波心齋橋散策',cat:'購物',openHours:'Os drug 09:00–18:50',alerts:['Os drug 只收現金、無免稅。'],buy:['藥妝補貨']},
     ]),
     D('2026-12-30',[
-      {time:'08:00',name:'早餐 黑門市場',cat:'餐食',openHours:'約 08:00–16:00 現金',alerts:['嚴禁邊走邊吃，攤位前或內用區吃完。'],note:'高橋食品豆漿、石橋關東煮'},
+      {time:'08:00',name:'早餐 黑門市場',cat:'餐食',openHours:'約 08:00–16:00 現金',alerts:['嚴禁邊走邊吃，攤位前或內用區吃完。'],note:'高橋食品豆漿、石橋關東煮',transitAfter:{mode:'subway',mins:14,fare:240,note:'堺筋線 日本橋 → 堺筋本町 轉中央線 → 谷町四丁目（大阪城公園）'}},
       {time:'09:30',name:'大阪城公園（天守閣外拍照）',alerts:['天守閣 12/28–1/1 休館，只能在周邊公園拍。']},
       {time:'12:00',name:'今宮戎神社 / 玉出超市 惠美須店',note:'今宮戎求生意興隆；玉出 24 小時、便宜'},
       {time:'13:30',name:'午餐 道頓堀（一蘭 / 藏壽司 / 大阪燒千房）',cat:'餐食'},
@@ -1243,7 +1438,7 @@ function loadSeed(){
       {time:'19:00',name:'晚餐 燒肉（力丸吃到飽 / 和牛苑 / 一牛）',cat:'餐食',alerts:['力丸南海難波店：跨年期間僅 12/31、1/1 休。Google 頁面可訂位。']},
     ]),
     D('2026-12-31',[
-      {time:'10:30',name:'早餐 Dekasan 三明治店',cat:'餐食',openHours:'11:00–18:00',note:'建議 10:30 到排隊'},
+      {time:'10:30',name:'早餐 Dekasan 三明治店',cat:'餐食',openHours:'11:00–18:00',note:'建議 10:30 到排隊',transitAfter:{mode:'subway',mins:15,fare:240,note:'近鐵日本橋 → 本町 轉大阪 Metro 中央線 → 大阪港（1 號出口往天保山）'}},
       {time:'12:00',name:'天保山購物中心 午餐',cat:'餐食',openHours:'10:30–21:00',note:'出示海遊館票在天保山market place有折扣'},
       {time:'13:00',name:'海遊館',price:'¥2,700',alerts:['要先網路買「日時指定」eチッケト選時段（利用日 30 天前開賣），現場窗口跨年前會排很久。抓 15:00 場次。'],note:'留 2.5–3 小時'},
       {time:'17:00',name:'搭 Captain Line 船 → 環球影城',cat:'交通',price:'單程 ¥1,100',alerts:['12/1 起上官網查跨年當天船班開到幾點、末班時間。常態最晚約 17–18 點。','海遊館也可買「海遊館＋船票」套票 ¥3,600–4,600。'],note:'約 10–20 分到 USJ 碼頭'},
@@ -1258,9 +1453,9 @@ function loadSeed(){
       {time:'19:00',name:'櫻島 → 近鐵日本橋',cat:'交通'},
     ]),
     D('2027-01-02',[
-      {time:'09:00',name:'Nihonbashi House 退房',cat:'住宿',openHours:'Check-out 10:00'},
-      {time:'09:45',name:'住吉大社 新年參拜',price:'免費',openHours:'約 06:00–16:00',alerts:['初詣人潮多，行李看好；太鼓橋（反弓橋）陡，小心走。'],note:'鳥居→太鼓橋→本殿→五所御前找五大力石→楠珺社招福貓→御守御朱印',buy:['招福貓']},
-      {time:'11:30',name:'凹累（りんくう，機場前一站）AEON 最後補貨',cat:'購物',note:'看有無特定品牌福袋'},
+      {time:'09:00',name:'Nihonbashi House 退房',cat:'住宿',openHours:'Check-out 10:00',transitAfter:{mode:'train',mins:18,fare:220,note:'走到南海「難波」站 → 南海本線 難波→住吉大社（普通約 10 分）。或阪堺電車'}},
+      {time:'09:45',name:'住吉大社 新年參拜',price:'免費',openHours:'約 06:00–16:00',alerts:['初詣人潮多，行李看好；太鼓橋（反弓橋）陡，小心走。'],note:'鳥居→太鼓橋→本殿→五所御前找五大力石→楠珺社招福貓→御守御朱印',buy:['招福貓'],transitAfter:{mode:'train',mins:35,fare:790,note:'南海本線 住吉大社→難波 → 轉南海空港線（機場急行）難波→りんくうタウン'}},
+      {time:'11:30',name:'凹累（りんくう，機場前一站）AEON 最後補貨',cat:'購物',note:'看有無特定品牌福袋',transitAfter:{mode:'train',mins:8,fare:380,note:'南海空港線 りんくうタウン → 関西空港（1 站）'}},
       {time:'16:00',name:'關西國際機場',cat:'交通',alerts:['CI0173 19:00 起飛。退稅＋安檢抓早，視退稅排隊狀況可再提前。']},
       {time:'21:05',name:'桃園機場 抵達',cat:'交通',note:'平安到家'},
     ]),
