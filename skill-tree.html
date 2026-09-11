@@ -127,6 +127,7 @@
   font-size: 10px; font-weight: 600; letter-spacing: 0.3px; width: fit-content;
 }
 .skill-card-desc { font-size: 11px; color: var(--gray-600); line-height: 1.5; flex: 1; }
+.skill-card-host { font-size: 10px; color: var(--gray-500); display:flex; align-items:center; gap:3px; margin-top:2px; }
 .skill-card-action { font-size: 10px; font-weight: 600; display: flex; align-items: center; gap: 3px; margin-top: 2px; }
 
 /* Tag & icon colours */
@@ -406,17 +407,17 @@ const SKILLS = [
   { icon:'🔒', name:'/project-security-bootstrap', cat:'AI Skill', ver:'skill', desc:'新專案 Git 安全體檢，防止金鑰外洩', cmd:'/project-security-bootstrap' },
   { icon:'🧾', name:'/report-and-verification', cat:'AI Skill', ver:'skill', desc:'交付任務用四種回報狀態附證據，大任務開新對話驗收，防止假回報完成', cmd:'/report-and-verification' },
   // ── 自動化 ──
-  { icon:'🟢', name:'供應商建檔 LINE Bot',    cat:'自動化', ver:'Worker', desc:'展場掃名片 → Claude 辨識 → 自動建 Ragic 供應商記錄', url:null, info:'Cloudflare Worker · feebit-line-bot.esuse-adobe.workers.dev' },
-  { icon:'🛍️', name:'淘寶訂單匯出外掛',      cat:'自動化', ver:'外掛',   desc:'Chrome 外掛一鍵抓取淘寶訂單，自動翻頁並送至 Apps Script', url:null, info:'Chrome Extension · ~/Desktop/淘寶訂單匯出/' },
-  { icon:'📊', name:'淘寶訂單 Apps Script',   cat:'自動化', ver:'GAS',    desc:'接收 Chrome 外掛資料，自動建 Google Sheet（含商品縮圖）', url:null, info:'Google Apps Script · Deploy: AKfycbx0…' },
-  { icon:'⏰', name:'Supabase 保活排程',      cat:'自動化', ver:'排程',   desc:'每 6 天自動呼叫 Supabase API，避免 free tier 7 天暫停', url:null, info:'Cloud Routine · Trigger: trig_014e4GNd…' },
-  { icon:'📋', name:'Feebit 每日待辦整理',    cat:'自動化', ver:'排程',   desc:'週一至五 08:30 整合 Asana/Gmail/Slack/Notion 產出待辦清單並建 Gmail 草稿，含信件連結、完整回覆草稿、星號/重要信件近兩週提醒', url:'schedule-notifications.html', info:'Cloud Routine · Trigger: trig_01KJRRNzuss…' },
-  { icon:'🚚', name:'蝦皮運費補助申請排程', cat:'自動化', ver:'排程',   desc:'每月 11 日執行帳款調整轉檔與補助申請，完成或異常時寄送通知', url:'shopee-subsidy.html', info:'自動排程 · 每月 11 日觸發' },
-  { icon:'📦', name:'預購商品追蹤',          cat:'自動化', ver:'排程',   desc:'每日 8:30（平日）掃 LaLa V 官網訂單信，比對 Ragic 庫存與進貨單，寄出預購商品彙整信', url:null, info:'Google Apps Script · 獨立專案 · 每日 8:30 觸發' },
-  { icon:'🔭', name:'品類競品分析後端',      cat:'自動化', ver:'Worker', desc:'market-tracker.html 的爬蟲 API：抓蝦皮競品價格、銷量、排名存入資料庫', url:null, info:'Cloudflare Worker · market-tracker.esuse-adobe.workers.dev · D1' },
-  { icon:'🧫', name:'食品成分比對後端',      cat:'自動化', ver:'Worker', desc:'ingredient-checker.html 的「AI 查法規來源」API：先查 FIRDI 即時搜尋，查無再呼叫 Claude API', url:null, info:'Cloudflare Worker · ingredient-checker.esuse-adobe.workers.dev' },
-  { icon:'🎨', name:'新品上架後端',          cat:'自動化', ver:'GAS',    desc:'product-image-gen.html 的後端：寫入 Google Sheet、建 Drive 資料夾、同步 Ragic（含 onEdit 觸發）', url:null, info:'Google Apps Script Web App · AKfycbx34i…/exec' },
-  { icon:'🧾', name:'Google 發票轉 Ragic 請款單', cat:'自動化', ver:'排程',   desc:'每日 7-8 點掃 Google 統一發票信，PDF 發票號寫入 Ragic 請款單並帶附件，備註附原信連結，Gmail 標籤＋發票號雙重防重複', url:null, info:'Google Apps Script · 獨立專案「google one發票自動新建請款單」· 每日 7-8 點觸發' },
+  { icon:'🟢', name:'供應商建檔 LINE Bot',    cat:'自動化', ver:'Worker', desc:'展場掃名片 → Claude 辨識 → 自動建 Ragic 供應商記錄', url:null, info:'Cloudflare Worker · feebit-line-bot.esuse-adobe.workers.dev', host:'Cloudflare Worker' },
+  { icon:'🛍️', name:'淘寶訂單匯出外掛',      cat:'自動化', ver:'外掛',   desc:'Chrome 外掛一鍵抓取淘寶訂單，自動翻頁並送至 Apps Script', url:null, info:'Chrome Extension · ~/Desktop/淘寶訂單匯出/', host:'本機 Chrome（手動觸發）' },
+  { icon:'📊', name:'淘寶訂單 Apps Script',   cat:'自動化', ver:'GAS',    desc:'接收 Chrome 外掛資料，自動建 Google Sheet（含商品縮圖）', url:null, info:'Google Apps Script · Deploy: AKfycbx0…', host:'Google Apps Script' },
+  { icon:'⏰', name:'Supabase 保活排程',      cat:'自動化', ver:'排程',   desc:'每 6 天自動呼叫 Supabase API，避免 free tier 7 天暫停', url:null, info:'Cloud Routine · Trigger: trig_014e4GNd…', host:'Claude Cloud Routine' },
+  { icon:'📋', name:'Feebit 每日待辦整理',    cat:'自動化', ver:'排程',   desc:'週一至五 08:30 整合 Asana/Gmail/Slack/Notion 產出待辦清單並建 Gmail 草稿，含信件連結、完整回覆草稿、星號/重要信件近兩週提醒', url:'schedule-notifications.html', info:'Cloud Routine · Trigger: trig_01KJRRNzuss…', host:'Claude Cloud Routine' },
+  { icon:'🚚', name:'蝦皮運費補助申請排程', cat:'自動化', ver:'排程',   desc:'每月 11 日執行帳款調整轉檔與補助申請，完成或異常時寄送通知', url:'shopee-subsidy.html', info:'自動排程 · 每月 11 日觸發', host:'ChatGPT Agent（OpenAI 雲端）' },
+  { icon:'📦', name:'預購商品追蹤',          cat:'自動化', ver:'排程',   desc:'每日 8:30（平日）掃 LaLa V 官網訂單信，比對 Ragic 庫存與進貨單，寄出預購商品彙整信', url:null, info:'Google Apps Script · 獨立專案 · 每日 8:30 觸發', host:'Google Apps Script' },
+  { icon:'🔭', name:'品類競品分析後端',      cat:'自動化', ver:'Worker', desc:'market-tracker.html 的爬蟲 API：抓蝦皮競品價格、銷量、排名存入資料庫', url:null, info:'Cloudflare Worker · market-tracker.esuse-adobe.workers.dev · D1', host:'Cloudflare Worker' },
+  { icon:'🧫', name:'食品成分比對後端',      cat:'自動化', ver:'Worker', desc:'ingredient-checker.html 的「AI 查法規來源」API：先查 FIRDI 即時搜尋，查無再呼叫 Claude API', url:null, info:'Cloudflare Worker · ingredient-checker.esuse-adobe.workers.dev', host:'Cloudflare Worker' },
+  { icon:'🎨', name:'新品上架後端',          cat:'自動化', ver:'GAS',    desc:'product-image-gen.html 的後端：寫入 Google Sheet、建 Drive 資料夾、同步 Ragic（含 onEdit 觸發）', url:null, info:'Google Apps Script Web App · AKfycbx34i…/exec', host:'Google Apps Script' },
+  { icon:'🧾', name:'Google 發票轉 Ragic 請款單', cat:'自動化', ver:'排程',   desc:'每日 7-8 點掃 Google 統一發票信，PDF 發票號寫入 Ragic 請款單並帶附件，備註附原信連結，Gmail 標籤＋發票號雙重防重複', url:null, info:'Google Apps Script · 獨立專案「google one發票自動新建請款單」· 每日 7-8 點觸發', host:'Google Apps Script' },
   // ── 系統 ──
   { icon:'🏠', name:'首頁',     cat:'系統', ver:'v3.0', desc:'飛比特營運工具箱入口，所有工具快速導覽', url:'index.html' },
   { icon:'🔧', name:'使用工具', cat:'系統', ver:'v1.1', desc:'外部平台與後台連結總覽，點擊前往各系統', url:'tools.html' },
@@ -511,6 +512,7 @@ function render() {
         <div class="skill-card-name">${s.name}</div>
         <span class="skill-card-tag tag-${key}">${s.cat}</span>
         <div class="skill-card-desc">${s.desc}</div>
+        ${s.host ? `<div class="skill-card-host">🖥️ ${s.host}</div>` : ''}
       `;
       if (s.cmd)       html += `<div class="skill-card-action action-cmd">⌨️ 點擊查看指令</div>`;
       else if (s.url)  html += `<div class="skill-card-action action-go">前往 →</div>`;
