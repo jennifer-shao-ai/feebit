@@ -13,6 +13,7 @@
 <link rel="manifest" href='data:application/json,{"name":"旅程手冊","short_name":"旅程手冊","display":"standalone","background_color":"%23f8fafc","theme_color":"%230f766e","start_url":"./trip-planner.html","icons":[{"src":"data:image/svg+xml,%253Csvg xmlns=%2527http://www.w3.org/2000/svg%2527 viewBox=%25270 0 100 100%2527%253E%253Crect width=%2527100%2527 height=%2527100%2527 rx=%252722%2527 fill=%2527%25230f766e%2527/%253E%253Ctext x=%252750%2527 y=%252768%2527 font-size=%252756%2527 text-anchor=%2527middle%2527%253E%25E2%259C%2588%25EF%25B8%258F%253C/text%253E%253C/svg%253E","sizes":"512x512","type":"image/svg+xml"}]}'>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
 <style>
 :root{
   --bg:#f1f5f9; --card:#ffffff; --ink:#0f172a; --ink2:#475569; --ink3:#94a3b8;
@@ -283,7 +284,7 @@ h1,h2,h3,h4{margin:0}
         <button class="btn btn-sm" onclick="newTrip()">✨ 新旅程</button>
         <button class="btn btn-sm btn-danger" onclick="deleteTrip()">🗑 刪除此旅程</button>
       </div>
-      <p class="help" style="margin-top:10px">換手機/瀏覽器看不到資料？用「☁️ 我的雲端同步」設一組代碼，每台裝置輸入同一組即可互通。<br>加到主畫面：iPhone Safari 分享鍵→「加入主畫面」；Android Chrome 選單→「安裝應用程式」。</p>
+      <p class="help" style="margin-top:10px">換手機/瀏覽器看不到資料？用「☁️ 我的雲端同步」設一組代碼，每台裝置輸入同一組即可互通。<br>照片會自動上傳雲端相簿（Firebase Storage），不會佔滿本機/資料庫空間；若 Storage 還沒在 Firebase 後台啟用，照片會先退回存本機，之後啟用了新上傳的就會自動走雲端。<br>加到主畫面：iPhone Safari 分享鍵→「加入主畫面」；Android Chrome 選單→「安裝應用程式」。</p>
     </div>
   </section>
 </div>
@@ -302,14 +303,18 @@ h1,h2,h3,h4{margin:0}
 
 <script>
 /* ============================================================
-   旅程手冊 · trip-planner.html  v1.1
+   旅程手冊 · trip-planner.html  v1.2
    單檔 PWA。資料存 localStorage；每個旅程一律有 room，開 App 即
    自動雲端同步（Firebase Realtime DB）。跨裝置用「雲端同步碼」。
+   圖片走 Firebase Storage（trips/<room>/<uid>.jpg），資料庫只存網址；
+   Storage 未啟用時自動退回存壓縮 dataURL，不會卡住功能。
    與舊版 travel-planner.html 完全獨立（不同檔案、不同 storage key、
    不同 Firebase 專案）。
    v1.1：分帳改以外幣為主+每人先付/該分攤明細、今日路線修正、
         票券/優惠券可多圖、行程點/證件/攻略/區域提醒可放圖、
         自動雲端同步+同步碼、範本補上各段交通站點。
+   v1.2：圖片改接 Firebase Storage（上傳/刪除同步清理），不再灌爆
+        localStorage/RTDB；Storage 沒開時自動退回原本 dataURL 模式。
    ============================================================ */
 
 /* ---------- FIREBASE（換成你新開的專案）---------- */
@@ -323,13 +328,17 @@ const FIREBASE_CONFIG = {
   appId: "1:225283746648:web:6fc5b77fe58c428de5532d"
 };
 
-let _db=null,_ref=null,_room=null,_syncing=false,_saveT=null;
+let _db=null,_ref=null,_room=null,_syncing=false,_saveT=null,_storage=null,_storageWarned=false;
 function fbReady(){ return FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey.indexOf('PASTE')<0; }
 function initFB(){
   if(_db) return true;
   if(!fbReady()) return false;
-  try{ _db=firebase.database(firebase.initializeApp(FIREBASE_CONFIG)); return true; }
-  catch(e){ console.warn('FB init fail',e); return false; }
+  try{
+    const app=firebase.initializeApp(FIREBASE_CONFIG);
+    _db=firebase.database(app);
+    try{ _storage=firebase.storage(app); }catch(e){ _storage=null; console.warn('Storage 未啟用，圖片會退回存在本機/資料庫裡',e); }
+    return true;
+  }catch(e){ console.warn('FB init fail',e); return false; }
 }
 function setDot(s){ const d=document.getElementById('syncDot'); d.className='sync-dot'+(s==='live'?' live':s==='off'?' off':''); }
 
@@ -622,6 +631,8 @@ function toggleDone(date,id){
 function delSpot(date,id){
   if(!confirm('刪除這個行程點？')) return;
   const t=trip(); const d=t.days.find(x=>x.date===date);
+  const s=d.spots.find(x=>x.id===id);
+  if(s) deleteImgUrls(s.photos||(s.photo?[s.photo]:[]));
   d.spots=d.spots.filter(x=>x.id!==id); save(); renderItin(); renderDayChips();
 }
 
@@ -666,11 +677,40 @@ function imgPickerHTML(multi){
     <input type="file" accept="image/*" ${multi?'multiple':''} onchange="onPickImg(this)"></label>
     <div class="imgs" id="imgBufBox"></div>`;
 }
+function isStorageUrl(u){ return typeof u==='string' && /firebasestorage\.(app|googleapis\.com)/.test(u); }
+function dataURLtoBlob(dataURL){
+  const parts=dataURL.split(',');
+  const mime=(parts[0].match(/data:(.*?);base64/)||[])[1]||'image/jpeg';
+  const bin=atob(parts[1]); const arr=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+  return new Blob([arr],{type:mime});
+}
+// 圖片優先上傳到 Firebase Storage（只存網址，不佔資料庫/本機空間）；
+// Storage 還沒設定好時自動退回存壓縮後的 dataURL，不會卡住。
+async function uploadOrInline(dataURL){
+  const t=trip(); const room=t&&t.room;
+  if(initFB() && _storage && room){
+    try{
+      const path='trips/'+room+'/'+uid()+'.jpg';
+      const ref=_storage.ref().child(path);
+      await ref.put(dataURLtoBlob(dataURL),{contentType:'image/jpeg'});
+      return await ref.getDownloadURL();
+    }catch(e){
+      console.warn('Storage 上傳失敗，改存本機',e);
+      if(!_storageWarned){ _storageWarned=true; toast('雲端相簿還沒設定好，這張先存在本機（見「更多」說明）','#b45309'); }
+    }
+  }
+  return dataURL;
+}
 async function onPickImg(input){
   const files=[...input.files]; if(!files.length) return;
+  const box=document.getElementById('imgBufBox');
+  if(box) box.insertAdjacentHTML('beforeend','<div class="thumb" id="imgUploading">⏳</div>');
   for(const f of files){
     const d=await compressImg(f);
-    if(d){ if(_imgMulti) _imgBuf.push(d); else _imgBuf=[d]; }
+    if(!d) continue;
+    const url=await uploadOrInline(d);
+    if(_imgMulti) _imgBuf.push(url); else _imgBuf=[url];
   }
   input.value='';
   renderImgBuf();
@@ -678,7 +718,19 @@ async function onPickImg(input){
 }
 function renderImgBuf(){
   const box=document.getElementById('imgBufBox'); if(!box) return;
-  box.innerHTML=_imgBuf.map((d,i)=>`<div class="thumb"><img src="${d}" onclick="viewImg(this)"><span class="x" onclick="_imgBuf.splice(${i},1);renderImgBuf()">×</span></div>`).join('');
+  box.innerHTML=_imgBuf.map((d,i)=>`<div class="thumb"><img src="${d}" onclick="viewImg(this)"><span class="x" onclick="removeImgBuf(${i})">×</span></div>`).join('');
+}
+function removeImgBuf(i){
+  const u=_imgBuf[i];
+  if(isStorageUrl(u) && _storage){ try{ _storage.refFromURL(u).delete().catch(()=>{}); }catch(e){} }
+  _imgBuf.splice(i,1); renderImgBuf();
+}
+// 整筆刪除時，一併清掉雲端相簿裡的圖，避免留孤兒檔案
+function deleteImgUrls(arr){
+  if(!_storage||!arr) return;
+  (Array.isArray(arr)?arr:[arr]).forEach(u=>{
+    if(isStorageUrl(u)){ try{ _storage.refFromURL(u).delete().catch(()=>{}); }catch(e){} }
+  });
 }
 function viewImg(el){
   const v=document.createElement('div'); v.className='img-view';
@@ -689,7 +741,7 @@ function viewImg(el){
 function checkStorage(){
   try{
     const kb=Math.round((JSON.stringify(S).length)/1024);
-    if(kb>4200) toast('提醒：本機存檔已 '+kb+'KB，接近上限，照片別放太多（之後可改用雲端相簿）','#b45309');
+    if(kb>4200) toast('提醒：本機存檔已 '+kb+'KB，接近上限。新照片已走雲端相簿不會再撐大，但太舊、還沒補傳的照片還是佔本機空間','#b45309');
   }catch(e){}
 }
 
@@ -823,7 +875,7 @@ function renderShop(){
   }).join('');
 }
 function toggleShop(id){ const t=trip(); const i=t.shopping.find(x=>x.id===id); i.done=!i.done; save(); renderShop(); }
-function delShop(id){ if(!confirm('刪除？'))return; const t=trip(); t.shopping=t.shopping.filter(x=>x.id!==id); save(); renderShop(); }
+function delShop(id){ if(!confirm('刪除？'))return; const t=trip(); const i=t.shopping.find(x=>x.id===id); if(i&&i.photo)deleteImgUrls([i.photo]); t.shopping=t.shopping.filter(x=>x.id!==id); save(); renderShop(); }
 function editShop(id){
   const t=trip(); if(!t.shopping) t.shopping=[];
   const i=id?t.shopping.find(x=>x.id===id):{cur:'JPY',cat:'藥妝'};
@@ -1059,7 +1111,7 @@ function renderCoupons(){
    +`<div class="card-pad"><button class="btn btn-block btn-ghost" onclick="editCoupon(null)">＋ 新增票券 / 優惠券</button></div>`;
 }
 function toggleCoupon(id){ const t=trip(); const c=t.coupons.find(x=>x.id===id); c.used=!c.used; save(); renderCoupons(); }
-function delCoupon(id){ if(!confirm('刪除？'))return; const t=trip(); t.coupons=t.coupons.filter(x=>x.id!==id); save(); renderCoupons(); }
+function delCoupon(id){ if(!confirm('刪除？'))return; const t=trip(); const c=t.coupons.find(x=>x.id===id); if(c)deleteImgUrls(ticketImgs(c)); t.coupons=t.coupons.filter(x=>x.id!==id); save(); renderCoupons(); }
 function showTicket(id){
   const c=trip().coupons.find(x=>x.id===id); const imgs=ticketImgs(c);
   modal(`<h3>${esc(c.title)}</h3>
@@ -1146,7 +1198,7 @@ function editDoc(id){ const t=trip(); if(!t.docs)t.docs=[]; const d=id?t.docs.fi
   renderImgBuf(); }
 function saveDoc(id){ const t=trip(); const o={id:id||uid(),title:val('d-t'),type:val('d-y'),text:val('d-x'),photos:[..._imgBuf]};
   if(!o.title){toast('請填標題','#dc2626');return;} if(id)t.docs=t.docs.map(x=>x.id===id?o:x);else t.docs.push(o); save();closeModal();renderMore(); }
-function delDoc(id){ if(!confirm('刪除？'))return; const t=trip(); t.docs=t.docs.filter(x=>x.id!==id); save(); renderMore(); }
+function delDoc(id){ if(!confirm('刪除？'))return; const t=trip(); const d=t.docs.find(x=>x.id===id); if(d)deleteImgUrls(d.photos); t.docs=t.docs.filter(x=>x.id!==id); save(); renderMore(); }
 
 function editAreaAlert(id){ const t=trip(); if(!t.areaAlerts)t.areaAlerts=[]; const a=id?t.areaAlerts.find(x=>x.id===id):{};
   _imgBuf=[...(a.photos||[])];
@@ -1158,7 +1210,7 @@ function editAreaAlert(id){ const t=trip(); if(!t.areaAlerts)t.areaAlerts=[]; co
   renderImgBuf(); }
 function saveAreaAlert(id){ const t=trip(); const o={id:id||uid(),area:val('a-k'),text:val('a-x'),photos:[..._imgBuf]};
   if(!o.area||!o.text){toast('都要填','#dc2626');return;} if(id)t.areaAlerts=t.areaAlerts.map(x=>x.id===id?o:x);else t.areaAlerts.push(o); save();closeModal();renderMore();renderItin(); }
-function delAreaAlert(id){ if(!confirm('刪除？'))return; const t=trip(); t.areaAlerts=t.areaAlerts.filter(x=>x.id!==id); save(); renderMore(); renderItin(); }
+function delAreaAlert(id){ if(!confirm('刪除？'))return; const t=trip(); const a=t.areaAlerts.find(x=>x.id===id); if(a)deleteImgUrls(a.photos); t.areaAlerts=t.areaAlerts.filter(x=>x.id!==id); save(); renderMore(); renderItin(); }
 
 function addPack(){ const t=trip(); const v=prompt('要帶什麼？'); if(!v)return; if(!t.packing)t.packing=[]; t.packing.push({id:uid(),text:v.trim(),done:false}); save(); renderMore(); }
 function togglePack(id){ const t=trip(); const p=t.packing.find(x=>x.id===id); p.done=!p.done; save(); renderMore(); }
@@ -1176,7 +1228,7 @@ function editGuide(id){ const t=trip(); if(!t.guides)t.guides=[]; const g=id?t.g
   renderImgBuf(); }
 function saveGuide(id){ const t=trip(); const o={id:id||uid(),title:val('g-t'),text:val('g-x'),photos:[..._imgBuf]};
   if(!o.title){toast('請填標題','#dc2626');return;} if(id)t.guides=t.guides.map(x=>x.id===id?o:x);else t.guides.push(o); save();closeModal();renderMore(); }
-function delGuide(id){ if(!confirm('刪除？'))return; const t=trip(); t.guides=t.guides.filter(x=>x.id!==id); save(); renderMore(); }
+function delGuide(id){ if(!confirm('刪除？'))return; const t=trip(); const g=t.guides.find(x=>x.id===id); if(g)deleteImgUrls(g.photos); t.guides=t.guides.filter(x=>x.id!==id); save(); renderMore(); }
 function val(id){ return document.getElementById(id).value.trim(); }
 
 /* ---------- FX SETTINGS ---------- */
