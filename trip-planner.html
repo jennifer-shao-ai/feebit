@@ -129,9 +129,11 @@ h1,h2,h3,h4{margin:0}
 .spot-foot{display:flex;gap:6px;border-top:1px dashed var(--line);padding:7px 12px;background:#fafcfc}
 .spot-foot button{font-size:11.5px;color:var(--ink3);background:none;border:none;font-weight:600}
 
-.transit{display:flex;align-items:center;gap:8px;margin:-2px 0 7px 22px;padding-left:12px;border-left:2px dotted var(--line)}
-.transit button{font-size:11.5px;color:var(--ink3);background:#eef2f6;border:none;border-radius:7px;padding:4px 9px;font-weight:600}
+.transit{display:flex;flex-direction:column;gap:4px;margin:-2px 0 7px 22px;padding:5px 0 5px 12px;border-left:2px dotted var(--line)}
+.transit-row{display:flex;align-items:center;gap:8px}
+.transit button{font-size:11.5px;color:var(--ink3);background:#eef2f6;border:none;border-radius:7px;padding:4px 9px;font-weight:600;flex-shrink:0}
 .transit .info{font-size:11.5px;color:var(--ink2);font-weight:600}
+.transit-note{font-size:11.5px;color:var(--ink3);font-weight:500;white-space:pre-wrap;line-height:1.5}
 
 /* ---------- generic list card ---------- */
 .li{display:flex;gap:11px;padding:12px 13px;border-bottom:1px solid var(--line)}
@@ -303,7 +305,7 @@ h1,h2,h3,h4{margin:0}
 
 <script>
 /* ============================================================
-   旅程手冊 · trip-planner.html  v1.2
+   旅程手冊 · trip-planner.html  v1.3
    單檔 PWA。資料存 localStorage；每個旅程一律有 room，開 App 即
    自動雲端同步（Firebase Realtime DB）。跨裝置用「雲端同步碼」。
    圖片走 Firebase Storage（trips/<room>/<uid>.jpg），資料庫只存網址；
@@ -315,6 +317,8 @@ h1,h2,h3,h4{margin:0}
         自動雲端同步+同步碼、範本補上各段交通站點。
    v1.2：圖片改接 Firebase Storage（上傳/刪除同步清理），不再灌爆
         localStorage/RTDB；Storage 沒開時自動退回原本 dataURL 模式。
+   v1.3：交通備註（transitAfter.note）改用獨立區塊＋white-space:pre-wrap
+        顯示，保留使用者輸入的換行，不再被擠成一行。
    ============================================================ */
 
 /* ---------- FIREBASE（換成你新開的專案）---------- */
@@ -615,14 +619,19 @@ function renderSpot(s,date){
 function renderTransit(a,b,date){
   const tr=a.transitAfter;
   if(!tr||!tr.mode){
-    return `<div class="transit"><button onclick="editTransit('${date}','${a.id}')">＋ 交通</button>
-      <a class="info" href="${dirUrl(a.name,b.name)}" target="_blank" rel="noopener" style="margin-left:auto">🧭 路線</a></div>`;
+    return `<div class="transit"><div class="transit-row"><button onclick="editTransit('${date}','${a.id}')">＋ 交通</button>
+      <a class="info" href="${dirUrl(a.name,b.name)}" target="_blank" rel="noopener" style="margin-left:auto">🧭 路線</a></div></div>`;
   }
   const ic={walk:'🚶',train:'🚃',subway:'🚇',bus:'🚌',taxi:'🚕',other:'➡️'}[tr.mode]||'➡️';
-  const bits=[tr.mins?tr.mins+'分':'',tr.fare?('¥'+Number(tr.fare).toLocaleString()):'',tr.note].filter(Boolean);
-  return `<div class="transit"><span class="info">${ic} ${esc(bits.join(' · ')||'移動')}</span>
-    <button onclick="editTransit('${date}','${a.id}')">編輯</button>
-    <a class="info" href="${dirUrl(a.name,b.name)}" target="_blank" rel="noopener" style="margin-left:auto">🧭 路線</a></div>`;
+  const head=[tr.mins?tr.mins+'分':'',tr.fare?('¥'+Number(tr.fare).toLocaleString()):''].filter(Boolean).join(' · ');
+  return `<div class="transit">
+    <div class="transit-row">
+      <span class="info">${ic} ${esc(head||'移動')}</span>
+      <button onclick="editTransit('${date}','${a.id}')">編輯</button>
+      <a class="info" href="${dirUrl(a.name,b.name)}" target="_blank" rel="noopener" style="margin-left:auto">🧭 路線</a>
+    </div>
+    ${tr.note?`<div class="transit-note">${esc(tr.note)}</div>`:''}
+  </div>`;
 }
 function toggleDone(date,id){
   const t=trip(); const d=t.days.find(x=>x.date===date); const s=d&&d.spots.find(x=>x.id===id);
