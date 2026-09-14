@@ -288,7 +288,11 @@ h1,h2,h3,h4{margin:0}
         <button class="btn btn-sm" onclick="newTrip()">✨ 新旅程</button>
         <button class="btn btn-sm btn-danger" onclick="deleteTrip()">🗑 刪除此旅程</button>
       </div>
-      <p class="help" style="margin-top:10px">換手機/瀏覽器看不到資料？用「☁️ 我的雲端同步」設一組代碼，每台裝置輸入同一組即可互通。<br>照片會自動上傳雲端相簿（Firebase Storage），不會佔滿本機/資料庫空間；若 Storage 還沒在 Firebase 後台啟用，照片會先退回存本機，之後啟用了新上傳的就會自動走雲端。<br>加到主畫面：iPhone Safari 分享鍵→「加入主畫面」；Android Chrome 選單→「安裝應用程式」。</p>
+      <p class="help" style="margin-top:10px">換手機/瀏覽器看不到資料？用「☁️ 我的雲端同步」設一組代碼，每台裝置輸入同一組即可互通。<br>
+      <b>雲端同步碼要能用，資料庫規則要包含 <code>idx</code> 路徑</b>：Firebase Console → Realtime Database → 規則，確認整段是：
+      <code style="display:block;white-space:pre;margin-top:4px;padding:6px;background:#f1f5f9;border-radius:6px;overflow-x:auto">{"rules":{"trips":{"$room":{".read":true,".write":true}},"idx":{"$code":{".read":true,".write":true}}}}</code>
+      只有 <code>trips</code> 沒有 <code>idx</code> 的話，設定同步碼會顯示已上傳但其實失敗、換裝置輸入會讀取被拒絕。<br>
+      照片會自動上傳雲端相簿（Firebase Storage），不會佔滿本機/資料庫空間；若 Storage 還沒在 Firebase 後台啟用，照片會先退回存本機，之後啟用了新上傳的就會自動走雲端。<br>加到主畫面：iPhone Safari 分享鍵→「加入主畫面」；Android Chrome 選單→「安裝應用程式」。</p>
     </div>
   </section>
 </div>
@@ -307,7 +311,7 @@ h1,h2,h3,h4{margin:0}
 
 <script>
 /* ============================================================
-   旅程手冊 · trip-planner.html  v1.5
+   旅程手冊 · trip-planner.html  v1.6
    單檔 PWA。資料存 localStorage；每個旅程一律有 room，開 App 即
    自動雲端同步（Firebase Realtime DB）。跨裝置用「雲端同步碼」。
    圖片走 Firebase Storage（trips/<room>/<uid>.jpg），資料庫只存網址；
@@ -325,6 +329,11 @@ h1,h2,h3,h4{margin:0}
         可加多個），顯示為可點按鈕，沒填 https:// 自動補上。
    v1.5：每天標題列新增明顯的「＋ 新增行程點」按鈕（含空白天），修正
         之前只能靠右下角浮動 + 鍵新增、容易被忽略/誤以為壞掉的問題。
+   v1.6：修正雲端同步碼設定「顯示成功但其實失敗」的問題——舊版沒等
+        idx/ 路徑真的寫入成功就報告成功；改成 await 確認結果，失敗時
+        給明確錯誤訊息。真因是 RTDB 規則只開了 trips 沒開 idx（已用
+        REST API 對真實資料庫驗證：idx 寫入回 401 Permission denied，
+        trips 回 200），已在「更多」補上完整規則範例。
    ============================================================ */
 
 /* ---------- FIREBASE（換成你新開的專案）---------- */
@@ -376,9 +385,12 @@ function pushRemote(){
   },600);
 }
 // 把「我有哪些旅程 + 各自的 room」寫到 idx/<同步碼>，讓其他裝置輸入同步碼就能整批拉回
+// 回傳 Promise<boolean>，讓呼叫方（尤其是 saveSyncCode）能確認真的寫成功，不是只是「呼叫了」
 function pushIndex(){
-  if(!S.syncCode||!initFB()) return;
-  try{ _db.ref('idx/'+S.syncCode).set(S.trips.map(t=>({id:t.id,name:t.name||'',room:t.room||''}))); }catch(e){}
+  if(!S.syncCode||!initFB()) return Promise.resolve(false);
+  return _db.ref('idx/'+S.syncCode).set(S.trips.map(t=>({id:t.id,name:t.name||'',room:t.room||''})))
+    .then(()=>true)
+    .catch(e=>{ console.warn('pushIndex failed（多半是 RTDB 規則沒開 idx 路徑）',e); return false; });
 }
 /* 合併策略：以 id 為鍵，兩邊union；時間戳較新的欄位優先 */
 function byId(a,b){ const m=new Map(); (a||[]).forEach(x=>x&&x.id&&m.set(x.id,x)); (b||[]).forEach(x=>x&&x.id&&m.set(x.id,x)); return [...m.values()]; }
@@ -1374,12 +1386,15 @@ function openSyncCode(){
    ${!fbReady()?'<p class="help" style="color:#dc2626;margin-top:8px">尚未設定 Firebase，無法使用雲端同步。</p>':''}
    <div class="btn-row" style="margin-top:8px"><button class="btn btn-block" onclick="closeModal()">關閉</button></div>`);
 }
-function saveSyncCode(){
+async function saveSyncCode(){
   const v=(document.getElementById('sc').value||'').trim();
   if(v.length<6){ toast('至少 6 碼','#dc2626'); return; }
   if(!initFB()){ toast('Firebase 未設定','#dc2626'); return; }
-  S.syncCode=v; persist(); pushIndex();
-  closeModal(); toast('已設定，本機旅程已上傳雲端');
+  S.syncCode=v; persist();
+  const ok=await pushIndex();
+  closeModal();
+  if(ok) toast('已設定，本機旅程已上傳雲端');
+  else toast('代碼已存本機，但上傳雲端失敗——多半是資料庫規則還沒開放 idx 路徑，見「更多」說明','#dc2626');
 }
 function pullSyncCode(){
   const v=(document.getElementById('sc').value||'').trim();
@@ -1387,7 +1402,7 @@ function pullSyncCode(){
   if(!initFB()){ toast('Firebase 未設定','#dc2626'); return; }
   _db.ref('idx/'+v).once('value').then(async snap=>{
     const list=snap.val();
-    if(!list||!list.length){ toast('這組代碼雲端沒有旅程','#dc2626'); return; }
+    if(!list||!list.length){ toast('這組代碼雲端沒有旅程（先在另一台裝置按過「設定並上傳」了嗎？）','#dc2626'); return; }
     let n=0;
     for(const it of list){
       if(!it.room) continue;
@@ -1403,7 +1418,10 @@ function pullSyncCode(){
     if(S.trips.length&&!S.trips.some(x=>x.id===S.currentId)) S.currentId=S.trips[0].id;
     persist(); renderAll(); syncRoom(); closeModal();
     toast('已拉下 '+n+' 筆旅程');
-  }).catch(e=>toast('讀取失敗：'+(e.message||'檢查 Firebase 規則'),'#dc2626'));
+  }).catch(e=>{
+    const denied=/permission/i.test(e.message||'');
+    toast(denied?'讀取被拒絕——資料庫規則還沒開放 idx 路徑，見「更多」說明':'讀取失敗：'+(e.message||'檢查網路'),'#dc2626');
+  });
 }
 
 /* ---------- TRIP CRUD ---------- */
