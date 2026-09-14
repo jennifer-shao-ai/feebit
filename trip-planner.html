@@ -244,7 +244,7 @@ h1,h2,h3,h4{margin:0}
   <!-- EXPENSES -->
   <section class="page" id="pg-money">
     <div id="moneyHead"></div>
-    <div class="sec-title">結算（最少轉帳）</div>
+    <div class="sec-title">結算（誰欠誰）</div>
     <div id="settle"></div>
     <div class="sec-title">所有支出</div>
     <div class="card" id="expList"></div>
@@ -279,8 +279,7 @@ h1,h2,h3,h4{margin:0}
     <div class="sec-title">工具</div>
     <div class="card card-pad">
       <div class="btn-row">
-        <button class="btn btn-sm" onclick="openSyncCode()">☁️ 我的雲端同步</button>
-        <button class="btn btn-sm" onclick="openShare()">👥 好友共享</button>
+        <button class="btn btn-sm" onclick="openShare()">🔗 同步與分享</button>
         <button class="btn btn-sm" onclick="openFxSettings()">💱 匯率設定</button>
         <button class="btn btn-sm" onclick="openMembers()">🧑‍🤝‍🧑 成員</button>
         <button class="btn btn-sm" onclick="exportJSON()">⬇️ 匯出備份</button>
@@ -288,10 +287,7 @@ h1,h2,h3,h4{margin:0}
         <button class="btn btn-sm" onclick="newTrip()">✨ 新旅程</button>
         <button class="btn btn-sm btn-danger" onclick="deleteTrip()">🗑 刪除此旅程</button>
       </div>
-      <p class="help" style="margin-top:10px">換手機/瀏覽器看不到資料？用「☁️ 我的雲端同步」設一組代碼，每台裝置輸入同一組即可互通。<br>
-      <b>雲端同步碼要能用，資料庫規則要包含 <code>idx</code> 路徑</b>：Firebase Console → Realtime Database → 規則，確認整段是：
-      <code style="display:block;white-space:pre;margin-top:4px;padding:6px;background:#f1f5f9;border-radius:6px;overflow-x:auto">{"rules":{"trips":{"$room":{".read":true,".write":true}},"idx":{"$code":{".read":true,".write":true}}}}</code>
-      只有 <code>trips</code> 沒有 <code>idx</code> 的話，設定同步碼會顯示已上傳但其實失敗、換裝置輸入會讀取被拒絕。<br>
+      <p class="help" style="margin-top:10px">換手機/瀏覽器看不到資料？點「🔗 同步與分享」拿這趟旅程的代碼或連結，在其他裝置輸入／打開就會加入即時同步——你自己的裝置、或同行朋友都用同一組，沒有誰上傳誰下載、不會互相覆蓋。<br>
       照片會自動上傳雲端相簿（Firebase Storage），不會佔滿本機/資料庫空間；若 Storage 還沒在 Firebase 後台啟用，照片會先退回存本機，之後啟用了新上傳的就會自動走雲端。<br>加到主畫面：iPhone Safari 分享鍵→「加入主畫面」；Android Chrome 選單→「安裝應用程式」。</p>
     </div>
   </section>
@@ -311,7 +307,7 @@ h1,h2,h3,h4{margin:0}
 
 <script>
 /* ============================================================
-   旅程手冊 · trip-planner.html  v1.6
+   旅程手冊 · trip-planner.html  v1.7
    單檔 PWA。資料存 localStorage；每個旅程一律有 room，開 App 即
    自動雲端同步（Firebase Realtime DB）。跨裝置用「雲端同步碼」。
    圖片走 Firebase Storage（trips/<room>/<uid>.jpg），資料庫只存網址；
@@ -334,6 +330,14 @@ h1,h2,h3,h4{margin:0}
         給明確錯誤訊息。真因是 RTDB 規則只開了 trips 沒開 idx（已用
         REST API 對真實資料庫驗證：idx 寫入回 401 Permission denied，
         trips 回 200），已在「更多」補上完整規則範例。
+   v1.7：拿掉容易搞混、有覆蓋風險的「雲端同步碼」雙軌設計（上傳/下載
+        兩顆按鈕、內部再疊一層 idx 索引）。改成單一模型：一趟旅程一組
+        8 碼代碼，任何人輸入或開連結都是「加入即時同步」，不分你自己
+        的裝置或朋友、沒有誰蓋掉誰。同步/分享頁合併成一個（🔗 同步與
+        分享），新增「輸入代碼加入」欄位。分帳結算改用「兩兩互抵」
+        （原本 minCashFlow 全域最少轉帳會把欠款重新分配給沒有直接
+        往來的人，兩次被回報「結果跟直覺不符」，改成每一對人各自的
+        帳互相扣抵、不跨對重分配，已用實際案例驗證數字正確）。
    ============================================================ */
 
 /* ---------- FIREBASE（換成你新開的專案）---------- */
@@ -431,14 +435,21 @@ let _day=null;                 // 目前選的日期
 let _filter={today:false,done:false};
 
 function persist(){ try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){} }
-function save(){ persist(); pushRemote(); pushIndex(); }
+function save(){ persist(); pushRemote(); }
 function load(){
   try{ const d=localStorage.getItem(KEY); if(d) S=JSON.parse(d); }catch(e){}
-  if(!S.trips)S.trips=[]; if(!S.fx)S.fx={}; if(S.syncCode==null)S.syncCode='';
+  if(!S.trips)S.trips=[]; if(!S.fx)S.fx={};
   // 每個旅程一律有 room（舊資料補上），開 App 就會自動雲端同步，不用先按分享
-  S.trips.forEach(t=>{ if(!t.room) t.room='r'+uid()+uid(); });
+  S.trips.forEach(t=>{ if(!t.room) t.room=genCode(8); });
 }
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+// 旅程同步代碼：8 碼好讀好打，排除易混淆的 0/O/1/I/L
+function genCode(len){
+  const AB='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  len=len||8; let s='';
+  for(let i=0;i<len;i++) s+=AB[Math.floor(Math.random()*AB.length)];
+  return s;
+}
 function trip(){ return S.trips.find(t=>t.id===S.currentId)||null; }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
@@ -998,19 +1009,26 @@ function renderMoney(){
       <button class="btn btn-sm" onclick="openFxSettings()">調匯率</button>
     </div></div>`;
 
-  // 每人：先付 / 該分攤 / 淨額（都用結算單位）
-  const paid={},owe={};
-  mem.forEach(m=>{paid[m]=0;owe[m]=0;});
+  // 每人：先付 / 該分攤 / 淨額（都用結算單位）；同時建立「誰欠誰」的兩兩原始欠款矩陣
+  const paid={},owe={},owesPair={};
+  mem.forEach(m=>{paid[m]=0;owe[m]=0;owesPair[m]={};});
+  const ensure=m=>{ if(!(m in paid)){paid[m]=0;owe[m]=0;} if(!owesPair[m])owesPair[m]={}; };
   exp.forEach(e=>{
     const amt=inUni(e.amount,e.cur);
-    if(paid[e.paidBy]==null){paid[e.paidBy]=0;owe[e.paidBy]=0;}
-    paid[e.paidBy]+=amt;
+    const payer=e.paidBy; ensure(payer);
+    paid[payer]+=amt;
     const parts=(e.splitWith&&e.splitWith.length)?e.splitWith:mem;
     if(e.splitMode==='custom'&&e.customSplits){
-      Object.entries(e.customSplits).forEach(([m,v])=>{ if(owe[m]==null){owe[m]=0;paid[m]=0;} owe[m]+=inUni(v,e.cur); });
+      Object.entries(e.customSplits).forEach(([m,v])=>{
+        ensure(m); const share=inUni(v,e.cur); owe[m]+=share;
+        if(m!==payer) owesPair[m][payer]=(owesPair[m][payer]||0)+share;
+      });
     }else{
       const each=amt/parts.length;
-      parts.forEach(m=>{ if(owe[m]==null){owe[m]=0;paid[m]=0;} owe[m]+=each; });
+      parts.forEach(m=>{
+        ensure(m); owe[m]+=each;
+        if(m!==payer) owesPair[m][payer]=(owesPair[m][payer]||0)+each;
+      });
     }
   });
   const bal={}; Object.keys(paid).forEach(m=>bal[m]=Math.round(paid[m]-owe[m]));
@@ -1029,10 +1047,10 @@ function renderMoney(){
     }).join('')}
   </div>`;
 
-  // 最少轉帳
-  const tx=minCashFlow(bal);
+  // 兩兩互抵：只把「同一對人」彼此的帳互相扣掉，不會把 X 欠的錢改成由 Y 去收
+  const tx=pairwiseSettle(owesPair);
   document.getElementById('settle').innerHTML=`
-    <p class="help" style="margin:0 0 8px 4px">「先付」剛好等於「該分攤」的人就結清了，不用再轉帳。剩下的用最少次數喬完：</p>
+    <p class="help" style="margin:0 0 8px 4px">每一筆都照實際「誰付、誰分攤」算，兩人之間互相欠的錢互抵後只留一個方向：</p>
     ${tx.length?tx.map(x=>{
       const paidOff=(t.paidOff||[]).some(p=>p.from===x.from&&p.to===x.to);
       return `<div class="settle-tx ${paidOff?'paid':''}">
@@ -1064,17 +1082,22 @@ function renderMoney(){
     </div></div>`;
   }).join(''):'<div class="empty"><span class="ic">💴</span>還沒有支出</div>';
 }
-function minCashFlow(bal){
-  const cred=[],deb=[];
-  Object.entries(bal).forEach(([m,v])=>{ if(v>0)cred.push([m,v]); else if(v<0)deb.push([m,-v]); });
-  cred.sort((a,b)=>b[1]-a[1]); deb.sort((a,b)=>b[1]-a[1]);
-  const tx=[]; let i=0,j=0;
-  while(i<deb.length&&j<cred.length){
-    const pay=Math.min(deb[i][1],cred[j][1]);
-    if(pay>0.5) tx.push({from:deb[i][0],to:cred[j][0],amt:Math.round(pay)});
-    deb[i][1]-=pay; cred[j][1]-=pay;
-    if(deb[i][1]<=0.5)i++; if(cred[j][1]<=0.5)j++;
-  }
+// 兩兩淨額：只在「同一對人」之間互抵，不會像最少轉帳演算法那樣把欠款改分配給沒有直接往來的人
+function pairwiseSettle(owesPair){
+  const names=Object.keys(owesPair);
+  const tx=[]; const done=new Set();
+  names.forEach(a=>{
+    names.forEach(b=>{
+      if(a===b) return;
+      const key=[a,b].sort().join(' ');
+      if(done.has(key)) return; done.add(key);
+      const ab=(owesPair[a]&&owesPair[a][b])||0;
+      const ba=(owesPair[b]&&owesPair[b][a])||0;
+      const net=ab-ba;
+      if(net>0.5) tx.push({from:a,to:b,amt:Math.round(net)});
+      else if(net<-0.5) tx.push({from:b,to:a,amt:Math.round(-net)});
+    });
+  });
   return tx;
 }
 function togglePaid(from,to,amt){
@@ -1357,71 +1380,49 @@ function saveTripMeta(){
   }
   save(); closeModal(); renderAll();
 }
+// 一組代碼 = 一趟旅程。誰輸入都一樣（你自己的其他裝置、或同行朋友），
+// 都是「加入即時同步」，不是「上傳覆蓋」——不會有誰蓋掉誰的問題。
 function openShare(){
   const t=trip(); if(!t) return;
   if(!fbReady()){
-    modal(`<h3>好友共享</h3><p class="help">要先設定 Firebase 才能即時同步。把新專案的設定貼進 <code>FIREBASE_CONFIG</code> 後即可使用。</p>
+    modal(`<h3>同步與分享</h3><p class="help">要先設定 Firebase 才能即時同步。把新專案的設定貼進 <code>FIREBASE_CONFIG</code> 後即可使用。</p>
     <div class="btn-row"><button class="btn btn-block" onclick="closeModal()">知道了</button></div>`); return;
   }
-  if(!t.room) t.room='r'+uid()+uid();
+  if(!t.room) t.room=genCode(8);
   const url=location.origin+location.pathname+'?join='+t.room;
   save(); syncRoom();
-  modal(`<h3>好友共享</h3>
-   <p class="help"><b>給同行的人</b>：把下面連結傳給他們，打開就自動加入「${esc(t.name)}」這一趟，行程／待買／分帳即時同步。</p>
-   <div class="f"><textarea readonly style="min-height:64px" onclick="this.select()">${url}</textarea></div>
+  modal(`<h3>同步與分享</h3>
+   <p class="help">這組代碼／連結<b>給誰都一樣</b>——你自己的其他手機或電腦、或同行朋友，輸入代碼或打開連結就會即時加入「${esc(t.name)}」，之後任何人改的行程／待買／分帳都會自動同步、<b>不會互相覆蓋</b>。</p>
+   <div class="f"><label>代碼</label>
+     <div style="display:flex;gap:8px;align-items:center">
+       <input readonly value="${esc(t.room)}" style="font-family:monospace;font-size:16px;font-weight:800;letter-spacing:1px" onclick="this.select()">
+       <button class="btn btn-sm" style="flex-shrink:0" onclick="navigator.clipboard.writeText('${esc(t.room)}').then(()=>toast('已複製代碼'))">複製</button>
+     </div>
+   </div>
+   <div class="f"><label>連結（等同代碼，開了自動輸入）</label>
+     <textarea readonly style="min-height:56px" onclick="this.select()">${url}</textarea>
+   </div>
    <div class="btn-row">
      <button class="btn btn-brand btn-block" onclick="navigator.clipboard.writeText('${url}').then(()=>toast('已複製連結'))">複製連結</button>
    </div>
    <hr style="margin:14px 0;border:none;border-top:1px solid var(--line)">
-   <p class="help"><b>你自己換手機／電腦</b>：用「雲端同步碼」一次帶走全部旅程 →</p>
-   <div class="btn-row"><button class="btn btn-block" onclick="openSyncCode()">☁️ 我的雲端同步</button>
-   <button class="btn btn-block" onclick="closeModal()">關閉</button></div>`);
+   <p class="help"><b>在這台裝置加入別的旅程代碼</b>（例如你在另一台裝置建立的旅程）：</p>
+   <div class="f-row"><input id="joinCode" placeholder="貼上代碼" style="font-family:monospace"><button class="btn btn-sm" style="flex-shrink:0" onclick="joinTripByCode()">加入</button></div>
+   <div class="btn-row" style="margin-top:10px"><button class="btn btn-block" onclick="closeModal()">關閉</button></div>`);
 }
-function openSyncCode(){
-  modal(`<h3>☁️ 我的雲端同步</h3>
-   <p class="help">設一組只有你知道的代碼（例：<code>jen-japan-2026</code>）。你的每一台裝置／每個瀏覽器都輸入<b>同一組</b>，所有旅程就會互通。<br>朋友的共享連結是另一套，不受影響。</p>
-   <div class="f"><label>同步代碼（英數，至少 6 碼）</label><input id="sc" value="${esc(S.syncCode||'')}" placeholder="jen-japan-2026"></div>
-   <div class="btn-row"><button class="btn btn-brand btn-block" onclick="saveSyncCode()">設定並把本機旅程上傳雲端</button></div>
-   <div class="btn-row" style="margin-top:8px"><button class="btn btn-block" onclick="pullSyncCode()">這是新裝置：把雲端旅程拉下來</button></div>
-   ${!fbReady()?'<p class="help" style="color:#dc2626;margin-top:8px">尚未設定 Firebase，無法使用雲端同步。</p>':''}
-   <div class="btn-row" style="margin-top:8px"><button class="btn btn-block" onclick="closeModal()">關閉</button></div>`);
-}
-async function saveSyncCode(){
-  const v=(document.getElementById('sc').value||'').trim();
-  if(v.length<6){ toast('至少 6 碼','#dc2626'); return; }
+function joinTripByCode(){
+  const code=(document.getElementById('joinCode').value||'').trim();
+  if(!code){ toast('請輸入代碼','#dc2626'); return; }
   if(!initFB()){ toast('Firebase 未設定','#dc2626'); return; }
-  S.syncCode=v; persist();
-  const ok=await pushIndex();
-  closeModal();
-  if(ok) toast('已設定，本機旅程已上傳雲端');
-  else toast('代碼已存本機，但上傳雲端失敗——多半是資料庫規則還沒開放 idx 路徑，見「更多」說明','#dc2626');
-}
-function pullSyncCode(){
-  const v=(document.getElementById('sc').value||'').trim();
-  if(v.length<6){ toast('先填代碼','#dc2626'); return; }
-  if(!initFB()){ toast('Firebase 未設定','#dc2626'); return; }
-  _db.ref('idx/'+v).once('value').then(async snap=>{
-    const list=snap.val();
-    if(!list||!list.length){ toast('這組代碼雲端沒有旅程（先在另一台裝置按過「設定並上傳」了嗎？）','#dc2626'); return; }
-    let n=0;
-    for(const it of list){
-      if(!it.room) continue;
-      try{
-        const s=await _db.ref('trips/'+it.room).once('value');
-        const d=s.val(); if(!d||!d.id) continue;
-        const i=S.trips.findIndex(x=>x.id===d.id);
-        if(i>=0) S.trips[i]=mergeTrip(S.trips[i],d); else S.trips.push(d);
-        n++;
-      }catch(e){}
-    }
-    S.syncCode=v;
-    if(S.trips.length&&!S.trips.some(x=>x.id===S.currentId)) S.currentId=S.trips[0].id;
-    persist(); renderAll(); syncRoom(); closeModal();
-    toast('已拉下 '+n+' 筆旅程');
-  }).catch(e=>{
-    const denied=/permission/i.test(e.message||'');
-    toast(denied?'讀取被拒絕——資料庫規則還沒開放 idx 路徑，見「更多」說明':'讀取失敗：'+(e.message||'檢查網路'),'#dc2626');
-  });
+  _db.ref('trips/'+code).once('value').then(snap=>{
+    const d=snap.val();
+    if(!d||!d.id){ toast('找不到這組代碼的旅程，確認代碼是否正確','#dc2626'); return; }
+    const i=S.trips.findIndex(x=>x.id===d.id);
+    if(i>=0) S.trips[i]=mergeTrip(S.trips[i],d); else S.trips.unshift(d);
+    closeModal();
+    switchTrip(d.id);
+    toast('已加入「'+(d.name||'這趟旅程')+'」');
+  }).catch(e=>toast('讀取失敗：'+(e.message||'檢查網路'),'#dc2626'));
 }
 
 /* ---------- TRIP CRUD ---------- */
@@ -1429,7 +1430,7 @@ function blankTrip(name){
   return {id:uid(),name:name||'新旅程',destination:'',startDate:'',endDate:'',
     members:['Jennifer','同伴A','同伴B'],
     days:[],shopping:[],expenses:[],paidOff:[],coupons:[],docs:[],packing:[],guides:[],areaAlerts:[],
-    room:'r'+uid()+uid(),fxLocked:null};
+    room:genCode(8),fxLocked:null};
 }
 function newTrip(){
   const n=prompt('旅程名稱？','新旅程'); if(n===null) return;
