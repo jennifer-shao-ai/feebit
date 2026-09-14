@@ -307,7 +307,7 @@ h1,h2,h3,h4{margin:0}
 
 <script>
 /* ============================================================
-   旅程手冊 · trip-planner.html  v1.7
+   旅程手冊 · trip-planner.html  v1.8
    單檔 PWA。資料存 localStorage；每個旅程一律有 room，開 App 即
    自動雲端同步（Firebase Realtime DB）。跨裝置用「雲端同步碼」。
    圖片走 Firebase Storage（trips/<room>/<uid>.jpg），資料庫只存網址；
@@ -338,6 +338,13 @@ h1,h2,h3,h4{margin:0}
         （原本 minCashFlow 全域最少轉帳會把欠款重新分配給沒有直接
         往來的人，兩次被回報「結果跟直覺不符」，改成每一對人各自的
         帳互相扣抵、不跨對重分配，已用實際案例驗證數字正確）。
+   v1.8：修正打開分享連結後畫面停在舊資料、之後也不再更新的問題。
+        真因：init() 用連結加入房間後，緊接著又呼叫 syncRoom()——此時
+        Firebase 資料還沒回來，S.trips 是空的，trip() 回傳 null，
+        syncRoom() 誤判「目前連線房間跟目前旅程不同」就把剛接上的
+        監聽掐斷（用假的非同步 Firebase 模擬＋負對照組驗證過：舊邏輯
+        確實會呼叫 _ref.off()，新邏輯不會）。同時拿掉打開連結後把網址
+        列 ?join= 清空的動作，連結不會再看起來『變成別的網址』。
    ============================================================ */
 
 /* ---------- FIREBASE（換成你新開的專案）---------- */
@@ -1590,7 +1597,9 @@ function init(){
   const joining=p.get('join')&&fbReady();
   if(joining){
     joinRoom(p.get('join'));
-    history.replaceState(null,'',location.pathname);
+    // 保留網址上的 ?join=，不要清掉：
+    // 1) 這樣分享出去的連結每次打開都穩定同步同一趟，不會「連結變了」
+    // 2) 加到主畫面／加入書籤後再打開，還是會自動接回這趟旅程
   }
   if(!S.trips.length&&!joining){
     // 第一次開、且不是透過共享連結進來：直接帶入這趟範本
@@ -1598,7 +1607,11 @@ function init(){
   }
   if(!S.currentId&&S.trips.length) S.currentId=S.trips[0].id;
   renderAll();
-  syncRoom();
+  // 剛透過連結加入時，joinRoom() 已經接好即時監聽；這裡不能再呼叫 syncRoom()——
+  // 此時 Firebase 的資料還沒回來，S.trips 還是空的，trip() 會回傳 null，
+  // syncRoom() 誤判「目前連線的房間跟目前旅程不一樣」就會把剛接上的監聽掐斷，
+  // 造成打開連結後畫面停在舊資料、之後也不會再更新。
+  if(!joining) syncRoom();
   fetchFX();
 }
 function loadSeedSilently(){
