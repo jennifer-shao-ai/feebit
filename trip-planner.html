@@ -183,6 +183,7 @@ h1,h2,h3,h4{margin:0}
 .f input,.f select,.f textarea{width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 10px;font-size:14px;font-family:inherit;background:#fff}
 .f textarea{min-height:62px;resize:vertical}
 .f-row{display:flex;gap:9px}.f-row>.f{flex:1}
+.link-row input{flex:1;min-width:0;border:1px solid var(--line);border-radius:9px;padding:9px 10px;font-size:14px;font-family:inherit;background:#fff}
 .seg{display:flex;gap:6px;flex-wrap:wrap}
 .seg button{flex:1;min-width:64px;border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px;font-size:12.5px;font-weight:700;color:var(--ink2)}
 .seg button.on{background:var(--brand);border-color:var(--brand);color:#fff}
@@ -305,7 +306,7 @@ h1,h2,h3,h4{margin:0}
 
 <script>
 /* ============================================================
-   旅程手冊 · trip-planner.html  v1.3
+   旅程手冊 · trip-planner.html  v1.4
    單檔 PWA。資料存 localStorage；每個旅程一律有 room，開 App 即
    自動雲端同步（Firebase Realtime DB）。跨裝置用「雲端同步碼」。
    圖片走 Firebase Storage（trips/<room>/<uid>.jpg），資料庫只存網址；
@@ -319,6 +320,8 @@ h1,h2,h3,h4{margin:0}
         localStorage/RTDB；Storage 沒開時自動退回原本 dataURL 模式。
    v1.3：交通備註（transitAfter.note）改用獨立區塊＋white-space:pre-wrap
         顯示，保留使用者輸入的換行，不再被擠成一行。
+   v1.4：行程點新增「相關網站」（spot.links[]，自訂名稱如官網/菜單/預約，
+        可加多個），顯示為可點按鈕，沒填 https:// 自動補上。
    ============================================================ */
 
 /* ---------- FIREBASE（換成你新開的專案）---------- */
@@ -586,6 +589,12 @@ function renderItin(){
     return html;
   }).join('');
 }
+function normUrl(u){
+  u=(u||'').trim();
+  if(!u) return '';
+  if(!/^([a-z][a-z0-9+.-]*:)/i.test(u)) u='https://'+u;   // 沒寫協定就補 https://
+  return u;
+}
 function renderSpot(s,date){
   const cat=s.cat||'其他';
   const alerts=[...(s.alerts||[]),...matchedAreaAlerts(s.name).map(a=>a.text)];
@@ -593,7 +602,8 @@ function renderSpot(s,date){
   if(s.openHours) meta.push('🕐 '+esc(s.openHours));
   if(s.price) meta.push('🎫 '+esc(s.price));
   const links=[
-    `<a href="${mapSearchUrl(s)}" target="_blank" rel="noopener">📍 地點</a>`
+    `<a href="${mapSearchUrl(s)}" target="_blank" rel="noopener">📍 地點</a>`,
+    ...(s.links||[]).filter(l=>l&&l.url).map(l=>`<a href="${esc(normUrl(l.url))}" target="_blank" rel="noopener">🔗 ${esc(l.label||'連結')}</a>`)
   ];
   return `<div class="spot ${s.done?'done':''}" id="sp-${s.id}">
     <span class="spot-cat cat-${cat}"></span>
@@ -774,6 +784,10 @@ function editSpot(date,id){
       <div class="f"><label>門票/預算</label><input id="sp-price" value="${esc(s.price||'')}" placeholder="¥1,200"></div>
     </div>
     <div class="f"><label>Google Maps 連結（留白會用名稱搜尋）</label><input id="sp-map" value="${esc(s.mapUrl||'')}" placeholder="貼 maps.app.goo.gl 連結"></div>
+    <div class="f"><label>相關網站（自己取名稱，可加多個，例：官網／菜單／預約）</label>
+      <div id="linkBufBox">${(s.links||[]).map(linkRowHTML).join('')}</div>
+      <button type="button" class="btn btn-sm btn-ghost" onclick="addLinkRow()">＋ 加一個網站</button>
+    </div>
     <div class="f"><label>備註</label><textarea id="sp-note" placeholder="交通方式、要點的餐、排隊撇步…">${esc(s.note||'')}</textarea></div>
     <div class="f"><label>注意事項（一行一則，會標紅）</label><textarea id="sp-alerts" placeholder="年末公休 12/29–1/1&#10;要提前一個月訂位">${esc((s.alerts||[]).join('\n'))}</textarea></div>
     <div class="f"><label>順便要買（逗號分隔，選填）</label><input id="sp-buy" value="${esc((s.buy||[]).join(', '))}" placeholder="龍貓扭蛋, 限定餅乾"></div>
@@ -786,6 +800,22 @@ function editSpot(date,id){
 }
 function segPick(btn){ btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); }
 function segVal(id){ const on=document.querySelector('#'+id+' button.on'); return on?on.textContent:''; }
+// ---- 行程點：相關網站（多個、自訂名稱）----
+function linkRowHTML(l){
+  l=l||{};
+  return `<div class="f-row link-row" style="align-items:center;margin-bottom:6px">
+    <input class="lk-label" value="${esc(l.label||'')}" placeholder="名稱：官網" style="flex:0 0 92px">
+    <input class="lk-url" value="${esc(l.url||'')}" placeholder="https://...">
+    <button type="button" class="btn btn-sm btn-danger" style="flex:0 0 auto" onclick="this.parentElement.remove()">×</button>
+  </div>`;
+}
+function addLinkRow(){ document.getElementById('linkBufBox').insertAdjacentHTML('beforeend',linkRowHTML()); }
+function collectLinkRows(){
+  return [...document.querySelectorAll('#linkBufBox .link-row')].map(row=>({
+    label:row.querySelector('.lk-label').value.trim(),
+    url:row.querySelector('.lk-url').value.trim()
+  })).filter(l=>l.url);
+}
 function saveSpot(id,oldDate){
   const t=trip();
   const nd=document.getElementById('sp-date').value;
@@ -797,6 +827,7 @@ function saveSpot(id,oldDate){
     openHours:document.getElementById('sp-hours').value.trim(),
     price:document.getElementById('sp-price').value.trim(),
     mapUrl:document.getElementById('sp-map').value.trim(),
+    links:collectLinkRows(),
     note:document.getElementById('sp-note').value.trim(),
     alerts:document.getElementById('sp-alerts').value.split('\n').map(x=>x.trim()).filter(Boolean),
     buy:document.getElementById('sp-buy').value.split(',').map(x=>x.trim()).filter(Boolean),
