@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>商品銷售履歷 · 飛比特工具箱</title>
+<link rel="icon" href="favicon.svg">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+.card { background: white; border-radius: var(--radius); padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+.search-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.search-input { padding: 9px 14px; border: 1px solid var(--gray-200); border-radius: var(--radius); font-size: 14px; outline: none; width: 220px; }
+.search-input:focus { border-color: var(--primary); }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius); border: none; cursor: pointer; font-size: 14px; font-weight: 500; transition: opacity 0.15s; }
+.btn:hover { opacity: 0.85; }
+.btn-primary { background: var(--primary); color: white; }
+.btn-outline { background: white; color: var(--gray-800); border: 1px solid var(--gray-200); }
+.info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.stat-card { background: var(--gray-50); border-radius: var(--radius); padding: 14px; text-align: center; }
+.stat-card .stat-num { font-size: 22px; font-weight: 700; }
+.stat-card .stat-label { font-size: 11px; color: var(--gray-600); margin-top: 4px; line-height: 1.3; }
+.range-btns { display: flex; gap: 6px; }
+.range-btn { padding: 5px 12px; border-radius: 20px; border: 1px solid var(--gray-300); background: white; font-size: 12.5px; cursor: pointer; color: var(--gray-700); }
+.range-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+.chart-wrap { position: relative; height: 320px; margin-bottom: 8px; }
+.table-wrapper { overflow-x: auto; max-height: 480px; overflow-y: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { background: var(--gray-50); padding: 10px 12px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--gray-200); white-space: nowrap; position: sticky; top: 0; }
+td { padding: 8px 12px; border-bottom: 1px solid var(--gray-200); white-space: nowrap; }
+tr:hover td { background: var(--gray-50); }
+.empty-state { text-align: center; padding: 60px 20px; color: var(--gray-500); }
+.empty-state .dz-icon { font-size: 40px; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+
+<!-- ── SIDEBAR OVERLAY ── -->
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<!-- ── SIDEBAR ── -->
+<div id="sidebar">
+  <div class="sidebar-logo">
+    <div class="brand">飛比特 Feebit</div>
+    <div class="sub">營運工具箱</div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">總覽</div>
+    <a class="nav-item" href="index.html"><span class="icon">🏠</span> 首頁</a>
+    <a class="nav-item" href="skill-tree.html"><span class="icon">🌳</span> 技能樹</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">營運</div>
+    <a class="nav-item" href="finance-dashboard.html"><span class="icon">📊</span> 帳務分析</a>
+    <a class="nav-item" href="brand-trend.html"><span class="icon">📊</span> 品牌趨勢分析</a>
+    <a class="nav-item" href="channel-revenue.html"><span class="icon">🛍️</span> 通路營收分析</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">財務</div>
+    <a class="nav-item" href="bank-converter.html"><span class="icon">🏦</span> 帳務轉換</a>
+    <a class="nav-item" href="journal-voucher.html"><span class="icon">📗</span> 分錄帳轉換</a>
+    <a class="nav-item" href="accounting-ops.html"><span class="icon">📅</span> 例行帳務作業</a>
+    <a class="nav-item" href="coupang-invoice.html"><span class="icon">🧾</span> 酷澎發票轉檔</a>
+    <a class="nav-item" href="coupang-reconcile.html"><span class="icon">🔍</span> 酷澎商城對帳</a>
+    <a class="nav-item" href="shopee-subsidy.html"><span class="icon">🚚</span> 蝦皮運費補助申請</a>
+    <a class="nav-item" href="shopee-converter.html"><span class="icon">🛒</span> 蝦皮撥款轉換</a>
+    <a class="nav-item" href="invoice-stamp.html"><span class="icon">🖋️</span> 發票蓋章工具</a>
+    <a class="nav-item" href="profit-calculator.html"><span class="icon">💰</span> 毛利試算機</a>
+    <a class="nav-item" href="cost-database.html"><span class="icon">💾</span> 商品成本資料庫</a>
+    <a class="nav-item" href="brand-sales.html"><span class="icon">📈</span> 品牌銷售轉換</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">市場分析</div>
+    <a class="nav-item" href="market-tracker.html"><span class="icon">🔭</span> 品類競品分析</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">行銷</div>
+    <a class="nav-item" href="product-image-gen.html"><span class="icon">🎨</span> 商品圖生成</a>
+    <a class="nav-item" href="meta-audience.html"><span class="icon">🎯</span> Meta顧客名單轉換</a>
+    <div class="nav-item soon"><span class="icon">📢</span> 廣告文案<span class="soon-tag">即將推出</span></div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">客服</div>
+    <div class="nav-item soon"><span class="icon">💬</span> 客服回覆<span class="soon-tag">即將推出</span></div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">業務</div>
+    <a class="nav-item" href="purchase-order.html"><span class="icon">📄</span> 採購單轉換</a>
+    <div class="nav-item soon"><span class="icon">🤝</span> 廠商談判<span class="soon-tag">即將推出</span></div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">人事</div>
+    <a class="nav-item" href="attendance.html"><span class="icon">🗓️</span> 考勤查驗</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">庫存</div>
+    <a class="nav-item" href="stock-analysis.html"><span class="icon">📦</span> 庫存訂貨分析</a>
+    <a class="nav-item" href="slow-mover-alert.html"><span class="icon">🔴</span> 滯銷品警示</a>
+    <a class="nav-item" href="feebit-inventory-filter.html"><span class="icon">🏪</span> 商品篩選工具</a>
+    <a class="nav-item" href="reorder-suggestions.html"><span class="icon">🔄</span> 庫存訂貨建議</a>
+    <a class="nav-item active" href="product-sales-history.html"><span class="icon">🔎</span> 商品銷售履歷</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">研發</div>
+    <a class="nav-item" href="research-notes.html"><span class="icon">📚</span> 研發筆記</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">法規</div>
+    <a class="nav-item" href="fda-registration.html"><span class="icon">🧪</span> 化粧品登錄轉換</a>
+    <a class="nav-item" href="ingredient-checker.html"><span class="icon">🧫</span> 食品成分比對</a>
+    <a class="nav-item" href="http://127.0.0.1:5050" target="_blank"><span class="icon">📋</span> PIF Builder</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">生活</div>
+    <a class="nav-item" href="travel-planner.html"><span class="icon">✈️</span> 旅行規劃</a>
+    <a class="nav-item" href="trip-planner.html"><span class="icon">🧳</span> 旅程手冊</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">自動化</div>
+    <a class="nav-item" href="schedule-notifications.html"><span class="icon">⏰</span> 自動排程通知</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">系統</div>
+    <a class="nav-item" href="subscriptions.html"><span class="icon">💳</span> 訂閱服務管理</a>
+    <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
+  </div>
+
+  <div class="sidebar-footer">v1.0 · Feebit © 2026</div>
+</div>
+
+<!-- ── MAIN ── -->
+<div id="main">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="btn-hamburger" onclick="openSidebar()">☰</button>
+      <span class="topbar-title">商品銷售履歷</span>
+      <span class="topbar-badge">庫存工具</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:4px">v1.0</span>
+    </div>
+    <button class="btn-share" onclick="copyShare(this)">🔗 分享</button>
+  </div>
+
+  <div class="page">
+
+    <div class="card">
+      <div class="card-header">
+        <h2 style="font-size:16px;font-weight:600">查詢商品每日銷售紀錄</h2>
+      </div>
+      <div class="search-row">
+        <input type="text" id="code-input" class="search-input" placeholder="輸入商品代號，例如 01010015" onkeydown="if(event.key==='Enter')doSearch()">
+        <button class="btn btn-primary" onclick="doSearch()">🔎 查詢</button>
+      </div>
+    </div>
+
+    <div id="result-section" style="display:none">
+
+      <div class="card">
+        <div class="card-header">
+          <h2 id="product-title" style="font-size:16px;font-weight:600"></h2>
+        </div>
+        <div class="info-grid" id="info-grid"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2 style="font-size:15px;font-weight:600">每日銷量趨勢</h2>
+          <div class="range-btns" id="range-btns">
+            <button class="range-btn" data-days="30" onclick="setRange(30)">近30天</button>
+            <button class="range-btn" data-days="90" onclick="setRange(90)">近90天</button>
+            <button class="range-btn" data-days="180" onclick="setRange(180)">近180天</button>
+            <button class="range-btn" data-days="365" onclick="setRange(365)">近365天</button>
+            <button class="range-btn active" data-days="0" onclick="setRange(0)">全部</button>
+          </div>
+        </div>
+        <div class="chart-wrap"><canvas id="sales-chart"></canvas></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2 style="font-size:15px;font-weight:600">每日明細 <span id="row-count" style="color:var(--gray-600);font-weight:400;font-size:13px"></span></h2>
+        </div>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr>
+              <th>日期</th><th style="text-align:right">當日銷量</th><th style="text-align:right">當日庫存</th><th style="text-align:right">在途量</th>
+            </tr></thead>
+            <tbody id="detail-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <div id="empty-section" style="display:none">
+      <div class="card empty-state">
+        <div class="dz-icon">📭</div>
+        <h2 style="font-size:16px;font-weight:600">查無這個代號的銷售紀錄</h2>
+        <p style="margin-top:6px;font-size:13px">確認代號是否正確，或者這個商品還沒有累積到任何一天的銷量資料</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function openSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-overlay').classList.add('show'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('show'); }
+function copyShare(b) {
+  const code = document.getElementById('code-input').value.trim();
+  const url = location.origin + location.pathname + (code ? ('?code=' + encodeURIComponent(code)) : '');
+  navigator.clipboard.writeText(url).then(()=>{ b.textContent='✅ 已複製'; setTimeout(()=>b.innerHTML='🔗 分享',1500); });
+}
+
+async function waitForAuthClient(){
+  for (let i = 0; i < 120; i++){
+    if (window._authClient) return window._authClient;
+    await new Promise(r => setTimeout(r, 100));
+  }
+  throw new Error('登入模組尚未就緒，請重新整理頁面');
+}
+
+let allRows = [];
+let salesChart = null;
+let currentRangeDays = 0;
+
+function normalizeCode(raw) {
+  raw = String(raw || '').trim();
+  const m = raw.match(/^(\d+)(-[89Ll])?$/);
+  if (!m) return raw;
+  let base = m[1];
+  while (base.length < 8) base = '0' + base;
+  return base + (m[2] ? m[2].toUpperCase() : '');
+}
+
+async function doSearch() {
+  const raw = document.getElementById('code-input').value;
+  const code = normalizeCode(raw);
+  if (!code) return;
+  document.getElementById('result-section').style.display = 'none';
+  document.getElementById('empty-section').style.display = 'none';
+
+  const client = await waitForAuthClient();
+  const { data, error } = await client
+    .from('daily_sales')
+    .select('date,qty_out,stock_after,in_transit,product_name,category,unit_cost,price')
+    .eq('product_code', code)
+    .order('date', { ascending: true });
+
+  if (error) { alert('查詢失敗：' + error.message); return; }
+  if (!data || !data.length) {
+    document.getElementById('empty-section').style.display = 'block';
+    return;
+  }
+
+  allRows = data;
+  const latest = data[data.length - 1];
+  const total = data.reduce((s, r) => s + (Number(r.qty_out) || 0), 0);
+  const last30 = sumLastNDays(data, 30);
+  const last7 = sumLastNDays(data, 7);
+  const avg28 = sumLastNDays(data, 28) / 28;
+
+  document.getElementById('product-title').textContent = code + '　' + (latest.product_name || '');
+  document.getElementById('info-grid').innerHTML = [
+    ['現有庫存', latest.stock_after ?? '—'],
+    ['在途量(最新)', latest.in_transit ?? '—'],
+    ['成本單價', latest.unit_cost != null ? latest.unit_cost : '—'],
+    ['建議售價', latest.price != null ? latest.price : '—'],
+    ['累積總銷量', total],
+    ['近7天銷量', last7],
+    ['近30天銷量', last30],
+    ['近28天日均', Math.round(avg28 * 100) / 100],
+  ].map(([label, val]) => `<div class="stat-card"><div class="stat-num">${val}</div><div class="stat-label">${label}</div></div>`).join('');
+
+  document.getElementById('result-section').style.display = 'block';
+  setRange(currentRangeDays || 0);
+}
+
+function sumLastNDays(data, n) {
+  const today = new Date(data[data.length - 1].date);
+  let sum = 0;
+  for (const r of data) {
+    const d = new Date(r.date);
+    if ((today - d) / 86400000 < n) sum += Number(r.qty_out) || 0;
+  }
+  return sum;
+}
+
+function setRange(days) {
+  currentRangeDays = days;
+  document.querySelectorAll('.range-btn').forEach(b => b.classList.toggle('active', Number(b.dataset.days) === days));
+
+  let rows = allRows;
+  if (days > 0) {
+    const cutoff = new Date(allRows[allRows.length - 1].date);
+    cutoff.setDate(cutoff.getDate() - days + 1);
+    rows = allRows.filter(r => new Date(r.date) >= cutoff);
+  }
+
+  renderChart(rows);
+  renderTable(rows);
+}
+
+function renderChart(rows) {
+  const ctx = document.getElementById('sales-chart').getContext('2d');
+  if (salesChart) salesChart.destroy();
+  salesChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: rows.map(r => r.date),
+      datasets: [{
+        label: '每日銷量',
+        data: rows.map(r => r.qty_out),
+        borderColor: '#4a6fa5',
+        backgroundColor: 'rgba(74,111,165,0.1)',
+        fill: true,
+        tension: 0.15,
+        pointRadius: rows.length > 90 ? 0 : 2,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: { y: { beginAtZero: true } },
+      plugins: { legend: { display: false } }
+    }
+  });
+}
+
+function renderTable(rows) {
+  document.getElementById('row-count').textContent = '（' + rows.length + ' 天）';
+  const sorted = rows.slice().reverse();
+  document.getElementById('detail-body').innerHTML = sorted.map(r => `
+    <tr>
+      <td>${r.date}</td>
+      <td style="text-align:right">${r.qty_out}</td>
+      <td style="text-align:right">${r.stock_after ?? '—'}</td>
+      <td style="text-align:right">${r.in_transit ?? '—'}</td>
+    </tr>
+  `).join('');
+}
+
+// 網址帶 ?code=XXX 時自動查詢
+(function initFromQuery(){
+  const params = new URLSearchParams(location.search);
+  const code = params.get('code');
+  if (code) {
+    document.getElementById('code-input').value = code;
+    waitForAuthClient().then(() => doSearch());
+  }
+})();
+</script>
+
+</body>
+</html>
