@@ -373,6 +373,7 @@ const SKILLS = [
   { icon:'🏪', name:'商品篩選工具',     cat:'庫存管理', ver:'v2.0', desc:'多條件篩選商品清單，快速定位特定商品', url:'feebit-inventory-filter.html' },
   { icon:'🔄', name:'庫存訂貨建議',     cat:'庫存管理', ver:'—',    desc:'依銷售速度與現有庫存自動產生訂貨建議清單', url:'reorder-suggestions.html' },
   { icon:'🤖', name:'庫存自動核對',     cat:'庫存管理', ver:'GAS',  desc:'每日 16:00 比對揀貨紅單與 Ragic 效期庫存做 FIFO 扣減，含退貨回補、數量異常比對進貨單、滯銷偵測，發 HTML 日報（附前往當日揀貨表按鈕）', url:null, info:'Google Apps Script · 綁定 Sheet: 庫存核對 · v17' },
+  { icon:'🔔', name:'庫存訂貨預警', cat:'庫存管理', ver:'GAS', desc:'每日16:10分析揀貨銷量算安全庫存/訂貨點與斷貨天數，偵測爆量急凍，附近30天銷量漲跌排行，需訂貨或有異常才寄信', url:null, info:'Google Apps Script · 獨立專案 · Supabase daily_sales' },
   // ── 電商銷售 ──
   { icon:'📈', name:'品牌銷售轉換', cat:'電商銷售', ver:'—',   desc:'各品牌銷售數字彙整與走勢分析', url:'brand-sales.html' },
   { icon:'🔭', name:'品類競品分析', cat:'電商銷售', ver:'—',   desc:'追蹤蝦皮競品動態，分析市場定位與價格帶', url:'market-tracker.html' },
