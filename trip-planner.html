@@ -307,7 +307,7 @@ h1,h2,h3,h4{margin:0}
 
 <script>
 /* ============================================================
-   旅程手冊 · trip-planner.html  v1.8
+   旅程手冊 · trip-planner.html  v1.9
    單檔 PWA。資料存 localStorage；每個旅程一律有 room，開 App 即
    自動雲端同步（Firebase Realtime DB）。跨裝置用「雲端同步碼」。
    圖片走 Firebase Storage（trips/<room>/<uid>.jpg），資料庫只存網址；
@@ -345,6 +345,8 @@ h1,h2,h3,h4{margin:0}
         監聽掐斷（用假的非同步 Firebase 模擬＋負對照組驗證過：舊邏輯
         確實會呼叫 _ref.off()，新邏輯不會）。同時拿掉打開連結後把網址
         列 ?join= 清空的動作，連結不會再看起來『變成別的網址』。
+   v1.9：支出（分帳）新增可上傳收據照片（可多張），跟其他照片一樣走
+        Firebase Storage、刪除時同步清理雲端檔案。
    ============================================================ */
 
 /* ---------- FIREBASE（換成你新開的專案）---------- */
@@ -1082,6 +1084,7 @@ function renderMoney(){
       <div class="li-sub">${esc(e.paidBy)} 先付${e.cur!==uni?`　(≈ ${fmtUni(amt)})`:''}${e.date?`　·${e.date}`:''}</div>
       <div class="li-sub">分攤 → ${splitLine}</div>
       ${e.note?`<div class="li-sub">📝 ${esc(e.note)}</div>`:''}
+      ${(e.photos&&e.photos.length)?`<div class="li-photos">${e.photos.map(d=>`<img src="${d}" onclick="viewImg(this)">`).join('')}</div>`:''}
       <div class="btn-row" style="margin-top:7px">
         <button class="btn btn-sm" onclick="editExpense('${e.id}')">編輯</button>
         <button class="btn btn-sm btn-danger" onclick="delExpense('${e.id}')">刪除</button>
@@ -1113,12 +1116,18 @@ function togglePaid(from,to,amt){
   if(k>=0) t.paidOff.splice(k,1); else t.paidOff.push({from,to,amt});
   save(); renderMoney();
 }
-function delExpense(id){ if(!confirm('刪除這筆支出？'))return; const t=trip(); t.expenses=t.expenses.filter(x=>x.id!==id); save(); renderMoney(); }
+function delExpense(id){
+  if(!confirm('刪除這筆支出？'))return;
+  const t=trip(); const e=t.expenses.find(x=>x.id===id);
+  if(e) deleteImgUrls(e.photos);
+  t.expenses=t.expenses.filter(x=>x.id!==id); save(); renderMoney();
+}
 function editExpense(id){
   const t=trip(); if(!t){ toast('先建立旅程','#dc2626'); return; }
   if(!t.expenses)t.expenses=[];
   const mem=members();
   const e=id?t.expenses.find(x=>x.id===id):{cur:'JPY',paidBy:mem[0],splitWith:[...mem],splitMode:'even',date:todayStr()};
+  _imgBuf=[...(e.photos||[])];
   modal(`<h3>${id?'編輯':'新增'}支出</h3>
     <div class="f"><label>項目</label><input id="e-title" value="${esc(e.title||'')}" placeholder="晚餐 燒肉力丸"></div>
     <div class="f-row">
@@ -1138,10 +1147,12 @@ function editExpense(id){
       ${mem.map(m=>`<div class="f-row" style="align-items:center;margin-bottom:6px"><span style="flex:0 0 70px;font-size:13px">${esc(m)}</span><input data-m="${esc(m)}" class="ecs" type="number" value="${esc(e.customSplits&&e.customSplits[m]||'')}"></div>`).join('')}
     </div>
     <div class="f"><label>備註</label><input id="e-note" value="${esc(e.note||'')}"></div>
+    <div class="f"><label>收據照片（可多張）</label>${imgPickerHTML(true)}</div>
     <div class="btn-row">
       <button class="btn btn-brand btn-block" onclick="saveExpense('${id||''}')">儲存</button>
       <button class="btn btn-block" onclick="closeModal()">取消</button>
     </div>`);
+  renderImgBuf();
 }
 function saveExpense(id){
   const t=trip();
@@ -1156,7 +1167,8 @@ function saveExpense(id){
     date:document.getElementById('e-date').value,
     paidBy:document.getElementById('e-paid').value,
     splitWith, splitMode:mode, customSplits:mode==='custom'?cs:null,
-    note:document.getElementById('e-note').value.trim()
+    note:document.getElementById('e-note').value.trim(),
+    photos:[..._imgBuf]
   };
   if(!obj.amount){ toast('請填金額','#dc2626'); return; }
   if(!splitWith.length){ toast('至少選一人分攤','#dc2626'); return; }
