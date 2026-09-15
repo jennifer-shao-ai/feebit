@@ -308,7 +308,7 @@ h1,h2,h3,h4{margin:0}
 
 <script>
 /* ============================================================
-   旅程手冊 · trip-planner.html  v2.1
+   旅程手冊 · trip-planner.html  v2.2
    單檔 PWA。資料存 localStorage；每個旅程一律有 room，開 App 即
    自動雲端同步（Firebase Realtime DB）。跨裝置用「雲端同步碼」。
    圖片走 Firebase Storage（trips/<room>/<uid>.jpg），資料庫只存網址；
@@ -361,6 +361,14 @@ h1,h2,h3,h4{margin:0}
         範本預設值）。改成 mergeTrip(伺服器版, 本機版)，本機衝突時優先、
         陣列型欄位聯集，不會再整包覆蓋。已用模擬情境驗證：本機剛編輯但
         未推播完成時收到舊雲端快照，編輯內容正確保留不被蓋掉。
+   v2.2：【重要修正】v2.1 的「本機優先合併」矯枉過正——變成任何已經開著
+        沒關的舊分頁，收到雲端更新時都會用它手上的舊資料蓋回去，即使
+        使用者什麼都沒做（已實際發生：直接寫入資料庫補的地圖連結，被
+        一個閒置的舊分頁背景蓋掉）。改成看 _dirty 旗標：只有本機「剛存
+        檔但還沒確認推送成功」時才保護、跟雲端合併，本機優先；平常閒置
+        時直接採用雲端最新版本。save() 時設 _dirty=true，transaction
+        推送成功後設回 false。已用兩種情境模擬驗證：①閒置分頁收到外部
+        更新會正確採用 ②本機剛編輯未推送完成收到舊快照仍正確保留本機。
    ============================================================ */
 
 /* ---------- FIREBASE（換成你新開的專案）---------- */
@@ -375,6 +383,10 @@ const FIREBASE_CONFIG = {
 };
 
 let _db=null,_ref=null,_room=null,_syncing=false,_saveT=null,_storage=null,_storageWarned=false;
+// _dirty：本機是否有「已存檔但還沒確認推送成功」的內容。收到雲端資料時，
+// 只有這個是 true 才需要保護本機（跟伺服器合併、本機優先），
+// 不然一份已經開很久、沒東西要存的舊分頁，會拿它手上的舊資料把雲端剛更新的內容蓋掉。
+let _dirty=false;
 function fbReady(){ return FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey.indexOf('PASTE')<0; }
 function initFB(){
   if(_db) return true;
@@ -396,11 +408,11 @@ function joinRoom(room){
     _syncing=true;
     try{
       const i=S.trips.findIndex(t=>t.id===data.id);
-      // 用合併、不要整個蓋掉：本機這時可能還有「已經按過儲存、但還沒推上雲端」
-      // 的最新編輯（推送有 0.6 秒防抖），如果這裡直接拿雲端資料整包取代，
-      // 剛存的東西會被還沒更新的雲端舊版蓋掉。mergeTrip(伺服器版, 本機版)
-      // 讓本機版本在同一筆資料衝突時優先，陣列型欄位則是兩邊聯集。
-      if(i>=0) S.trips[i]=mergeTrip(data, S.trips[i]);
+      // 只有「本機還有東西還沒確認推送成功」(_dirty) 才需要保護、跟雲端合併，
+      // 本機優先；平常沒東西要存的時候，直接採用雲端最新版本就好——
+      // 不然一個開很久沒關的分頁，會一直拿它手上的舊資料把別的裝置／
+      // 我直接寫入資料庫的更新蓋掉，即使使用者什麼都沒做。
+      if(i>=0) S.trips[i]= _dirty ? mergeTrip(data, S.trips[i]) : data;
       else S.trips.unshift(data);
       S.currentId = S.trips[i>=0?i:0].id; persist(); renderAll();
     }finally{ _syncing=false; }
@@ -413,6 +425,7 @@ function pushRemote(){
   _saveT=setTimeout(()=>{
     const t=trip(); if(!t||!_ref) return;
     _ref.transaction(server=> server ? mergeTrip(server,t) : t, null, false)
+      .then(()=>{ _dirty=false; })
       .catch(e=>{ setDot('off'); toast('雲端同步失敗：'+(e.message||'檢查網路或 Firebase 規則'),'#dc2626'); });
   },600);
 }
@@ -463,7 +476,7 @@ let _day=null;                 // 目前選的日期
 let _filter={today:false,done:false};
 
 function persist(){ try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){} }
-function save(){ persist(); pushRemote(); }
+function save(){ persist(); _dirty=true; pushRemote(); }
 function load(){
   try{ const d=localStorage.getItem(KEY); if(d) S=JSON.parse(d); }catch(e){}
   if(!S.trips)S.trips=[]; if(!S.fx)S.fx={};
