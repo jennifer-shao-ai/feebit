@@ -308,7 +308,7 @@ h1,h2,h3,h4{margin:0}
 
 <script>
 /* ============================================================
-   旅程手冊 · trip-planner.html  v2.0
+   旅程手冊 · trip-planner.html  v2.1
    單檔 PWA。資料存 localStorage；每個旅程一律有 room，開 App 即
    自動雲端同步（Firebase Realtime DB）。跨裝置用「雲端同步碼」。
    圖片走 Firebase Storage（trips/<room>/<uid>.jpg），資料庫只存網址；
@@ -354,6 +354,13 @@ h1,h2,h3,h4{margin:0}
         排路線的 API 沒辦法吃你貼的地圖連結（連結只能給單點用），只能
         用文字去猜地點，同名店多時會猜錯——新增「路線搜尋用名稱／地址」
         欄位，填了會優先用它排路線，不影響顯示名稱。
+   v2.1：【重要修正】joinRoom() 收到雲端快照時，原本是整包直接蓋掉本機
+        資料——如果本機剛存檔、還在 0.6 秒防抖等待推送上雲端的空檔就被
+        重新整理頁面，抓回來的舊雲端快照會把剛存的編輯整個蓋掉、永久遺失
+        （已實際發生：2026-09-15 Jennifer 的行程 Day5-9 大量編輯被蓋回
+        範本預設值）。改成 mergeTrip(伺服器版, 本機版)，本機衝突時優先、
+        陣列型欄位聯集，不會再整包覆蓋。已用模擬情境驗證：本機剛編輯但
+        未推播完成時收到舊雲端快照，編輯內容正確保留不被蓋掉。
    ============================================================ */
 
 /* ---------- FIREBASE（換成你新開的專案）---------- */
@@ -389,8 +396,13 @@ function joinRoom(room){
     _syncing=true;
     try{
       const i=S.trips.findIndex(t=>t.id===data.id);
-      if(i>=0) S.trips[i]=data; else S.trips.unshift(data);
-      S.currentId=data.id; persist(); renderAll();
+      // 用合併、不要整個蓋掉：本機這時可能還有「已經按過儲存、但還沒推上雲端」
+      // 的最新編輯（推送有 0.6 秒防抖），如果這裡直接拿雲端資料整包取代，
+      // 剛存的東西會被還沒更新的雲端舊版蓋掉。mergeTrip(伺服器版, 本機版)
+      // 讓本機版本在同一筆資料衝突時優先，陣列型欄位則是兩邊聯集。
+      if(i>=0) S.trips[i]=mergeTrip(data, S.trips[i]);
+      else S.trips.unshift(data);
+      S.currentId = S.trips[i>=0?i:0].id; persist(); renderAll();
     }finally{ _syncing=false; }
     setDot('live');
   },()=>setDot('off'));
