@@ -53,6 +53,10 @@ h1,h2,h3,h4{margin:0}
 }
 .sync-dot{width:9px;height:9px;border-radius:50%;background:#facc15;flex-shrink:0;transition:.3s}
 .sync-dot.live{background:#4ade80}.sync-dot.off{background:#f87171}
+.sync-label{font-size:11px;font-weight:700;color:rgba(255,255,255,.85);flex-shrink:0;white-space:nowrap}
+.sync-label.off{color:#fecaca}
+.sync-fail-banner{position:fixed;left:0;right:0;top:0;z-index:90;background:#dc2626;color:#fff;padding:10px 14px;font-size:13px;font-weight:700;text-align:center}
+.sync-fail-banner button{margin-left:10px;background:rgba(255,255,255,.25);border:none;color:#fff;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:700}
 
 /* ---------- fx strip ---------- */
 .fxstrip{
@@ -219,6 +223,7 @@ h1,h2,h3,h4{margin:0}
 
 <div class="topbar">
   <span class="sync-dot" id="syncDot" title="同步狀態"></span>
+  <span class="sync-label" id="syncLabel"></span>
   <select id="tripSel" onchange="switchTrip(this.value)"></select>
   <button class="icon-btn" onclick="openTripMenu()" aria-label="行程設定">⚙️</button>
   <button class="icon-btn" onclick="openShare()" aria-label="分享">👥</button>
@@ -308,7 +313,7 @@ h1,h2,h3,h4{margin:0}
 
 <script>
 /* ============================================================
-   旅程手冊 · trip-planner.html  v2.2
+   旅程手冊 · trip-planner.html  v2.3
    單檔 PWA。資料存 localStorage；每個旅程一律有 room，開 App 即
    自動雲端同步（Firebase Realtime DB）。跨裝置用「雲端同步碼」。
    圖片走 Firebase Storage（trips/<room>/<uid>.jpg），資料庫只存網址；
@@ -369,6 +374,15 @@ h1,h2,h3,h4{margin:0}
         時直接採用雲端最新版本。save() 時設 _dirty=true，transaction
         推送成功後設回 false。已用兩種情境模擬驗證：①閒置分頁收到外部
         更新會正確採用 ②本機剛編輯未推送完成收到舊快照仍正確保留本機。
+   v2.3：【重要】加離開頁面防護——只要有變更還沒確認真的推送成功
+        (_dirty)，重整/關閉分頁前瀏覽器會強制跳出「變更可能還沒儲存」的
+        原生警告，不是本頁自己的小提示，使用者不可能沒看到就離開。
+        同步狀態改成明顯文字（同步中…／已同步／⚠️ 同步失敗），失敗時
+        跳出不會自動消失的紅色橫幅＋立即重試按鈕，不再只是一顆容易忽略
+        的小圓點。另外拿掉 pushRemote() 開頭多餘的 _syncing 檢查——
+        JS 單執行緒下這個判斷沒有實際保護作用，只有可能誤判把使用者這次
+        存檔整個跳過不推送，屬於已知風險點先移除。已用模擬測試驗證
+        beforeunload 在有/無未同步變更時行為正確。
    ============================================================ */
 
 /* ---------- FIREBASE（換成你新開的專案）---------- */
@@ -399,6 +413,21 @@ function initFB(){
   }catch(e){ console.warn('FB init fail',e); return false; }
 }
 function setDot(s){ const d=document.getElementById('syncDot'); d.className='sync-dot'+(s==='live'?' live':s==='off'?' off':''); }
+// 明顯的文字同步狀態（不是只有一顆小圓點），加上失敗時跳出不會自動消失的紅色警告，
+// 逼使用者看到、且提醒他先別關頁面。
+function setSyncBadge(state, errMsg){
+  const el=document.getElementById('syncLabel'); if(!el) return;
+  if(state==='pending'){ el.textContent='同步中…'; el.className='sync-label'; document.getElementById('syncFailBanner')?.remove(); }
+  else if(state==='live'){ el.textContent='已同步'; el.className='sync-label'; document.getElementById('syncFailBanner')?.remove(); }
+  else if(state==='fail'){
+    el.textContent='⚠️ 同步失敗'; el.className='sync-label off';
+    if(!document.getElementById('syncFailBanner')){
+      const b=document.createElement('div'); b.id='syncFailBanner'; b.className='sync-fail-banner';
+      b.innerHTML='⚠️ 剛剛的變更沒有送到雲端（'+esc(errMsg||'網路或權限問題')+'）。請先不要關閉或重新整理這個頁面，等恢復連線後會自動重試。<button onclick="pushRemote()">立即重試</button>';
+      document.body.prepend(b);
+    }
+  }
+}
 
 function joinRoom(room){
   if(!initFB()) return;
@@ -416,17 +445,23 @@ function joinRoom(room){
       else S.trips.unshift(data);
       S.currentId = S.trips[i>=0?i:0].id; persist(); renderAll();
     }finally{ _syncing=false; }
-    setDot('live');
-  },()=>setDot('off'));
+    setDot('live'); if(!_dirty) setSyncBadge('live');
+  },()=>{ setDot('off'); setSyncBadge('fail','連線中斷'); });
 }
 function pushRemote(){
-  if(!_ref||_syncing) return;
+  // 不要再用 _syncing 擋這裡：JS 單執行緒下，收到雲端資料的處理一定會在
+  // 使用者這次存檔的程式碼真正執行前跑完，_syncing 在這個時間點沒有實際
+  // 保護作用，反而多一個可能誤判、把這次存檔整個跳過去的風險。
+  if(!_ref) return;
   clearTimeout(_saveT);
+  setSyncBadge('pending');
   _saveT=setTimeout(()=>{
     const t=trip(); if(!t||!_ref) return;
     _ref.transaction(server=> server ? mergeTrip(server,t) : t, null, false)
-      .then(()=>{ _dirty=false; })
-      .catch(e=>{ setDot('off'); toast('雲端同步失敗：'+(e.message||'檢查網路或 Firebase 規則'),'#dc2626'); });
+      .then(()=>{ _dirty=false; setSyncBadge('live'); })
+      .catch(e=>{
+        setDot('off'); setSyncBadge('fail', e.message);
+      });
   },600);
 }
 // 把「我有哪些旅程 + 各自的 room」寫到 idx/<同步碼>，讓其他裝置輸入同步碼就能整批拉回
@@ -1677,6 +1712,16 @@ function loadSeedSilently(){
   closeModal();
 }
 window.addEventListener('DOMContentLoaded',init);
+// 離開頁面防護：只要有變更還沒確認真的送達雲端(_dirty)，重整/關閉分頁前
+// 瀏覽器會強制跳出警告，不是這支程式自己的提示，是瀏覽器等級擋下來，
+// 使用者不可能沒看到就走掉。
+window.addEventListener('beforeunload', function(e){
+  if(_dirty){
+    e.preventDefault();
+    e.returnValue = '你有變更還沒確認同步完成，離開可能會遺失，確定要離開嗎？';
+    return e.returnValue;
+  }
+});
 </script>
 </body>
 </html>
