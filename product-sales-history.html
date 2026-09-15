@@ -55,6 +55,12 @@
 .day-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 4px; }
 .day-table td { padding: 6px 12px; border-bottom: 1px solid var(--gray-100); white-space: nowrap; }
 .day-table tr:hover td { background: var(--gray-50); }
+
+table.plain-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.plain-table th { background: var(--gray-50); padding: 8px 12px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--gray-200); white-space: nowrap; }
+table.plain-table td { padding: 7px 12px; border-bottom: 1px solid var(--gray-100); }
+table.plain-table tr:hover td { background: var(--gray-50); }
+.coupang-tag { color: #b9770e; font-size: 12px; }
 </style>
 </head>
 <body>
@@ -163,7 +169,7 @@
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
 
-  <div class="sidebar-footer">v1.1 · Feebit © 2026</div>
+  <div class="sidebar-footer">v1.2 · Feebit © 2026</div>
 </div>
 
 <!-- ── MAIN ── -->
@@ -173,7 +179,7 @@
       <button class="btn-hamburger" onclick="openSidebar()">☰</button>
       <span class="topbar-title">商品銷售履歷</span>
       <span class="topbar-badge">庫存工具</span>
-      <span style="font-size:11px;color:var(--gray-400);margin-left:4px">v1.1</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:4px">v1.2</span>
     </div>
     <button class="btn-share" onclick="copyShare(this)">🔗 分享</button>
   </div>
@@ -191,6 +197,13 @@
       </div>
     </div>
 
+    <div class="card" id="top10-card">
+      <div class="card-header">
+        <h2 id="top10-title" style="font-size:16px;font-weight:600">本月銷量排行 Top 10</h2>
+      </div>
+      <div id="top10-body">載入中...</div>
+    </div>
+
     <div id="result-section" style="display:none">
 
       <div class="card">
@@ -199,6 +212,13 @@
         </div>
         <div class="info-grid" id="info-grid"></div>
         <div id="year-breakdown"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2 style="font-size:15px;font-weight:600">月銷量彙總</h2>
+        </div>
+        <div id="monthly-summary"></div>
       </div>
 
       <div class="card">
@@ -338,7 +358,7 @@ async function loadProduct(code) {
   const client = await waitForAuthClient();
   const { data, error } = await client
     .from('daily_sales')
-    .select('date,qty_out,stock_after,in_transit,product_name,category,unit_cost,price')
+    .select('date,qty_out,stock_after,in_transit,product_name,category,unit_cost,price,coupang_delivered')
     .eq('product_code', code)
     .order('date', { ascending: true });
 
@@ -354,6 +374,7 @@ async function loadProduct(code) {
   const latest = data[data.length - 1];
   const firstDate = data[0].date;
   const total = data.reduce((s, r) => s + (Number(r.qty_out) || 0), 0);
+  const coupangTotal = data.reduce((s, r) => s + (Number(r.coupang_delivered) || 0), 0);
   const last30 = sumLastNDays(data, 30);
   const last7 = sumLastNDays(data, 7);
   const avg28 = sumLastNDays(data, 28) / 28;
@@ -377,6 +398,7 @@ async function loadProduct(code) {
     ['近7天銷量', last7],
     ['近30天銷量', last30],
     ['近28天日均', Math.round(avg28 * 100) / 100],
+    ['累積酷澎交貨量', coupangTotal, '補酷澎倉整批出貨,非終端銷售'],
   ].map(([label, val, sub]) => `<div class="stat-card"><div class="stat-num">${val}</div><div class="stat-label">${label}${sub ? '<br>' + sub : ''}</div></div>`).join('');
 
   const years = Object.keys(yearTotals).sort().reverse();
@@ -390,8 +412,84 @@ async function loadProduct(code) {
     document.getElementById('year-breakdown').innerHTML = '';
   }
 
+  renderMonthlySummary(computeMonthlyTotals(data));
+
   document.getElementById('result-section').style.display = 'block';
   setRange(currentRangeDays || 0);
+}
+
+/** 月銷量彙總：每月總量 + 較上月漲跌% */
+function computeMonthlyTotals(data) {
+  const map = {};
+  data.forEach(r => {
+    const key = r.date.slice(0, 7);
+    map[key] = (map[key] || 0) + (Number(r.qty_out) || 0);
+  });
+  const keys = Object.keys(map).sort();
+  return keys.map((k, i) => {
+    const total = map[k];
+    const prevKey = i > 0 ? keys[i - 1] : null;
+    const prevTotal = prevKey != null ? map[prevKey] : null;
+    let changePct = null;
+    if (prevTotal != null && prevTotal > 0) changePct = Math.round(((total - prevTotal) / prevTotal) * 1000) / 10;
+    return { month: k, total, changePct };
+  });
+}
+
+function renderMonthlySummary(stats) {
+  const rows = stats.slice().reverse();
+  document.getElementById('monthly-summary').innerHTML =
+    '<table class="plain-table"><thead><tr><th>月份</th><th style="text-align:right">當月銷量</th><th style="text-align:right">較上月</th></tr></thead><tbody>' +
+    rows.map(s => {
+      let changeCell = '—';
+      if (s.changePct != null) {
+        const up = s.changePct >= 0;
+        changeCell = `<span style="color:${up ? '#1e8449' : '#c0392b'};font-weight:bold">${up ? '▲ +' : '▼ '}${s.changePct}%</span>`;
+      }
+      return `<tr><td>${s.month}</td><td style="text-align:right"><b>${s.total}</b></td><td style="text-align:right">${changeCell}</td></tr>`;
+    }).join('') +
+    '</tbody></table>';
+}
+
+/** 本月銷量排行 Top 10：頁面一打開就顯示，不用先查商品 */
+async function loadTopThisMonth() {
+  try {
+    const client = await waitForAuthClient();
+    const now = new Date();
+    const y = now.getFullYear(), mo = now.getMonth() + 1;
+    const fromStr = y + '-' + String(mo).padStart(2, '0') + '-01';
+    document.getElementById('top10-title').textContent = y + '年' + mo + '月銷量排行 Top 10';
+
+    const { data, error } = await client
+      .from('daily_sales')
+      .select('product_code,product_name,qty_out')
+      .gte('date', fromStr)
+      .gt('qty_out', 0)
+      .limit(5000);
+    if (error) throw error;
+
+    const totals = {}, names = {};
+    (data || []).forEach(r => {
+      totals[r.product_code] = (totals[r.product_code] || 0) + (Number(r.qty_out) || 0);
+      if (r.product_name) names[r.product_code] = r.product_name;
+    });
+    const top = Object.entries(totals).sort((a, b) => b[1] - a[1]).slice(0, 10);
+
+    if (!top.length) {
+      document.getElementById('top10-body').innerHTML = '<div style="padding:12px;color:var(--gray-500);font-size:13px">這個月還沒有銷量資料</div>';
+      return;
+    }
+    document.getElementById('top10-body').innerHTML =
+      '<table class="plain-table"><thead><tr><th>名次</th><th>代號</th><th>品名</th><th style="text-align:right">銷量</th></tr></thead><tbody>' +
+      top.map(([code, qty], i) => `<tr>
+        <td>${i + 1}</td><td>${code}</td>
+        <td><a href="javascript:void(0)" onclick="loadProduct('${code}')" style="color:#2c5aa0;text-decoration:underline">${escHtml(names[code] || '')}</a></td>
+        <td style="text-align:right"><b>${qty}</b></td>
+      </tr>`).join('') +
+      '</tbody></table>';
+  } catch (e) {
+    document.getElementById('top10-body').innerHTML = '<div style="padding:12px;color:var(--danger)">載入失敗：' + e.message + '</div>';
+  }
 }
 
 function sumLastNDays(data, n) {
@@ -489,6 +587,7 @@ function renderTable(rows) {
             ${monthRows.map(r => `<tr>
               <td>${r.date}</td>
               <td style="text-align:right">${r.qty_out}</td>
+              <td style="text-align:right">${(Number(r.coupang_delivered) || 0) > 0 ? '<span class="coupang-tag">🚚 酷澎交貨 ' + r.coupang_delivered + '</span>' : '—'}</td>
               <td style="text-align:right">庫存 ${r.stock_after ?? '—'}</td>
               <td style="text-align:right">在途 ${r.in_transit ?? '—'}</td>
             </tr>`).join('')}
@@ -508,14 +607,17 @@ function toggleGroup(headerEl) {
   arrow.classList.toggle('open');
 }
 
-// 網址帶 ?code=XXX 時自動查詢
-(function initFromQuery(){
-  const params = new URLSearchParams(location.search);
-  const code = params.get('code');
-  if (code) {
-    document.getElementById('code-input').value = code;
-    waitForAuthClient().then(() => loadProduct(normalizeCode(code)));
-  }
+// 頁面一打開先載入本月Top10；網址帶 ?code=XXX 的話再自動查詢那個商品
+(function init(){
+  waitForAuthClient().then(() => {
+    loadTopThisMonth();
+    const params = new URLSearchParams(location.search);
+    const code = params.get('code');
+    if (code) {
+      document.getElementById('code-input').value = code;
+      loadProduct(normalizeCode(code));
+    }
+  });
 })();
 </script>
 
