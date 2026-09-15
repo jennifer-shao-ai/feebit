@@ -125,6 +125,7 @@ h1,h2,h3,h4{margin:0}
 .spot-tag{font-size:11.5px;background:#f3e8ff;color:#7e22ce;border-radius:6px;padding:2px 7px;font-weight:600}
 .spot-links{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
 .spot-links a,.spot-links button{font-size:12px;font-weight:700;border-radius:8px;padding:6px 10px;border:1px solid var(--line);background:#fff;color:var(--brand);display:inline-flex;gap:4px;align-items:center}
+.spot-links .noMap{border-color:#fde68a;background:var(--warn-bg);color:var(--warn);cursor:pointer;border:1px solid #fde68a}
 .spot-check{flex-shrink:0;width:30px;height:30px;border-radius:50%;border:2px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;color:#fff}
 .spot-check.on{background:var(--ok);border-color:var(--ok)}
 .spot-foot{display:flex;gap:6px;border-top:1px dashed var(--line);padding:7px 12px;background:#fafcfc}
@@ -307,7 +308,7 @@ h1,h2,h3,h4{margin:0}
 
 <script>
 /* ============================================================
-   旅程手冊 · trip-planner.html  v1.9
+   旅程手冊 · trip-planner.html  v2.0
    單檔 PWA。資料存 localStorage；每個旅程一律有 room，開 App 即
    自動雲端同步（Firebase Realtime DB）。跨裝置用「雲端同步碼」。
    圖片走 Firebase Storage（trips/<room>/<uid>.jpg），資料庫只存網址；
@@ -347,6 +348,12 @@ h1,h2,h3,h4{margin:0}
         列 ?join= 清空的動作，連結不會再看起來『變成別的網址』。
    v1.9：支出（分帳）新增可上傳收據照片（可多張），跟其他照片一樣走
         Firebase Storage、刪除時同步清理雲端檔案。
+   v2.0：①「📍 地點」只在有貼地圖連結時顯示，沒貼的改成醒目的「⚠️ 未
+        設地圖」按鈕、點了直接跳編輯，方便掃出哪些景點還沒補連結。
+        ②修正「今日路線」會跳到同名/類似名稱錯誤地點的問題：Google
+        排路線的 API 沒辦法吃你貼的地圖連結（連結只能給單點用），只能
+        用文字去猜地點，同名店多時會猜錯——新增「路線搜尋用名稱／地址」
+        欄位，填了會優先用它排路線，不影響顯示名稱。
    ============================================================ */
 
 /* ---------- FIREBASE（換成你新開的專案）---------- */
@@ -566,20 +573,23 @@ function cleanPlace(name){
     .split(/[\/、,，]|　|\s+(?:or|OR|→|>)\s+/)[0]
     .trim();
 }
-// 早餐/回飯店/散策… 這類無法定位的字眼，畫路線時略過
+// 早餐/回飯店/散策… 這類無法定位的字眼，畫路線時略過（但如果有手動填 routeQuery，代表使用者就是要它出現在路線裡，不略過）
 const VAGUE_RE=/(早餐|午餐|晚餐|下午茶|點心|宵夜|自理|機上|集合|出發|抵達|返家|回飯店|check[\s-]?in|check[\s-]?out|退房|入住|散策|逛逛|逛街|掃貨|補貨|周邊|附近|待|看有|備案|之一|如有時間)/i;
+// Google 的路線(Directions)API 只吃「文字地址/名稱」或座標，沒辦法直接吃你貼的地圖連結（連結是給單點用的）。
+// 排路線時優先用 routeQuery（你自己填的精確搜尋字串），沒填才退回用清過的景點名稱猜。
+function routeText(s){ return (s.routeQuery&&s.routeQuery.trim()) || cleanPlace(s.name); }
 function mapSearchUrl(s){
   if(s.mapUrl) return s.mapUrl;
   return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(cleanPlace(s.name)||s.name||'');
 }
-function dirUrl(from,to){
-  return 'https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(cleanPlace(from))+
-    '&destination='+encodeURIComponent(cleanPlace(to))+'&travelmode=transit';
+function dirUrl(a,b){
+  return 'https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(routeText(a))+
+    '&destination='+encodeURIComponent(routeText(b))+'&travelmode=transit';
 }
 function dayRouteUrl(day){
   let names=(day.spots||[])
-    .filter(s=>s.name && !VAGUE_RE.test(s.name))
-    .map(s=>cleanPlace(s.name))
+    .filter(s=>s.name && (s.routeQuery||!VAGUE_RE.test(s.name)))
+    .map(s=>routeText(s))
     .filter(n=>n.length>=2);
   names=names.filter((n,i)=>n!==names[i-1]);          // 去相鄰重複
   if(names.length<2) return null;
@@ -638,7 +648,9 @@ function renderSpot(s,date){
   if(s.openHours) meta.push('🕐 '+esc(s.openHours));
   if(s.price) meta.push('🎫 '+esc(s.price));
   const links=[
-    `<a href="${mapSearchUrl(s)}" target="_blank" rel="noopener">📍 地點</a>`,
+    s.mapUrl
+      ? `<a href="${esc(s.mapUrl)}" target="_blank" rel="noopener">📍 地點</a>`
+      : `<button class="noMap" onclick="editSpot('${date}','${s.id}')" title="點了直接開編輯，貼上地圖連結">⚠️ 未設地圖</button>`,
     ...(s.links||[]).filter(l=>l&&l.url).map(l=>`<a href="${esc(normUrl(l.url))}" target="_blank" rel="noopener">🔗 ${esc(l.label||'連結')}</a>`)
   ];
   return `<div class="spot ${s.done?'done':''}" id="sp-${s.id}">
@@ -666,7 +678,7 @@ function renderTransit(a,b,date){
   const tr=a.transitAfter;
   if(!tr||!tr.mode){
     return `<div class="transit"><div class="transit-row"><button onclick="editTransit('${date}','${a.id}')">＋ 交通</button>
-      <a class="info" href="${dirUrl(a.name,b.name)}" target="_blank" rel="noopener" style="margin-left:auto">🧭 路線</a></div></div>`;
+      <a class="info" href="${dirUrl(a,b)}" target="_blank" rel="noopener" style="margin-left:auto">🧭 路線</a></div></div>`;
   }
   const ic={walk:'🚶',train:'🚃',subway:'🚇',bus:'🚌',taxi:'🚕',other:'➡️'}[tr.mode]||'➡️';
   const head=[tr.mins?tr.mins+'分':'',tr.fare?('¥'+Number(tr.fare).toLocaleString()):''].filter(Boolean).join(' · ');
@@ -674,7 +686,7 @@ function renderTransit(a,b,date){
     <div class="transit-row">
       <span class="info">${ic} ${esc(head||'移動')}</span>
       <button onclick="editTransit('${date}','${a.id}')">編輯</button>
-      <a class="info" href="${dirUrl(a.name,b.name)}" target="_blank" rel="noopener" style="margin-left:auto">🧭 路線</a>
+      <a class="info" href="${dirUrl(a,b)}" target="_blank" rel="noopener" style="margin-left:auto">🧭 路線</a>
     </div>
     ${tr.note?`<div class="transit-note">${esc(tr.note)}</div>`:''}
   </div>`;
@@ -819,7 +831,11 @@ function editSpot(date,id){
       <div class="f"><label>營業時間</label><input id="sp-hours" value="${esc(s.openHours||'')}" placeholder="10:00–18:00 週二休"></div>
       <div class="f"><label>門票/預算</label><input id="sp-price" value="${esc(s.price||'')}" placeholder="¥1,200"></div>
     </div>
-    <div class="f"><label>Google Maps 連結（留白會用名稱搜尋）</label><input id="sp-map" value="${esc(s.mapUrl||'')}" placeholder="貼 maps.app.goo.gl 連結"></div>
+    <div class="f"><label>Google Maps 連結</label><input id="sp-map" value="${esc(s.mapUrl||'')}" placeholder="貼 maps.app.goo.gl 連結"></div>
+    <div class="f"><label>路線搜尋用名稱／地址（選填）</label>
+      <input id="sp-route" value="${esc(s.routeQuery||'')}" placeholder="例：愛知県瀬戸市西窯町 中外陶園">
+      <p class="help" style="margin-top:4px">Google 排「今日路線」時沒辦法直接讀你貼的地圖連結，只能用文字去猜地點，同名的店太多時會猜錯。這個地點如果常常跳錯，填一個更完整、不會跟別的地方混淆的名稱或地址在這裡，只影響排路線，不影響上面顯示的名稱。</p>
+    </div>
     <div class="f"><label>相關網站（自己取名稱，可加多個，例：官網／菜單／預約）</label>
       <div id="linkBufBox">${(s.links||[]).map(linkRowHTML).join('')}</div>
       <button type="button" class="btn btn-sm btn-ghost" onclick="addLinkRow()">＋ 加一個網站</button>
@@ -863,6 +879,7 @@ function saveSpot(id,oldDate){
     openHours:document.getElementById('sp-hours').value.trim(),
     price:document.getElementById('sp-price').value.trim(),
     mapUrl:document.getElementById('sp-map').value.trim(),
+    routeQuery:document.getElementById('sp-route').value.trim(),
     links:collectLinkRows(),
     note:document.getElementById('sp-note').value.trim(),
     alerts:document.getElementById('sp-alerts').value.split('\n').map(x=>x.trim()).filter(Boolean),
