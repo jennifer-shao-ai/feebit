@@ -243,6 +243,7 @@ h1,h2,h3,h4{margin:0}
 
   <!-- SHOPPING -->
   <section class="page" id="pg-shop">
+    <div class="chip-row" id="shopViewSwitch"></div>
     <div class="chip-row" id="shopFilter"></div>
     <div class="card" id="shopList"></div>
   </section>
@@ -313,7 +314,7 @@ h1,h2,h3,h4{margin:0}
 
 <script>
 /* ============================================================
-   旅程手冊 · trip-planner.html  v2.4
+   旅程手冊 · trip-planner.html  v2.5
    單檔 PWA。資料存 localStorage；每個旅程一律有 room，開 App 即
    自動雲端同步（Firebase Realtime DB）。跨裝置用「雲端同步碼」。
    圖片走 Firebase Storage（trips/<room>/<uid>.jpg），資料庫只存網址；
@@ -394,6 +395,17 @@ h1,h2,h3,h4{margin:0}
         本機、伺服器、或哪個分頁發生都真正生效。已用模擬測試驗證：本機
         剛刪除、伺服器版本仍保留舊項目時合併，刪除的項目不會被聯集加回
         來。
+   v2.5：待買清單篩選改成可切換三種檢視模式（分類／人／地點），chip 用
+        index 對應真實值而不是把使用者輸入的文字塞進 onclick 字串裡（人名
+        /地點是自由輸入，直接塞字串會被引號等字元弄壞）；「地點」欄位從
+        自由輸入改成下拉選單＋「新增地點」（避免同一家店因為打法不同被
+        拆成好幾個分類）。另外加了「重整頁面回到你原本在看的日期/分頁」
+        （UI 狀態存本機 localStorage、跟旅程資料分開，不進 Firebase 同
+        步）：之前重整一律跳回「今天在範圍內就顯示今天，不然回第一天」，
+        現在會先看有沒有存過這趟旅程上次看的日期/分頁，有就直接回去。
+        已用隔離單元測試驗證：地點下拉去重排序、新增地點、篩選 chip
+        index 對應、UI 狀態存讀 round-trip、切到沒存過狀態的旅程不誤觸發
+        都正確（11 項全過）。
    ============================================================ */
 
 /* ---------- FIREBASE（換成你新開的專案）---------- */
@@ -528,6 +540,25 @@ const DEFAULT_PACK=['護照+影本','機票/訂房確認','信用卡(開海外)'
 let S={trips:[],currentId:null,fx:{},fxAt:null};
 let _day=null;                 // 目前選的日期
 let _filter={today:false,done:false};
+// ---- 畫面狀態（目前在看哪一天／哪個分頁）：只存本機，不進 Firebase 同步，
+// 純粹是「重整頁面後回到你原本在看的地方」的體驗，跟旅程實際資料無關。
+const UI_KEY='feebit_trip_ui_v1';
+let _pendingTab=null;
+function loadUiState(){
+  try{
+    const all=JSON.parse(localStorage.getItem(UI_KEY)||'{}');
+    const st=S.currentId&&all[S.currentId];
+    if(st){ if(st.day) _day=st.day; _pendingTab=st.tab||null; }
+  }catch(e){}
+}
+function saveUiState(){
+  try{
+    const all=JSON.parse(localStorage.getItem(UI_KEY)||'{}');
+    const tabBtn=document.querySelector('.bnav button.on');
+    all[S.currentId]={day:_day, tab:tabBtn?tabBtn.dataset.pg:'trip'};
+    localStorage.setItem(UI_KEY,JSON.stringify(all));
+  }catch(e){}
+}
 
 function persist(){ try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){} }
 function save(){ persist(); _dirty=true; pushRemote(); }
@@ -593,6 +624,7 @@ function nav(pg){
   if(pg==='shop') renderShop();
   if(pg==='coupon') renderCoupons();
   if(pg==='more') renderMore();
+  saveUiState();
 }
 function fabAction(){
   const pg=document.querySelector('.bnav button.on').dataset.pg;
@@ -608,7 +640,7 @@ function renderAll(){
 function renderTripSel(){
   document.getElementById('tripSel').innerHTML=S.trips.map(t=>`<option value="${t.id}" ${t.id===S.currentId?'selected':''}>${esc(t.name)}</option>`).join('');
 }
-function switchTrip(id){ S.currentId=id; _day=null; _filter.today=false; save(); syncRoom(); renderAll(); nav('trip'); }
+function switchTrip(id){ S.currentId=id; _day=null; _filter.today=false; loadUiState(); save(); syncRoom(); renderAll(); nav(_pendingTab||'trip'); _pendingTab=null; }
 function syncRoom(){
   const t=trip();
   if(_ref&&_room!==(t&&t.room)){ _ref.off(); _ref=null; _room=null; setDot(''); }
@@ -636,11 +668,11 @@ function renderDayChips(){
   document.getElementById('tgToday').classList.toggle('on',_filter.today);
   document.getElementById('tgDone').classList.toggle('on',_filter.done);
 }
-function pickDay(d){ _day=d; _filter.today=false; renderDayChips(); renderItin(); }
+function pickDay(d){ _day=d; _filter.today=false; renderDayChips(); renderItin(); saveUiState(); }
 function toggleFilter(k){
   _filter[k]=!_filter[k];
   if(k==='today'&&_filter[k]){ const t=todayStr(); if(tripDays().some(d=>d.date===t)) _day=t; }
-  renderDayChips(); renderItin();
+  renderDayChips(); renderItin(); saveUiState();
 }
 
 /* ---------- ITINERARY ---------- */
@@ -1014,16 +1046,30 @@ function clearTransit(date,id){
 
 /* ---------- SHOPPING ---------- */
 let _shopFilter='ALL';
+let _shopViewMode='cat';       // 'cat'｜'who'｜'where'：待買清單目前用哪個維度篩選
+const SHOP_VIEW_LABEL={cat:'分類',who:'人',where:'地點'};
+const SHOP_VIEW_KEY={cat:i=>i.cat||'未分類', who:i=>i.who||'未指定', where:i=>i.where||'未填地點'};
+function setShopViewMode(m){ _shopViewMode=m; _shopFilter='ALL'; renderShop(); }
+let _shopFilterCats=['ALL'];
+function pickShopFilter(idx){ _shopFilter=_shopFilterCats[idx]; renderShop(); }
 function renderShop(){
   const t=trip(); const box=document.getElementById('shopList');
   const fbar=document.getElementById('shopFilter');
-  if(!t){ box.innerHTML=''; return; }
+  const vbar=document.getElementById('shopViewSwitch');
+  if(!t){ box.innerHTML=''; if(vbar)vbar.innerHTML=''; return; }
   const items=t.shopping||[];
-  const cats=['ALL',...new Set(items.map(i=>i.cat).filter(Boolean)),'✓已買'];
-  fbar.innerHTML=cats.map(c=>`<div class="chip ${_shopFilter===c?'on':''}" onclick="_shopFilter='${c}';renderShop()">${c==='ALL'?'全部':c}</div>`).join('');
+  if(vbar){
+    vbar.innerHTML=Object.keys(SHOP_VIEW_LABEL).map(m=>
+      `<div class="chip ${_shopViewMode===m?'on':''}" onclick="setShopViewMode('${m}')">${SHOP_VIEW_LABEL[m]}</div>`
+    ).join('');
+  }
+  const keyFn=SHOP_VIEW_KEY[_shopViewMode];
+  const cats=['ALL',...new Set(items.map(keyFn).filter(Boolean)),'✓已買'];
+  _shopFilterCats=cats; // 讓 chip 用 index 取值，避免人名/地點裡的引號等字元弄壞 onclick
+  fbar.innerHTML=cats.map((c,idx)=>`<div class="chip ${_shopFilter===c?'on':''}" onclick="pickShopFilter(${idx})">${c==='ALL'?'全部':esc(c)}</div>`).join('');
   let show=items;
   if(_shopFilter==='✓已買') show=items.filter(i=>i.done);
-  else if(_shopFilter!=='ALL') show=items.filter(i=>i.cat===_shopFilter);
+  else if(_shopFilter!=='ALL') show=items.filter(i=>keyFn(i)===_shopFilter);
   if(!show.length){ box.innerHTML='<div class="empty"><span class="ic">🛍</span>還沒有待買清單，點右下 ＋ 新增</div>'; return; }
   box.innerHTML=show.map(i=>{
     const tw=i.price&&i.cur!=='TWD'?` <span class="li-sub">≈ ${fmtT(toTWD(i.price,i.cur||'JPY'))}</span>`:'';
@@ -1049,6 +1095,23 @@ function renderShop(){
 }
 function toggleShop(id){ const t=trip(); const i=t.shopping.find(x=>x.id===id); i.done=!i.done; save(); renderShop(); }
 function delShop(id){ if(!confirm('刪除？'))return; const t=trip(); const i=t.shopping.find(x=>x.id===id); if(i&&i.photo)deleteImgUrls([i.photo]); markDeleted(t,id); t.shopping=t.shopping.filter(x=>x.id!==id); save(); renderShop(); }
+function shopWhereList(t){
+  return [...new Set((t.shopping||[]).map(x=>(x.where||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'zh-Hant'));
+}
+function onShopWhereChange(sel){
+  if(sel.value!=='__NEW__') return;
+  const v=(prompt('新增地點/店家名稱')||'').trim();
+  const newOpt=sel.querySelector('option[value="__NEW__"]');
+  if(v){
+    const exist=[...sel.options].find(o=>o.value===v && o!==newOpt);
+    if(exist){ exist.selected=true; return; }
+    const opt=document.createElement('option');
+    opt.textContent=v; opt.selected=true;
+    sel.insertBefore(opt,newOpt);
+  } else {
+    sel.selectedIndex=0;
+  }
+}
 function editShop(id){
   const t=trip(); if(!t.shopping) t.shopping=[];
   const i=id?t.shopping.find(x=>x.id===id):{cur:'JPY',cat:'藥妝'};
@@ -1062,7 +1125,11 @@ function editShop(id){
       <div class="f" style="flex:0 0 92px"><label>幣別</label><select id="s-cur">${CURRENCIES.map(c=>`<option ${(i.cur||'JPY')===c?'selected':''}>${c}</option>`).join('')}</select></div>
       <div class="f" style="flex:0 0 96px"><label>價格</label><input id="s-price" type="number" value="${esc(i.price||'')}"></div>
     </div>
-    <div class="f"><label>地點 / 店家</label><input id="s-where" value="${esc(i.where||'')}" placeholder="黑門市場 Os drug"></div>
+    <div class="f"><label>地點 / 店家</label><select id="s-where" onchange="onShopWhereChange(this)">
+      <option value="">—</option>
+      ${shopWhereList(t).map(w=>`<option ${i.where===w?'selected':''}>${esc(w)}</option>`).join('')}
+      <option value="__NEW__">✚ 新增地點...</option>
+    </select></div>
     <div class="f"><label>誰要買</label><select id="s-who"><option value="">—</option>${mem.map(m=>`<option ${i.who===m?'selected':''}>${esc(m)}</option>`).join('')}</select></div>
     <div class="f"><label>備註</label><textarea id="s-note">${esc(i.note||'')}</textarea></div>
     <div class="btn-row">
@@ -1716,7 +1783,13 @@ function init(){
     loadSeedSilently();
   }
   if(!S.currentId&&S.trips.length) S.currentId=S.trips[0].id;
+  // 重整頁面時，讀回上次在這趟旅程看的日期／分頁（純本機畫面狀態，不影響旅程資料）。
+  // 透過分享連結加入的情境跳過——此時 S.currentId 還沒確定（要等 Firebase 資料回來），
+  // 拿舊的 currentId 去查會查到不相干的狀態，乾脆維持預設畫面就好。
+  if(!joining) loadUiState();
   renderAll();
+  if(!joining && _pendingTab && _pendingTab!=='trip') nav(_pendingTab);
+  _pendingTab=null;
   // 剛透過連結加入時，joinRoom() 已經接好即時監聽；這裡不能再呼叫 syncRoom()——
   // 此時 Firebase 的資料還沒回來，S.trips 還是空的，trip() 會回傳 null，
   // syncRoom() 誤判「目前連線的房間跟目前旅程不一樣」就會把剛接上的監聽掐斷，
