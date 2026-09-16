@@ -145,6 +145,7 @@ h1,h2,h3,h4{margin:0}
 .li{display:flex;gap:11px;padding:12px 13px;border-bottom:1px solid var(--line)}
 .li:last-child{border-bottom:none}
 .li-thumb{width:52px;height:52px;border-radius:10px;object-fit:cover;background:#f1f5f9;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px}
+.li-thumb-lg{width:92px;height:92px;font-size:32px}
 .li-body{flex:1;min-width:0}
 .li-title{font-weight:700;font-size:14.5px}
 .li-sub{font-size:12px;color:var(--ink3);margin-top:2px;white-space:pre-wrap}
@@ -296,6 +297,7 @@ h1,h2,h3,h4{margin:0}
       </div>
       <p class="help" style="margin-top:10px">換手機/瀏覽器看不到資料？點「🔗 同步與分享」拿這趟旅程的代碼或連結，在其他裝置輸入／打開就會加入即時同步——你自己的裝置、或同行朋友都用同一組，沒有誰上傳誰下載、不會互相覆蓋。<br>
       照片會自動上傳雲端相簿（Firebase Storage），不會佔滿本機/資料庫空間；若 Storage 還沒在 Firebase 後台啟用，照片會先退回存本機，之後啟用了新上傳的就會自動走雲端。<br>加到主畫面：iPhone Safari 分享鍵→「加入主畫面」；Android Chrome 選單→「安裝應用程式」。</p>
+      <p class="help" style="margin-top:14px;text-align:center;color:var(--ink3)">旅程手冊 v2.7</p>
     </div>
   </section>
 </div>
@@ -314,7 +316,7 @@ h1,h2,h3,h4{margin:0}
 
 <script>
 /* ============================================================
-   旅程手冊 · trip-planner.html  v2.6
+   旅程手冊 · trip-planner.html  v2.7
    單檔 PWA。資料存 localStorage；每個旅程一律有 room，開 App 即
    自動雲端同步（Firebase Realtime DB）。跨裝置用「雲端同步碼」。
    圖片走 Firebase Storage（trips/<room>/<uid>.jpg），資料庫只存網址；
@@ -412,6 +414,13 @@ h1,h2,h3,h4{margin:0}
         模糊看不清——760px/JPEG 0.55 是舊版圖片還存在本機 localStorage、
         容量吃緊時代的設定，圖片現在主要傳去 Firebase Storage（雲端）不
         占本機容量，這個限制沒必要這麼緊，放寬到 1400px/0.85。
+   v2.7：①之前版本號只寫在程式碼註解裡，頁面上根本看不到——Jennifer 反應
+        「版本號有在頁面上嗎？沒看到」，是真的沒有。補在「更多」頁最下面
+        （旅程手冊 v2.x），以後每次改版本號記得同步這三處：這段註解開頭、
+        更多頁footer、deploy commit message。②待買清單縮圖 52px 太小，
+        上個版本剛把它接上點擊放大，Jennifer 接著說「預覽也想要大一
+        點」——加 .li-thumb-lg（92px）只套用在待買清單，不影響共用同一顆
+        .li-thumb 的票券/優惠券列表。
    ============================================================ */
 
 /* ---------- FIREBASE（換成你新開的專案）---------- */
@@ -1084,7 +1093,7 @@ function renderShop(){
   box.innerHTML=show.map(i=>{
     const tw=i.price&&i.cur!=='TWD'?` <span class="li-sub">≈ ${fmtT(toTWD(i.price,i.cur||'JPY'))}</span>`:'';
     return `<div class="li">
-      <div class="li-thumb">${i.photo?`<img src="${i.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:10px" onclick="viewImg(this)">`:'🛍'}</div>
+      <div class="li-thumb li-thumb-lg">${i.photo?`<img src="${i.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:10px" onclick="viewImg(this)">`:'🛍'}</div>
       <div class="li-body">
         <div class="li-title" style="${i.done?'text-decoration:line-through;color:#94a3b8':''}">${esc(i.name)}</div>
         <div class="li-sub">
