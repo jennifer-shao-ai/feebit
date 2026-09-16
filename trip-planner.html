@@ -313,7 +313,7 @@ h1,h2,h3,h4{margin:0}
 
 <script>
 /* ============================================================
-   旅程手冊 · trip-planner.html  v2.3
+   旅程手冊 · trip-planner.html  v2.4
    單檔 PWA。資料存 localStorage；每個旅程一律有 room，開 App 即
    自動雲端同步（Firebase Realtime DB）。跨裝置用「雲端同步碼」。
    圖片走 Firebase Storage（trips/<room>/<uid>.jpg），資料庫只存網址；
@@ -383,6 +383,17 @@ h1,h2,h3,h4{margin:0}
         JS 單執行緒下這個判斷沒有實際保護作用，只有可能誤判把使用者這次
         存檔整個跳過不推送，屬於已知風險點先移除。已用模擬測試驗證
         beforeunload 在有/無未同步變更時行為正確。
+   v2.4：【重要修正】刪除行程點/購物項/支出/優惠券/證件/打包項/攻略筆記
+        /地點提醒，刪完存檔又跑回來——根因是 byId() 合併策略是純聯集，
+        只要「另一邊」（伺服器當下版本、或還沒收到最新刪除的舊分頁）還
+        留著那個 id，合併時就會把它加回來；而 pushRemote() 推送刪除的
+        當下，伺服器版本本來就還沒反映這次刪除，等於刪除幾乎每次都會在
+        推送的同一個 transaction 裡被自己合併回來。改成 tombstones 機制
+        （trip.tombstones:{id:刪除時間戳}），刪除時記一筆，merge 時兩邊
+        tombstones 先聯集，byId() 依它把該 id 從結果排除，不管刪除是在
+        本機、伺服器、或哪個分頁發生都真正生效。已用模擬測試驗證：本機
+        剛刪除、伺服器版本仍保留舊項目時合併，刪除的項目不會被聯集加回
+        來。
    ============================================================ */
 
 /* ---------- FIREBASE（換成你新開的專案）---------- */
@@ -472,30 +483,38 @@ function pushIndex(){
     .then(()=>true)
     .catch(e=>{ console.warn('pushIndex failed（多半是 RTDB 規則沒開 idx 路徑）',e); return false; });
 }
-/* 合併策略：以 id 為鍵，兩邊union；時間戳較新的欄位優先 */
-function byId(a,b){ const m=new Map(); (a||[]).forEach(x=>x&&x.id&&m.set(x.id,x)); (b||[]).forEach(x=>x&&x.id&&m.set(x.id,x)); return [...m.values()]; }
-function mergeDays(sv,lo){
+/* 合併策略：以 id 為鍵，兩邊union；時間戳較新的欄位優先
+   【重要】純 union 天生沒辦法表達「刪除」——不管哪一邊還留著舊 id，
+   合併結果都會把它加回來，導致「刪完又跑回來」。改用 tombstones
+   （trip.tombstones: {id: 刪除時間戳}）記錄刪過的 id，merge 時兩邊的
+   tombstones 先聯集，byId 再依它把該 id 從結果剔除，不論刪除發生在
+   本機還是伺服器端都能真正生效。 */
+function byId(a,b,tomb){ const m=new Map(); (a||[]).forEach(x=>x&&x.id&&m.set(x.id,x)); (b||[]).forEach(x=>x&&x.id&&m.set(x.id,x)); if(tomb) [...m.keys()].forEach(id=>{ if(tomb[id]) m.delete(id); }); return [...m.values()]; }
+function mergeDays(sv,lo,tomb){
   const m=new Map(); (sv||[]).forEach(d=>m.set(d.date,{...d,spots:d.spots||[]}));
-  (lo||[]).forEach(d=>{ if(m.has(d.date)){ const s=m.get(d.date); m.set(d.date,{...s,...d,spots:byId(s.spots,d.spots)}); } else m.set(d.date,d); });
+  (lo||[]).forEach(d=>{ if(m.has(d.date)){ const s=m.get(d.date); m.set(d.date,{...s,...d,spots:byId(s.spots,d.spots,tomb)}); } else m.set(d.date,d); });
   return [...m.values()].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
 }
 function mergeTrip(sv,lo){
   if(!sv||sv.id!==lo.id) return lo;
   const poKey=p=>p.from+'|'+p.to;
   const po=[...(sv.paidOff||[]),...(lo.paidOff||[])].filter((p,i,a)=>a.findIndex(x=>poKey(x)===poKey(p))===i);
+  const tomb={...(sv.tombstones||{}),...(lo.tombstones||{})};
   return {...sv,...lo,
-    days:mergeDays(sv.days,lo.days),
-    shopping:byId(sv.shopping,lo.shopping),
-    expenses:byId(sv.expenses,lo.expenses),
-    coupons:byId(sv.coupons,lo.coupons),
-    docs:byId(sv.docs,lo.docs),
-    packing:byId(sv.packing,lo.packing),
-    guides:byId(sv.guides,lo.guides),
-    areaAlerts:byId(sv.areaAlerts,lo.areaAlerts),
+    tombstones:tomb,
+    days:mergeDays(sv.days,lo.days,tomb),
+    shopping:byId(sv.shopping,lo.shopping,tomb),
+    expenses:byId(sv.expenses,lo.expenses,tomb),
+    coupons:byId(sv.coupons,lo.coupons,tomb),
+    docs:byId(sv.docs,lo.docs,tomb),
+    packing:byId(sv.packing,lo.packing,tomb),
+    guides:byId(sv.guides,lo.guides,tomb),
+    areaAlerts:byId(sv.areaAlerts,lo.areaAlerts,tomb),
     paidOff:po,
     members:[...new Set([...(sv.members||[]),...(lo.members||[])])]
   };
 }
+function markDeleted(t,id){ if(!t.tombstones) t.tombstones={}; t.tombstones[id]=Date.now(); }
 
 /* ---------- STATE ---------- */
 const KEY='feebit_trip_v1';
@@ -760,6 +779,7 @@ function delSpot(date,id){
   const t=trip(); const d=t.days.find(x=>x.date===date);
   const s=d.spots.find(x=>x.id===id);
   if(s) deleteImgUrls(s.photos||(s.photo?[s.photo]:[]));
+  markDeleted(t,id);
   d.spots=d.spots.filter(x=>x.id!==id); save(); renderItin(); renderDayChips();
 }
 
@@ -1028,7 +1048,7 @@ function renderShop(){
   }).join('');
 }
 function toggleShop(id){ const t=trip(); const i=t.shopping.find(x=>x.id===id); i.done=!i.done; save(); renderShop(); }
-function delShop(id){ if(!confirm('刪除？'))return; const t=trip(); const i=t.shopping.find(x=>x.id===id); if(i&&i.photo)deleteImgUrls([i.photo]); t.shopping=t.shopping.filter(x=>x.id!==id); save(); renderShop(); }
+function delShop(id){ if(!confirm('刪除？'))return; const t=trip(); const i=t.shopping.find(x=>x.id===id); if(i&&i.photo)deleteImgUrls([i.photo]); markDeleted(t,id); t.shopping=t.shopping.filter(x=>x.id!==id); save(); renderShop(); }
 function editShop(id){
   const t=trip(); if(!t.shopping) t.shopping=[];
   const i=id?t.shopping.find(x=>x.id===id):{cur:'JPY',cat:'藥妝'};
@@ -1197,6 +1217,7 @@ function delExpense(id){
   if(!confirm('刪除這筆支出？'))return;
   const t=trip(); const e=t.expenses.find(x=>x.id===id);
   if(e) deleteImgUrls(e.photos);
+  markDeleted(t,id);
   t.expenses=t.expenses.filter(x=>x.id!==id); save(); renderMoney();
 }
 function editExpense(id){
@@ -1286,7 +1307,7 @@ function renderCoupons(){
    +`<div class="card-pad"><button class="btn btn-block btn-ghost" onclick="editCoupon(null)">＋ 新增票券 / 優惠券</button></div>`;
 }
 function toggleCoupon(id){ const t=trip(); const c=t.coupons.find(x=>x.id===id); c.used=!c.used; save(); renderCoupons(); }
-function delCoupon(id){ if(!confirm('刪除？'))return; const t=trip(); const c=t.coupons.find(x=>x.id===id); if(c)deleteImgUrls(ticketImgs(c)); t.coupons=t.coupons.filter(x=>x.id!==id); save(); renderCoupons(); }
+function delCoupon(id){ if(!confirm('刪除？'))return; const t=trip(); const c=t.coupons.find(x=>x.id===id); if(c)deleteImgUrls(ticketImgs(c)); markDeleted(t,id); t.coupons=t.coupons.filter(x=>x.id!==id); save(); renderCoupons(); }
 function showTicket(id){
   const c=trip().coupons.find(x=>x.id===id); const imgs=ticketImgs(c);
   modal(`<h3>${esc(c.title)}</h3>
@@ -1373,7 +1394,7 @@ function editDoc(id){ const t=trip(); if(!t.docs)t.docs=[]; const d=id?t.docs.fi
   renderImgBuf(); }
 function saveDoc(id){ const t=trip(); const o={id:id||uid(),title:val('d-t'),type:val('d-y'),text:val('d-x'),photos:[..._imgBuf]};
   if(!o.title){toast('請填標題','#dc2626');return;} if(id)t.docs=t.docs.map(x=>x.id===id?o:x);else t.docs.push(o); save();closeModal();renderMore(); }
-function delDoc(id){ if(!confirm('刪除？'))return; const t=trip(); const d=t.docs.find(x=>x.id===id); if(d)deleteImgUrls(d.photos); t.docs=t.docs.filter(x=>x.id!==id); save(); renderMore(); }
+function delDoc(id){ if(!confirm('刪除？'))return; const t=trip(); const d=t.docs.find(x=>x.id===id); if(d)deleteImgUrls(d.photos); markDeleted(t,id); t.docs=t.docs.filter(x=>x.id!==id); save(); renderMore(); }
 
 function editAreaAlert(id){ const t=trip(); if(!t.areaAlerts)t.areaAlerts=[]; const a=id?t.areaAlerts.find(x=>x.id===id):{};
   _imgBuf=[...(a.photos||[])];
@@ -1385,11 +1406,11 @@ function editAreaAlert(id){ const t=trip(); if(!t.areaAlerts)t.areaAlerts=[]; co
   renderImgBuf(); }
 function saveAreaAlert(id){ const t=trip(); const o={id:id||uid(),area:val('a-k'),text:val('a-x'),photos:[..._imgBuf]};
   if(!o.area||!o.text){toast('都要填','#dc2626');return;} if(id)t.areaAlerts=t.areaAlerts.map(x=>x.id===id?o:x);else t.areaAlerts.push(o); save();closeModal();renderMore();renderItin(); }
-function delAreaAlert(id){ if(!confirm('刪除？'))return; const t=trip(); const a=t.areaAlerts.find(x=>x.id===id); if(a)deleteImgUrls(a.photos); t.areaAlerts=t.areaAlerts.filter(x=>x.id!==id); save(); renderMore(); renderItin(); }
+function delAreaAlert(id){ if(!confirm('刪除？'))return; const t=trip(); const a=t.areaAlerts.find(x=>x.id===id); if(a)deleteImgUrls(a.photos); markDeleted(t,id); t.areaAlerts=t.areaAlerts.filter(x=>x.id!==id); save(); renderMore(); renderItin(); }
 
 function addPack(){ const t=trip(); const v=prompt('要帶什麼？'); if(!v)return; if(!t.packing)t.packing=[]; t.packing.push({id:uid(),text:v.trim(),done:false}); save(); renderMore(); }
 function togglePack(id){ const t=trip(); const p=t.packing.find(x=>x.id===id); p.done=!p.done; save(); renderMore(); }
-function delPack(id){ const t=trip(); t.packing=t.packing.filter(x=>x.id!==id); save(); renderMore(); }
+function delPack(id){ const t=trip(); markDeleted(t,id); t.packing=t.packing.filter(x=>x.id!==id); save(); renderMore(); }
 function resetPack(){ const t=trip(); if((t.packing||[]).length&&!confirm('用預設清單覆蓋現有打包清單？'))return;
   t.packing=DEFAULT_PACK.map(x=>({id:uid(),text:x,done:false})); save(); renderMore(); }
 
@@ -1403,7 +1424,7 @@ function editGuide(id){ const t=trip(); if(!t.guides)t.guides=[]; const g=id?t.g
   renderImgBuf(); }
 function saveGuide(id){ const t=trip(); const o={id:id||uid(),title:val('g-t'),text:val('g-x'),photos:[..._imgBuf]};
   if(!o.title){toast('請填標題','#dc2626');return;} if(id)t.guides=t.guides.map(x=>x.id===id?o:x);else t.guides.push(o); save();closeModal();renderMore(); }
-function delGuide(id){ if(!confirm('刪除？'))return; const t=trip(); const g=t.guides.find(x=>x.id===id); if(g)deleteImgUrls(g.photos); t.guides=t.guides.filter(x=>x.id!==id); save(); renderMore(); }
+function delGuide(id){ if(!confirm('刪除？'))return; const t=trip(); const g=t.guides.find(x=>x.id===id); if(g)deleteImgUrls(g.photos); markDeleted(t,id); t.guides=t.guides.filter(x=>x.id!==id); save(); renderMore(); }
 function val(id){ return document.getElementById(id).value.trim(); }
 
 /* ---------- FX SETTINGS ---------- */
