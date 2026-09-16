@@ -314,7 +314,7 @@ h1,h2,h3,h4{margin:0}
 
 <script>
 /* ============================================================
-   旅程手冊 · trip-planner.html  v2.5
+   旅程手冊 · trip-planner.html  v2.6
    單檔 PWA。資料存 localStorage；每個旅程一律有 room，開 App 即
    自動雲端同步（Firebase Realtime DB）。跨裝置用「雲端同步碼」。
    圖片走 Firebase Storage（trips/<room>/<uid>.jpg），資料庫只存網址；
@@ -406,6 +406,12 @@ h1,h2,h3,h4{margin:0}
         已用隔離單元測試驗證：地點下拉去重排序、新增地點、篩選 chip
         index 對應、UI 狀態存讀 round-trip、切到沒存過狀態的旅程不誤觸發
         都正確（11 項全過）。
+   v2.6：兩個圖片問題修正。①待買清單縮圖沒有點擊放大——其他地方（行程點/
+        票券/證件/攻略/地點提醒）的照片全部都接了 viewImg() 全螢幕放大，
+        只有待買清單這裡漏掉，補上。②圖片壓縮太狠導致票券/證件上的文字
+        模糊看不清——760px/JPEG 0.55 是舊版圖片還存在本機 localStorage、
+        容量吃緊時代的設定，圖片現在主要傳去 Firebase Storage（雲端）不
+        占本機容量，這個限制沒必要這麼緊，放寬到 1400px/0.85。
    ============================================================ */
 
 /* ---------- FIREBASE（換成你新開的專案）---------- */
@@ -836,11 +842,15 @@ function compressImg(file){
     r.onload=()=>{
       const im=new Image();
       im.onload=()=>{
-        const w=im.width||760,h=im.height||760;
-        const sc=Math.min(1,760/Math.max(w,h));
+        // 760px/0.55 是舊版「圖片還存在本機 localStorage」時代的設定，容易把票券/
+        // 證件上的文字壓到模糊。圖片現在主要傳去 Firebase Storage（雲端），不是塞進
+        // 本機容量，放寬到 1400px/0.85 讓文字看得清楚，之後如果又碰到本機容量問題
+        // 再回頭調整。
+        const w=im.width||1400,h=im.height||1400;
+        const sc=Math.min(1,1400/Math.max(w,h));
         const c=document.createElement('canvas');
         c.width=Math.round(w*sc); c.height=Math.round(h*sc);
-        try{ c.getContext('2d').drawImage(im,0,0,c.width,c.height); res(c.toDataURL('image/jpeg',0.55)); }
+        try{ c.getContext('2d').drawImage(im,0,0,c.width,c.height); res(c.toDataURL('image/jpeg',0.85)); }
         catch(e){ res(r.result); }
       };
       im.onerror=()=>res(r.result);
@@ -1074,7 +1084,7 @@ function renderShop(){
   box.innerHTML=show.map(i=>{
     const tw=i.price&&i.cur!=='TWD'?` <span class="li-sub">≈ ${fmtT(toTWD(i.price,i.cur||'JPY'))}</span>`:'';
     return `<div class="li">
-      <div class="li-thumb">${i.photo?`<img src="${i.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:10px">`:'🛍'}</div>
+      <div class="li-thumb">${i.photo?`<img src="${i.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:10px" onclick="viewImg(this)">`:'🛍'}</div>
       <div class="li-body">
         <div class="li-title" style="${i.done?'text-decoration:line-through;color:#94a3b8':''}">${esc(i.name)}</div>
         <div class="li-sub">
