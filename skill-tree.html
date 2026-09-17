@@ -309,7 +309,7 @@
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
 
-  <div class="sidebar-footer">v1.0 · Feebit © 2026</div>
+  <div class="sidebar-footer">v1.1 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -319,7 +319,7 @@
       <button class="btn-hamburger" onclick="openSidebar()">☰</button>
       <span class="topbar-title">技能樹</span>
       <span class="topbar-badge">工具總覽</span>
-      <span style="font-size:11px;color:var(--gray-400);margin-left:4px">v1.0</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:4px">v1.1</span>
     </div>
   </div>
   <div class="page">
@@ -372,8 +372,6 @@ const SKILLS = [
   { icon:'🔴', name:'滯銷品警示',       cat:'庫存管理', ver:'v1.0', desc:'自動偵測超過預設天數未售出的商品並產生警示', url:'slow-mover-alert.html' },
   { icon:'🏪', name:'商品篩選工具',     cat:'庫存管理', ver:'v2.0', desc:'多條件篩選商品清單，快速定位特定商品', url:'feebit-inventory-filter.html' },
   { icon:'🔄', name:'庫存訂貨建議',     cat:'庫存管理', ver:'—',    desc:'依銷售速度與現有庫存自動產生訂貨建議清單', url:'reorder-suggestions.html' },
-  { icon:'🤖', name:'庫存自動核對',     cat:'庫存管理', ver:'GAS',  desc:'每日 16:00 比對揀貨紅單與 Ragic 效期庫存做 FIFO 扣減，含退貨回補、數量異常比對進貨單、滯銷偵測，發 HTML 日報（附前往當日揀貨表按鈕）', url:null, info:'Google Apps Script · 綁定 Sheet: 庫存核對 · v17' },
-  { icon:'🔔', name:'庫存訂貨預警', cat:'庫存管理', ver:'GAS', desc:'每日16:10分析揀貨銷量算安全庫存/訂貨點與斷貨天數，偵測爆量急凍，附近30天銷量漲跌排行，需訂貨或有異常才寄信', url:null, info:'Google Apps Script · 獨立專案 · Supabase daily_sales' },
   { icon:'🔎', name:'商品銷售履歷', cat:'庫存管理', ver:'v1.0', desc:'輸入商品代號查詢每日銷量歷史、趨勢圖與累積總銷量，可從訂貨預警信連結直接查看', url:'product-sales-history.html' },
   // ── 電商銷售 ──
   { icon:'📈', name:'品牌銷售轉換', cat:'電商銷售', ver:'—',   desc:'各品牌銷售數字彙整與走勢分析', url:'brand-sales.html' },
@@ -414,7 +412,11 @@ const SKILLS = [
   { icon:'📊', name:'淘寶訂單 Apps Script',   cat:'自動化', ver:'GAS',    desc:'接收 Chrome 外掛資料，自動建 Google Sheet（含商品縮圖）', url:null, info:'Google Apps Script · Deploy: AKfycbx0…', host:'Google Apps Script' },
   { icon:'⏰', name:'Supabase 保活排程',      cat:'自動化', ver:'排程',   desc:'每 6 天自動呼叫 Supabase API，避免 free tier 7 天暫停', url:null, info:'Cloud Routine · Trigger: trig_014e4GNd…', host:'Claude Cloud Routine' },
   { icon:'📋', name:'Feebit 每日待辦整理',    cat:'自動化', ver:'排程',   desc:'週一至五 08:30 整合 Asana/Gmail/Slack/Notion 產出待辦清單並建 Gmail 草稿，含信件連結、完整回覆草稿、星號/重要信件近兩週提醒', url:'schedule-notifications.html', info:'Cloud Routine · Trigger: trig_01KJRRNzuss…', host:'Claude Cloud Routine' },
-  { icon:'🚚', name:'蝦皮運費補助申請排程', cat:'自動化', ver:'排程',   desc:'每月 11 日執行帳款調整轉檔與補助申請，完成或異常時寄送通知', url:'shopee-subsidy.html', info:'自動排程 · 每月 11 日觸發', host:'ChatGPT Agent（OpenAI 雲端）' },
+  { icon:'🧾', name:'蝦皮每月作業', cat:'自動化', ver:'排程', desc:'每日自動判斷日期：每月 11 日申請運費補助、12 日或順延工作日下載上月三賣場發票、15～20 日檢查與回填發票、22 日確認案件狀態；其他日期保持安靜', url:'shopee-subsidy.html', info:'ChatGPT 排程 · 每日判斷日期 · 正式發票回填前需人工確認', host:'ChatGPT Agent（OpenAI 雲端）' },
+  { icon:'📝', name:'WORKKITLAB 每週作業', cat:'自動化', ver:'排程', desc:'每週一產出 IG／Threads 社群企劃與完整文案；每週二提出電子書或數位工具企劃，等確認後再進入製作', url:null, info:'ChatGPT 排程 · 每週一、週二 08:00', host:'ChatGPT Agent（OpenAI 雲端）' },
+  { icon:'🤖', name:'庫存自動核對', cat:'自動化', ver:'GAS', desc:'每日 16:00 比對揀貨紅單與 Ragic 效期庫存做 FIFO 扣減，含退貨回補、數量異常比對進貨單、滯銷偵測與 HTML 日報', url:null, info:'Google Apps Script · 獨立專案 · 每日 16:00 觸發 · v17', host:'Google Apps Script' },
+  { icon:'🔔', name:'庫存訂貨預警', cat:'自動化', ver:'GAS', desc:'每日 16:10 分析揀貨銷量，計算安全庫存、訂貨點與斷貨天數，偵測爆量／急凍；只有需訂貨或有異常時才寄信', url:'product-sales-history.html', info:'Google Apps Script · 獨立專案「飛比特庫存訂貨預警」· Supabase daily_sales', host:'Google Apps Script' },
+  { icon:'📔', name:'每日工作日誌缺漏提醒', cat:'自動化', ver:'cron', desc:'每天 21:30 檢查當日日誌檔是否存在；若缺漏，以 macOS 通知提醒補寫，避免長對話未觸發 Stop hook 而漏記', url:null, info:'本機 crontab · 每日 21:30 · 需 Mac 開機', host:'Jennifer 的 Mac（需開機）' },
   { icon:'📦', name:'預購商品追蹤',          cat:'自動化', ver:'排程',   desc:'每日 8:30（平日）掃 LaLa V 官網訂單信，比對 Ragic 庫存與進貨單，寄出預購商品彙整信', url:null, info:'Google Apps Script · 獨立專案 · 每日 8:30 觸發', host:'Google Apps Script' },
   { icon:'🔭', name:'品類競品分析後端',      cat:'自動化', ver:'Worker', desc:'market-tracker.html 的爬蟲 API：抓蝦皮競品價格、銷量、排名存入資料庫', url:null, info:'Cloudflare Worker · market-tracker.esuse-adobe.workers.dev · D1', host:'Cloudflare Worker' },
   { icon:'🧫', name:'食品成分比對後端',      cat:'自動化', ver:'Worker', desc:'ingredient-checker.html 的「AI 查法規來源」API：先查 FIRDI 即時搜尋，查無再呼叫 Claude API', url:null, info:'Cloudflare Worker · ingredient-checker.esuse-adobe.workers.dev', host:'Cloudflare Worker' },
