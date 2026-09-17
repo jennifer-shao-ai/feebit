@@ -35,6 +35,8 @@ button{font-family:inherit;cursor:pointer}
 img{max-width:100%}
 h1,h2,h3,h4{margin:0}
 .hide{display:none!important}
+@keyframes flashBg{0%{background:var(--brand-soft)}100%{background:transparent}}
+.flash{animation:flashBg 1.2s ease}
 
 /* ---------- top bar ---------- */
 .topbar{
@@ -260,44 +262,57 @@ h1,h2,h3,h4{margin:0}
 
   <!-- COUPONS -->
   <section class="page" id="pg-coupon">
+    <div class="chip-row" id="couponFilter"></div>
     <div class="card" id="couponList"></div>
   </section>
 
   <!-- MORE -->
   <section class="page" id="pg-more">
-    <div class="sec-title">重要證件・訂房・班機</div>
-    <div class="card" id="docList"></div>
-    <div class="btn-row" style="margin:8px 0 4px"><button class="btn btn-sm btn-ghost" onclick="editDoc(null)">＋ 新增一筆</button></div>
+    <div class="chip-row" id="moreTabs"></div>
 
-    <div class="sec-title">當區注意事項</div>
-    <div class="card card-pad help" id="areaAlerts"></div>
-    <div class="btn-row" style="margin:8px 0 4px"><button class="btn btn-sm btn-ghost" onclick="editAreaAlert(null)">＋ 新增區域提醒</button></div>
-
-    <div class="sec-title">打包清單</div>
-    <div class="card" id="packList"></div>
-    <div class="btn-row" style="margin:8px 0 4px">
-      <button class="btn btn-sm btn-ghost" onclick="addPack()">＋ 加一項</button>
-      <button class="btn btn-sm btn-ghost" onclick="resetPack()">帶入預設清單</button>
+    <div class="more-sec" data-sec="docs">
+      <div class="sec-title">重要證件・訂房・班機</div>
+      <div class="card" id="docList"></div>
+      <div class="btn-row" style="margin:8px 0 4px"><button class="btn btn-sm btn-ghost" onclick="editDoc(null)">＋ 新增一筆</button></div>
     </div>
 
-    <div class="sec-title">攻略筆記</div>
-    <div class="card" id="guideList"></div>
-    <div class="btn-row" style="margin:8px 0 4px"><button class="btn btn-sm btn-ghost" onclick="editGuide(null)">＋ 新增攻略</button></div>
+    <div class="more-sec" data-sec="alerts">
+      <div class="sec-title">當區注意事項</div>
+      <div class="card card-pad help" id="areaAlerts"></div>
+      <div class="btn-row" style="margin:8px 0 4px"><button class="btn btn-sm btn-ghost" onclick="editAreaAlert(null)">＋ 新增區域提醒</button></div>
+    </div>
 
-    <div class="sec-title">工具</div>
-    <div class="card card-pad">
-      <div class="btn-row">
-        <button class="btn btn-sm" onclick="openShare()">🔗 同步與分享</button>
-        <button class="btn btn-sm" onclick="openFxSettings()">💱 匯率設定</button>
-        <button class="btn btn-sm" onclick="openMembers()">🧑‍🤝‍🧑 成員</button>
-        <button class="btn btn-sm" onclick="exportJSON()">⬇️ 匯出備份</button>
-        <button class="btn btn-sm" onclick="importJSON()">⬆️ 匯入備份</button>
-        <button class="btn btn-sm" onclick="newTrip()">✨ 新旅程</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteTrip()">🗑 刪除此旅程</button>
+    <div class="more-sec" data-sec="pack">
+      <div class="sec-title">打包清單</div>
+      <div class="card" id="packList"></div>
+      <div class="btn-row" style="margin:8px 0 4px">
+        <button class="btn btn-sm btn-ghost" onclick="addPack()">＋ 加一項</button>
+        <button class="btn btn-sm btn-ghost" onclick="resetPack()">帶入預設清單</button>
       </div>
-      <p class="help" style="margin-top:10px">換手機/瀏覽器看不到資料？點「🔗 同步與分享」拿這趟旅程的代碼或連結，在其他裝置輸入／打開就會加入即時同步——你自己的裝置、或同行朋友都用同一組，沒有誰上傳誰下載、不會互相覆蓋。<br>
-      照片會自動上傳雲端相簿（Firebase Storage），不會佔滿本機/資料庫空間；若 Storage 還沒在 Firebase 後台啟用，照片會先退回存本機，之後啟用了新上傳的就會自動走雲端。<br>加到主畫面：iPhone Safari 分享鍵→「加入主畫面」；Android Chrome 選單→「安裝應用程式」。</p>
-      <p class="help" style="margin-top:14px;text-align:center;color:var(--ink3)">旅程手冊 v2.7</p>
+    </div>
+
+    <div class="more-sec" data-sec="guides">
+      <div class="sec-title">攻略筆記</div>
+      <div class="card" id="guideList"></div>
+      <div class="btn-row" style="margin:8px 0 4px"><button class="btn btn-sm btn-ghost" onclick="editGuide(null)">＋ 新增攻略</button></div>
+    </div>
+
+    <div class="more-sec" data-sec="tools">
+      <div class="sec-title">工具</div>
+      <div class="card card-pad">
+        <div class="btn-row">
+          <button class="btn btn-sm" onclick="openShare()">🔗 同步與分享</button>
+          <button class="btn btn-sm" onclick="openFxSettings()">💱 匯率設定</button>
+          <button class="btn btn-sm" onclick="openMembers()">🧑‍🤝‍🧑 成員</button>
+          <button class="btn btn-sm" onclick="exportJSON()">⬇️ 匯出備份</button>
+          <button class="btn btn-sm" onclick="importJSON()">⬆️ 匯入備份</button>
+          <button class="btn btn-sm" onclick="newTrip()">✨ 新旅程</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteTrip()">🗑 刪除此旅程</button>
+        </div>
+        <p class="help" style="margin-top:10px">換手機/瀏覽器看不到資料？點「🔗 同步與分享」拿這趟旅程的代碼或連結，在其他裝置輸入／打開就會加入即時同步——你自己的裝置、或同行朋友都用同一組，沒有誰上傳誰下載、不會互相覆蓋。<br>
+        照片會自動上傳雲端相簿（Firebase Storage），不會佔滿本機/資料庫空間；若 Storage 還沒在 Firebase 後台啟用，照片會先退回存本機，之後啟用了新上傳的就會自動走雲端。<br>加到主畫面：iPhone Safari 分享鍵→「加入主畫面」；Android Chrome 選單→「安裝應用程式」。</p>
+        <p class="help" style="margin-top:14px;text-align:center;color:var(--ink3)">旅程手冊 v2.8</p>
+      </div>
     </div>
   </section>
 </div>
@@ -316,7 +331,7 @@ h1,h2,h3,h4{margin:0}
 
 <script>
 /* ============================================================
-   旅程手冊 · trip-planner.html  v2.7
+   旅程手冊 · trip-planner.html  v2.8
    單檔 PWA。資料存 localStorage；每個旅程一律有 room，開 App 即
    自動雲端同步（Firebase Realtime DB）。跨裝置用「雲端同步碼」。
    圖片走 Firebase Storage（trips/<room>/<uid>.jpg），資料庫只存網址；
@@ -421,6 +436,34 @@ h1,h2,h3,h4{margin:0}
         上個版本剛把它接上點擊放大，Jennifer 接著說「預覽也想要大一
         點」——加 .li-thumb-lg（92px）只套用在待買清單，不影響共用同一顆
         .li-thumb 的票券/優惠券列表。
+   v2.8：一次修 Jennifer 回報的 6 件事。①【重要】改行程點日期會新舊兩天都
+        留著、刪其中一邊連另一邊也消失——根因是 mergeDays/byId 純聯集合併
+        沒辦法表達「搬動」：本機把 A 天移除、B 天新增，但伺服器版本還沒
+        反映，union 合併把 A 天的舊副本加回來，變成兩邊都有；這個 id 又
+        沒被標記刪除，所以之後刪其中一份，tombstone 是全域的，兩份一起
+        消失。改用 spotLoc（記錄每個 id 最後確定該在哪一天/什麼時候）合併
+        聯集後再依它把每個 id 收斂回唯一一天。②待買清單勾了已買預設從清單
+        隱藏（跟行程的「隱藏已完成」邏輯一致），排版拆成分開的行不再擠成
+        一坨。③票券/優惠券改成單圖（相容舊的多圖資料，讀取退回第一張，
+        存檔起自然收斂成單圖）；放大出示只留「點縮圖」一種點法，拿掉重複
+        的按鈕和圖片再顯示一次的 li-photos 區塊；排版跟待買一樣拆行；加
+        分類篩選 chip。④「今日路線」跟每段「🧭路線」其實用的是同一套文字
+        解析邏輯（routeText），不是抓不同連結——落差來自 Google 免費版路線
+        連結最多約 10 個點，超過的天數舊版直接砍掉第 10 站以後全部，路線
+        圖從第 10 站直接跳一條長直線到當天最後一站，看起來像「有的位置跑
+        掉」；改成整天平均取樣 10 個點，至少大致畫出全天路線形狀。⑤「更多」
+        頁 5 大類（證件/提醒/打包/攻略/工具）改成分頁切換，不用整頁長捲；
+        行程點可以選填「關聯攻略筆記」，存好後行程點上會多一顆連結按鈕跳去
+        對應攻略，攻略卡片上也會反向列出「相關行程」可以跳回去對應那天。
+        ⑥上個版本重整不跳回第一天的修正對 Jennifer 沒生效——原因猜對了：
+        她是透過分享連結（?join=）開的，S.currentId 要等 Firebase 資料回來
+        才第一次確定，init() 當時因此跳過 loadUiState()，導致這個流程永遠
+        不會還原畫面狀態。改成在 joinRoom() 第一次收到資料、S.currentId
+        剛確定的當下補做一次還原（用旗標擋住只做一次，不然朋友之後每次
+        推新資料進來都會把你當下正在看的日期/分頁蓋回存檔時的舊狀態）。
+        以上全部寫了隔離單元測試驗證（日期搬動不重複/刪除不誤殺、join流程
+        還原一次不重複觸發、待買隱藏已買、路線取樣涵蓋全天，共 25 項全
+        過），語法檢查通過。
    ============================================================ */
 
 /* ---------- FIREBASE（換成你新開的專案）---------- */
@@ -467,6 +510,7 @@ function setSyncBadge(state, errMsg){
   }
 }
 
+let _uiRestoredForJoin=false;
 function joinRoom(room){
   if(!initFB()) return;
   _room=room; _ref=_db.ref('trips/'+room); setDot('connecting');
@@ -481,7 +525,15 @@ function joinRoom(room){
       // 我直接寫入資料庫的更新蓋掉，即使使用者什麼都沒做。
       if(i>=0) S.trips[i]= _dirty ? mergeTrip(data, S.trips[i]) : data;
       else S.trips.unshift(data);
-      S.currentId = S.trips[i>=0?i:0].id; persist(); renderAll();
+      S.currentId = S.trips[i>=0?i:0].id; persist();
+      // 透過分享連結（?join=）開的話，S.currentId 要等這裡（雲端資料回來）才
+      // 第一次確定，init() 當時跳過了 loadUiState()。在這裡補做一次、只做一次
+      // ——用旗標擋住，不然朋友之後每次編輯推新資料進來，這個 callback 都會
+      // 再觸發一次，會把你當下正在看的日期/分頁蓋回存檔時的舊狀態。
+      if(!_uiRestoredForJoin){ _uiRestoredForJoin=true; loadUiState(); }
+      renderAll();
+      if(_pendingTab && _pendingTab!=='trip'){ nav(_pendingTab); }
+      _pendingTab=null;
     }finally{ _syncing=false; }
     setDot('live'); if(!_dirty) setSyncBadge('live');
   },()=>{ setDot('off'); setSyncBadge('fail','連線中斷'); });
@@ -517,9 +569,23 @@ function pushIndex(){
    tombstones 先聯集，byId 再依它把該 id 從結果剔除，不論刪除發生在
    本機還是伺服器端都能真正生效。 */
 function byId(a,b,tomb){ const m=new Map(); (a||[]).forEach(x=>x&&x.id&&m.set(x.id,x)); (b||[]).forEach(x=>x&&x.id&&m.set(x.id,x)); if(tomb) [...m.keys()].forEach(id=>{ if(tomb[id]) m.delete(id); }); return [...m.values()]; }
-function mergeDays(sv,lo,tomb){
+// 「改日期」把行程點從某一天搬到另一天，本機當下是對的（舊的那天移除、
+// 新的那天新增），但下一次跟伺服器合併時，伺服器版本還沒反映這次搬動——
+// 舊的那天在伺服器上還留著它，union 合併會把它加回來，變成新舊兩天都有；
+// 這個 id 的 tombstone 又沒被標記（本來就不是刪除），所以另一邊也刪不掉。
+// spotLoc 記錄每個 id「最後一次確定」該在哪一天、什麼時候確定的，合併聯集
+// 完之後再依這個記錄把每個 id 只留在它該在的那一天，其他天的殘影一律清掉。
+function mergeSpotLoc(a,b){
+  const m={...(a||{})};
+  Object.entries(b||{}).forEach(([id,v])=>{ if(!m[id]||(v.at||0)>=(m[id].at||0)) m[id]=v; });
+  return m;
+}
+function mergeDays(sv,lo,tomb,loc){
   const m=new Map(); (sv||[]).forEach(d=>m.set(d.date,{...d,spots:d.spots||[]}));
   (lo||[]).forEach(d=>{ if(m.has(d.date)){ const s=m.get(d.date); m.set(d.date,{...s,...d,spots:byId(s.spots,d.spots,tomb)}); } else m.set(d.date,d); });
+  if(loc){
+    m.forEach((d,date)=>{ d.spots=(d.spots||[]).filter(sp=>{ const l=loc[sp.id]; return !l||l.date===date; }); });
+  }
   return [...m.values()].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
 }
 function mergeTrip(sv,lo){
@@ -527,9 +593,11 @@ function mergeTrip(sv,lo){
   const poKey=p=>p.from+'|'+p.to;
   const po=[...(sv.paidOff||[]),...(lo.paidOff||[])].filter((p,i,a)=>a.findIndex(x=>poKey(x)===poKey(p))===i);
   const tomb={...(sv.tombstones||{}),...(lo.tombstones||{})};
+  const loc=mergeSpotLoc(sv.spotLoc,lo.spotLoc);
   return {...sv,...lo,
     tombstones:tomb,
-    days:mergeDays(sv.days,lo.days,tomb),
+    spotLoc:loc,
+    days:mergeDays(sv.days,lo.days,tomb,loc),
     shopping:byId(sv.shopping,lo.shopping,tomb),
     expenses:byId(sv.expenses,lo.expenses,tomb),
     coupons:byId(sv.coupons,lo.coupons,tomb),
@@ -563,14 +631,14 @@ function loadUiState(){
   try{
     const all=JSON.parse(localStorage.getItem(UI_KEY)||'{}');
     const st=S.currentId&&all[S.currentId];
-    if(st){ if(st.day) _day=st.day; _pendingTab=st.tab||null; }
+    if(st){ if(st.day) _day=st.day; _pendingTab=st.tab||null; if(st.moreTab) _moreTab=st.moreTab; }
   }catch(e){}
 }
 function saveUiState(){
   try{
     const all=JSON.parse(localStorage.getItem(UI_KEY)||'{}');
     const tabBtn=document.querySelector('.bnav button.on');
-    all[S.currentId]={day:_day, tab:tabBtn?tabBtn.dataset.pg:'trip'};
+    all[S.currentId]={day:_day, tab:tabBtn?tabBtn.dataset.pg:'trip', moreTab:_moreTab};
     localStorage.setItem(UI_KEY,JSON.stringify(all));
   }catch(e){}
 }
@@ -719,7 +787,17 @@ function dayRouteUrl(day){
     .filter(n=>n.length>=2);
   names=names.filter((n,i)=>n!==names[i-1]);          // 去相鄰重複
   if(names.length<2) return null;
-  if(names.length>10) names=names.slice(0,10);         // Google Maps 免費上限
+  if(names.length>10){
+    // Google 免費版路線連結最多約 10 個點（含起訖）。行程多的一天（例如逛街
+    // 一整天有 20 幾站）如果只取前 10 個、後面整段直接砍掉，路線圖會從第 10
+    // 站直接畫一條長長的直線跳到當天最後一站——看起來就像「有的位置跑掉」，
+    // 跟每段之間自己的「🧭 路線」（dirUrl，用同一個 routeText() 邏輯、不受這
+    // 個上限影響）對不起來。改成整天平均取樣 10 個點，至少大致畫出全天路線
+    // 的形狀，而不是只畫前面一小段。
+    const step=(names.length-1)/9;
+    names=Array.from({length:10},(_,i)=>names[Math.round(i*step)]);
+    names=names.filter((n,i)=>n!==names[i-1]);        // 取樣後可能又相鄰重複，再去一次
+  }
   const enc=names.map(encodeURIComponent);
   let u='https://www.google.com/maps/dir/?api=1&travelmode=transit'
        +'&origin='+enc[0]+'&destination='+enc[enc.length-1];
@@ -773,11 +851,13 @@ function renderSpot(s,date){
   const meta=[];
   if(s.openHours) meta.push('🕐 '+esc(s.openHours));
   if(s.price) meta.push('🎫 '+esc(s.price));
+  const guide=s.guideId&&(trip().guides||[]).find(g=>g.id===s.guideId);
   const links=[
     s.mapUrl
       ? `<a href="${esc(s.mapUrl)}" target="_blank" rel="noopener">📍 地點</a>`
       : `<button class="noMap" onclick="editSpot('${date}','${s.id}')" title="點了直接開編輯，貼上地圖連結">⚠️ 未設地圖</button>`,
-    ...(s.links||[]).filter(l=>l&&l.url).map(l=>`<a href="${esc(normUrl(l.url))}" target="_blank" rel="noopener">🔗 ${esc(l.label||'連結')}</a>`)
+    ...(s.links||[]).filter(l=>l&&l.url).map(l=>`<a href="${esc(normUrl(l.url))}" target="_blank" rel="noopener">🔗 ${esc(l.label||'連結')}</a>`),
+    ...(guide?[`<button onclick="jumpToGuide('${guide.id}')">📖 ${esc(guide.title)}</button>`]:[])
   ];
   return `<div class="spot ${s.done?'done':''}" id="sp-${s.id}">
     <span class="spot-cat cat-${cat}"></span>
@@ -971,6 +1051,9 @@ function editSpot(date,id){
       <div id="linkBufBox">${(s.links||[]).map(linkRowHTML).join('')}</div>
       <button type="button" class="btn btn-sm btn-ghost" onclick="addLinkRow()">＋ 加一個網站</button>
     </div>
+    <div class="f"><label>關聯攻略筆記（選填，方便從這個行程點跳去看攻略）</label>
+      <select id="sp-guide"><option value="">— 不連結 —</option>${(t.guides||[]).map(g=>`<option value="${g.id}" ${s.guideId===g.id?'selected':''}>${esc(g.title)}</option>`).join('')}</select>
+    </div>
     <div class="f"><label>備註</label><textarea id="sp-note" placeholder="交通方式、要點的餐、排隊撇步…">${esc(s.note||'')}</textarea></div>
     <div class="f"><label>注意事項（一行一則，會標紅）</label><textarea id="sp-alerts" placeholder="年末公休 12/29–1/1&#10;要提前一個月訂位">${esc((s.alerts||[]).join('\n'))}</textarea></div>
     <div class="f"><label>順便要買（逗號分隔，選填）</label><input id="sp-buy" value="${esc((s.buy||[]).join(', '))}" placeholder="龍貓扭蛋, 限定餅乾"></div>
@@ -1012,6 +1095,7 @@ function saveSpot(id,oldDate){
     mapUrl:document.getElementById('sp-map').value.trim(),
     routeQuery:document.getElementById('sp-route').value.trim(),
     links:collectLinkRows(),
+    guideId:document.getElementById('sp-guide').value||'',
     note:document.getElementById('sp-note').value.trim(),
     alerts:document.getElementById('sp-alerts').value.split('\n').map(x=>x.trim()).filter(Boolean),
     buy:document.getElementById('sp-buy').value.split(',').map(x=>x.trim()).filter(Boolean),
@@ -1026,6 +1110,8 @@ function saveSpot(id,oldDate){
   }
   let d=t.days.find(x=>x.date===nd); if(!d){ d={id:uid(),date:nd,spots:[]}; t.days.push(d); }
   d.spots.push(obj);
+  if(!t.spotLoc) t.spotLoc={};
+  t.spotLoc[obj.id]={date:nd,at:Date.now()};
   _day=nd; save(); closeModal(); renderDayChips(); renderItin();
 }
 
@@ -1083,26 +1169,36 @@ function renderShop(){
     ).join('');
   }
   const keyFn=SHOP_VIEW_KEY[_shopViewMode];
-  const cats=['ALL',...new Set(items.map(keyFn).filter(Boolean)),'✓已買'];
+  const notDone=items.filter(i=>!i.done);
+  const cats=['ALL',...new Set(notDone.map(keyFn).filter(Boolean)),'✓已買'];
   _shopFilterCats=cats; // 讓 chip 用 index 取值，避免人名/地點裡的引號等字元弄壞 onclick
-  fbar.innerHTML=cats.map((c,idx)=>`<div class="chip ${_shopFilter===c?'on':''}" onclick="pickShopFilter(${idx})">${c==='ALL'?'全部':esc(c)}</div>`).join('');
-  let show=items;
+  const doneCount=items.length-notDone.length;
+  fbar.innerHTML=cats.map((c,idx)=>{
+    const label=c==='ALL'?'全部':(c==='✓已買'?`✓已買${doneCount?`(${doneCount})`:''}`:esc(c));
+    return `<div class="chip ${_shopFilter===c?'on':''}" onclick="pickShopFilter(${idx})">${label}</div>`;
+  }).join('');
+  // 勾了「已買」的項目預設從清單隱藏，只在切到「✓已買」時才看得到——
+  // 不然買過的東西一直混在裡面，很難一眼看出「還沒買的到底剩哪些」。
+  let show;
   if(_shopFilter==='✓已買') show=items.filter(i=>i.done);
-  else if(_shopFilter!=='ALL') show=items.filter(i=>keyFn(i)===_shopFilter);
-  if(!show.length){ box.innerHTML='<div class="empty"><span class="ic">🛍</span>還沒有待買清單，點右下 ＋ 新增</div>'; return; }
+  else if(_shopFilter==='ALL') show=notDone;
+  else show=notDone.filter(i=>keyFn(i)===_shopFilter);
+  if(!show.length){
+    box.innerHTML=`<div class="empty"><span class="ic">🛍</span>${_shopFilter==='✓已買'?'還沒有買過的東西':'都買完了！點右下 ＋ 可以再加'}</div>`;
+    return;
+  }
   box.innerHTML=show.map(i=>{
     const tw=i.price&&i.cur!=='TWD'?` <span class="li-sub">≈ ${fmtT(toTWD(i.price,i.cur||'JPY'))}</span>`:'';
     return `<div class="li">
       <div class="li-thumb li-thumb-lg">${i.photo?`<img src="${i.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:10px" onclick="viewImg(this)">`:'🛍'}</div>
       <div class="li-body">
         <div class="li-title" style="${i.done?'text-decoration:line-through;color:#94a3b8':''}">${esc(i.name)}</div>
-        <div class="li-sub">
+        <div class="li-sub" style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:3px">
           ${i.cat?`<span class="pill">${esc(i.cat)}</span>`:''}
-          ${i.where?`📍 ${esc(i.where)}　`:''}
-          ${i.price?`${sym(i.cur||'JPY')}${Number(i.price).toLocaleString()}`:''}${tw}
-          ${i.who?`　·${esc(i.who)}`:''}
+          ${i.price?`<span>${sym(i.cur||'JPY')}${Number(i.price).toLocaleString()}</span>`:''}${tw}
         </div>
-        ${i.note?`<div class="li-sub">${esc(i.note)}</div>`:''}
+        ${(i.where||i.who)?`<div class="li-sub" style="margin-top:3px">${i.where?`📍 ${esc(i.where)}`:''}${i.where&&i.who?'　':''}${i.who?`👤 ${esc(i.who)}`:''}</div>`:''}
+        ${i.note?`<div class="li-sub" style="margin-top:3px;color:var(--ink3)">${esc(i.note)}</div>`:''}
         <div class="btn-row" style="margin-top:7px">
           <button class="btn btn-sm" onclick="toggleShop('${i.id}')">${i.done?'↩ 未買':'✓ 買了'}</button>
           <button class="btn btn-sm" onclick="editShop('${i.id}')">編輯</button>
@@ -1362,28 +1458,39 @@ function saveExpense(id){
 
 /* ---------- 票券 / 優惠券 ---------- */
 const TICKET_KINDS=['票券','優惠券','兌換券','訂位'];
-function ticketImgs(c){ return c.images&&c.images.length ? c.images : (c.image?[c.image]:[]); }
+// 票券只留一張圖（跟待買清單一致），couponImg() 相容舊的多圖資料（沒有 image
+// 就退回用 images[0]），舊資料不會憑空消失，只是之後編輯存檔就會自然收斂成單圖。
+function couponImg(c){ return c.image || (c.images&&c.images[0]) || ''; }
+let _couponFilter='ALL';
+function pickCouponFilter(k){ _couponFilter=k; renderCoupons(); }
 function renderCoupons(){
-  const t=trip(); const box=document.getElementById('couponList'); if(!t) return;
+  const t=trip(); const box=document.getElementById('couponList'); const fbar=document.getElementById('couponFilter');
+  if(!t) return;
   const cs=t.coupons||[];
-  box.innerHTML=(cs.length?cs.map(c=>{
+  if(fbar){
+    const kinds=['ALL',...TICKET_KINDS,'✓已用'];
+    fbar.innerHTML=kinds.map(k=>`<div class="chip ${_couponFilter===k?'on':''}" onclick="pickCouponFilter('${k}')">${k==='ALL'?'全部':k}</div>`).join('');
+  }
+  let show=cs;
+  if(_couponFilter==='✓已用') show=cs.filter(c=>c.used);
+  else if(_couponFilter!=='ALL') show=cs.filter(c=>(c.kind||'票券')===_couponFilter);
+  box.innerHTML=(show.length?show.map(c=>{
     const exp=c.expiry&&c.expiry<todayStr();
-    const imgs=ticketImgs(c);
+    const img=couponImg(c);
+    // 放大出示只留一種點法：直接點縮圖開「出示」畫面（大圖＋代碼），不再另外放一顆
+    // 「放大出示」按鈕重複同一件事。
     return `<div class="li">
-      <div class="li-thumb">${imgs[0]?`<img src="${imgs[0]}" style="width:100%;height:100%;object-fit:cover;border-radius:10px" onclick="viewImg(this)">`:(c.kind==='優惠券'?'🎫':'🎟')}</div>
+      <div class="li-thumb" ${img?`onclick="showTicket('${c.id}')" style="cursor:pointer"`:''}>${img?`<img src="${img}" style="width:100%;height:100%;object-fit:cover;border-radius:10px">`:(c.kind==='優惠券'?'🎫':'🎟')}</div>
       <div class="li-body">
         <div class="li-title" style="${c.used||exp?'color:#94a3b8;text-decoration:line-through':''}">
           <span class="pill ${c.kind==='票券'?'ok':''}">${esc(c.kind||'票券')}</span>${esc(c.title)}</div>
-        <div class="li-sub">
+        <div class="li-sub" style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:3px">
           ${c.code?`<span class="pill">${esc(c.code)}</span>`:''}
-          ${c.spot?`📍 ${esc(c.spot)}　`:''}
-          ${c.useDate?`🗓 ${esc(c.useDate)}　`:''}
           ${c.expiry?`<span class="pill ${exp?'warn':''}">${exp?'已過期 ':'期限 '}${esc(c.expiry)}</span>`:''}
         </div>
-        ${c.note?`<div class="li-sub">${esc(c.note)}</div>`:''}
-        ${imgs.length?`<div class="li-photos">${imgs.map(d=>`<img src="${d}" onclick="viewImg(this)">`).join('')}</div>`:''}
+        ${(c.spot||c.useDate)?`<div class="li-sub" style="margin-top:3px">${c.spot?`📍 ${esc(c.spot)}`:''}${c.spot&&c.useDate?'　':''}${c.useDate?`🗓 ${esc(c.useDate)}`:''}</div>`:''}
+        ${c.note?`<div class="li-sub" style="margin-top:3px;color:var(--ink3)">${esc(c.note)}</div>`:''}
         <div class="btn-row" style="margin-top:7px">
-          ${imgs.length?`<button class="btn btn-sm btn-brand" onclick="showTicket('${c.id}')">🔍 放大出示</button>`:''}
           <button class="btn btn-sm" onclick="toggleCoupon('${c.id}')">${c.used?'↩ 未用':'✓ 用掉'}</button>
           <button class="btn btn-sm" onclick="editCoupon('${c.id}')">編輯</button>
           <button class="btn btn-sm btn-danger" onclick="delCoupon('${c.id}')">刪除</button>
@@ -1393,23 +1500,23 @@ function renderCoupons(){
    +`<div class="card-pad"><button class="btn btn-block btn-ghost" onclick="editCoupon(null)">＋ 新增票券 / 優惠券</button></div>`;
 }
 function toggleCoupon(id){ const t=trip(); const c=t.coupons.find(x=>x.id===id); c.used=!c.used; save(); renderCoupons(); }
-function delCoupon(id){ if(!confirm('刪除？'))return; const t=trip(); const c=t.coupons.find(x=>x.id===id); if(c)deleteImgUrls(ticketImgs(c)); markDeleted(t,id); t.coupons=t.coupons.filter(x=>x.id!==id); save(); renderCoupons(); }
+function delCoupon(id){ if(!confirm('刪除？'))return; const t=trip(); const c=t.coupons.find(x=>x.id===id); if(c){ const img=couponImg(c); if(img)deleteImgUrls([img]); if(c.images)deleteImgUrls(c.images.filter(x=>x!==img)); } markDeleted(t,id); t.coupons=t.coupons.filter(x=>x.id!==id); save(); renderCoupons(); }
 function showTicket(id){
-  const c=trip().coupons.find(x=>x.id===id); const imgs=ticketImgs(c);
+  const c=trip().coupons.find(x=>x.id===id); const img=couponImg(c);
   modal(`<h3>${esc(c.title)}</h3>
     ${c.code?`<p style="text-align:center;font-size:16px;font-weight:800;letter-spacing:1px">${esc(c.code)}</p>`:''}
-    ${imgs.map(d=>`<img src="${d}" style="width:100%;border-radius:12px;margin-bottom:10px" onclick="viewImg(this)">`).join('')}
+    ${img?`<img src="${img}" style="width:100%;border-radius:12px;margin-bottom:10px">`:''}
     <div class="btn-row"><button class="btn btn-block" onclick="closeModal()">關閉</button></div>`);
 }
 function editCoupon(id){
   const t=trip(); if(!t.coupons)t.coupons=[];
   const c=id?t.coupons.find(x=>x.id===id):{kind:'票券'};
-  _imgBuf=[...ticketImgs(c)];
+  _imgBuf=couponImg(c)?[couponImg(c)]:[];
   modal(`<h3>${id?'編輯':'新增'}票券 / 優惠券</h3>
     <div class="f"><label>類型</label><div class="seg" id="c-kind">${TICKET_KINDS.map(k=>`<button type="button" class="${(c.kind||'票券')===k?'on':''}" onclick="segPick(this)">${k}</button>`).join('')}</div></div>
     <div class="f"><label>名稱</label><input id="c-title" value="${esc(c.title||'')}" placeholder="吉卜力公園 大散步券 / LaLaport 外國人優惠"></div>
     <div class="f"><label>訂位／訂票代碼、條碼號（選填）</label><input id="c-code" value="${esc(c.code||'')}"></div>
-    <div class="f"><label>圖片（訂票確認信截圖、QR、條碼…可多張）</label>${imgPickerHTML(true)}</div>
+    <div class="f"><label>圖片（訂票確認信截圖、QR、條碼…留一張最清楚的就好）</label>${imgPickerHTML(false)}</div>
     <div class="f-row">
       <div class="f"><label>使用日期 / 場次</label><input id="c-use" value="${esc(c.useDate||'')}" placeholder="12/27 大倉庫 11:00 場"></div>
       <div class="f"><label>使用期限</label><input id="c-exp" type="date" value="${esc(c.expiry||'')}"></div>
@@ -1428,7 +1535,7 @@ function saveCoupon(id){
     kind:segVal('c-kind')||'票券',
     title:val('c-title'),
     code:val('c-code'),
-    images:[..._imgBuf],
+    image:_imgBuf[0]||'',
     useDate:val('c-use'),
     expiry:document.getElementById('c-exp').value,
     spot:val('c-spot'),
@@ -1440,8 +1547,31 @@ function saveCoupon(id){
 }
 
 /* ---------- MORE：docs / area alerts / packing / guides ---------- */
+const MORE_TABS=[['docs','📄 證件'],['alerts','⚠️ 提醒'],['pack','🎒 打包'],['guides','📖 攻略'],['tools','⚙️ 工具']];
+let _moreTab='docs';
+function setMoreTab(k){ _moreTab=k; renderMoreTabs(); saveUiState(); }
+function renderMoreTabs(){
+  const bar=document.getElementById('moreTabs'); if(!bar) return;
+  bar.innerHTML=MORE_TABS.map(([k,label])=>`<div class="chip ${_moreTab===k?'on':''}" onclick="setMoreTab('${k}')">${label}</div>`).join('');
+  document.querySelectorAll('.more-sec').forEach(el=>el.classList.toggle('hide',el.dataset.sec!==_moreTab));
+}
+function flashEl(id){
+  const el=document.getElementById(id); if(!el) return;
+  el.scrollIntoView({behavior:'smooth',block:'center'});
+  el.classList.add('flash');
+  setTimeout(()=>el.classList.remove('flash'),1500);
+}
+function jumpToGuide(id){
+  nav('more'); setMoreTab('guides');
+  setTimeout(()=>flashEl('guide-'+id),80);
+}
+function jumpToSpot(date,id){
+  nav('trip'); pickDay(date);
+  setTimeout(()=>flashEl('sp-'+id),80);
+}
 function renderMore(){
   const t=trip(); if(!t) return;
+  renderMoreTabs();
   document.getElementById('docList').innerHTML=(t.docs||[]).length?(t.docs).map(d=>`<div class="li"><div class="li-body">
     <div class="li-title">${esc(d.title)} <span class="pill">${esc(d.type||'')}</span></div>
     <div class="li-sub">${esc(d.text)}</div>
@@ -1463,11 +1593,16 @@ function renderMore(){
       <button class="btn btn-sm btn-danger" onclick="delPack('${p.id}')">×</button>
     </div></div>`).join(''):'<div class="empty" style="padding:16px">還沒有打包清單</div>';
 
-  document.getElementById('guideList').innerHTML=(t.guides||[]).length?(t.guides).map(g=>`<div class="li"><div class="li-body">
+  document.getElementById('guideList').innerHTML=(t.guides||[]).length?(t.guides).map(g=>{
+    const refs=[];
+    (t.days||[]).forEach(d=>(d.spots||[]).forEach(s=>{ if(s.guideId===g.id) refs.push({date:d.date,name:s.name,id:s.id}); }));
+    return `<div class="li" id="guide-${g.id}"><div class="li-body">
     <div class="li-title">${esc(g.title)}</div><div class="li-sub">${esc(g.text)}</div>
     ${(g.photos&&g.photos.length)?`<div class="li-photos">${g.photos.map(x=>`<img src="${x}" onclick="viewImg(this)">`).join('')}</div>`:''}
+    ${refs.length?`<div class="li-sub" style="margin-top:6px">🔗 相關行程：${refs.map(r=>`<button class="btn btn-sm btn-ghost" style="padding:2px 8px;margin:2px 4px 0 0" onclick="jumpToSpot('${r.date}','${r.id}')">${esc(r.name)}</button>`).join('')}</div>`:''}
     <div class="btn-row" style="margin-top:6px"><button class="btn btn-sm" onclick="editGuide('${g.id}')">編輯</button><button class="btn btn-sm btn-danger" onclick="delGuide('${g.id}')">刪除</button></div>
-  </div></div>`).join(''):'<div class="empty" style="padding:20px"><span class="ic">📓</span>放排隊攻略、退稅流程等</div>';
+  </div></div>`;
+  }).join(''):'<div class="empty" style="padding:20px"><span class="ic">📓</span>放排隊攻略、退稅流程等</div>';
 }
 function editDoc(id){ const t=trip(); if(!t.docs)t.docs=[]; const d=id?t.docs.find(x=>x.id===id):{type:'班機'};
   _imgBuf=[...(d.photos||[])];
