@@ -196,6 +196,15 @@ h1,h2,h3,h4{margin:0}
 .seg{display:flex;gap:6px;flex-wrap:wrap}
 .seg button{flex:1;min-width:64px;border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px;font-size:12.5px;font-weight:700;color:var(--ink2)}
 .seg button.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.shop-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.shop-toolbar .seg{flex:0 0 auto}
+.shop-toolbar .seg button{flex:0 0 auto;min-width:0}
+.shop-toolbar select{border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12.5px;font-weight:600;color:var(--ink2);background:#fff}
+.shop-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px}
+.shop-grid-item{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:28px;cursor:pointer}
+.shop-grid-item img{width:100%;height:100%;object-fit:cover}
+.shop-grid-item .sg-name{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(transparent,rgba(0,0,0,.65));color:#fff;font-size:11px;font-weight:600;padding:12px 6px 5px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shop-grid-item.done{opacity:.45}
 .mchips{display:flex;flex-wrap:wrap;gap:6px}
 .mchips label{display:flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;font-weight:600}
 .mchips input{width:auto}
@@ -248,6 +257,17 @@ h1,h2,h3,h4{margin:0}
   <section class="page" id="pg-shop">
     <div class="chip-row" id="shopViewSwitch"></div>
     <div class="chip-row" id="shopFilter"></div>
+    <div class="shop-toolbar">
+      <div class="seg" id="shopLayoutSeg">
+        <button type="button" onclick="setShopLayout('list')">📋 清單</button>
+        <button type="button" onclick="setShopLayout('grid')">🖼 相簿</button>
+      </div>
+      <select id="shopSortSel" onchange="setShopSort(this.value)">
+        <option value="created">建立順序</option>
+        <option value="name">依名稱</option>
+        <option value="who">依購買人</option>
+      </select>
+    </div>
     <div class="card" id="shopList"></div>
   </section>
 
@@ -311,7 +331,7 @@ h1,h2,h3,h4{margin:0}
         </div>
         <p class="help" style="margin-top:10px">換手機/瀏覽器看不到資料？點「🔗 同步與分享」拿這趟旅程的代碼或連結，在其他裝置輸入／打開就會加入即時同步——你自己的裝置、或同行朋友都用同一組，沒有誰上傳誰下載、不會互相覆蓋。<br>
         照片會自動上傳雲端相簿（Firebase Storage），不會佔滿本機/資料庫空間；若 Storage 還沒在 Firebase 後台啟用，照片會先退回存本機，之後啟用了新上傳的就會自動走雲端。<br>加到主畫面：iPhone Safari 分享鍵→「加入主畫面」；Android Chrome 選單→「安裝應用程式」。</p>
-        <p class="help" style="margin-top:14px;text-align:center;color:var(--ink3)">旅程手冊 v2.8</p>
+        <p class="help" style="margin-top:14px;text-align:center;color:var(--ink3)">旅程手冊 v2.9</p>
       </div>
     </div>
   </section>
@@ -331,7 +351,7 @@ h1,h2,h3,h4{margin:0}
 
 <script>
 /* ============================================================
-   旅程手冊 · trip-planner.html  v2.8
+   旅程手冊 · trip-planner.html  v2.9
    單檔 PWA。資料存 localStorage；每個旅程一律有 room，開 App 即
    自動雲端同步（Firebase Realtime DB）。跨裝置用「雲端同步碼」。
    圖片走 Firebase Storage（trips/<room>/<uid>.jpg），資料庫只存網址；
@@ -464,6 +484,31 @@ h1,h2,h3,h4{margin:0}
         以上全部寫了隔離單元測試驗證（日期搬動不重複/刪除不誤殺、join流程
         還原一次不重複觸發、待買隱藏已買、路線取樣涵蓋全天，共 25 項全
         過），語法檢查通過。
+   v2.9：待買清單四項強化 + 票券連結 + 一筆資料修復。①「誰要買」改複選
+        （`who` 從單一字串改陣列，`whoArr()` 相容舊資料），同一樣東西可以
+        好幾個人要買，切到「人」檢視時每個買家自己的分類都看得到這筆
+        （用 flatMap/includes 取代單純相等比對）。②分類不再寫死，
+        `trip.shopCats` 可以自己新增/刪除（沒設過就退回內建 SHOP_CATS 當
+        預設，刪分類只影響選單，不會動到已經用該分類的品項本身）。③加
+        「清單／相簿」兩種檢視模式，相簿是圖片方格牆，點圖開一個跟清單
+        資訊量一致的詳情彈窗（`showShopDetail()`），不是只放大圖而已。
+        ④可依名稱／購買人排序（`sortShopItems()`），預設仍是建立順序。
+        ⑤票券/優惠券加「連結」欄位（`c.url`），因為有些優惠券本來就是要
+        點連結開網頁，不是圖片。⑥【資料修復，非程式碼改動】Jennifer 回報
+        12/31 搬到 1/1 的行程又同時出現在兩天，查證後這筆搬動沒有 spotLoc
+        記錄（在 v2.8 上線前就發生的舊資料殘留，之後才發現，不是 v2.8
+        修復本身失敗），且她自己嘗試刪除時因為 tombstone 是全域按 id
+        標記，刪掉一份連另一份也一起消失，另外還誤刪了同一批的「🎆
+        Happy New Year」「櫻島車站」兩筆。動手前先備份整包資料
+        （`/tmp/trip_backups/before_v29_*.json`），比對 2026-09-16 的舊
+        備份找回被刪的兩筆原始內容，用 day-scoped 的 spots 陣列 PATCH（不
+        是整包 days 覆蓋）移除 12/31 那份重複、把兩筆遺失資料連同重複項一
+        起放回 1/1，同時補上這 3 個 id 的 spotLoc、清掉對應的 tombstones，
+        避免之後合併又被聯集加回或再次判定成已刪除。全程式修改都寫了
+        隔離單元測試（who 複選/分類管理不動既有資料/排序，共 16 項）加上
+        既有 25 項回歸測試全過，資料修復動作事後 curl 重新拉整包資料確認
+        0 筆重複、兩筆遺失內容都在 1/1、tombstones 已清空、spotLoc 已補上
+        才回報完成。
    ============================================================ */
 
 /* ---------- FIREBASE（換成你新開的專案）---------- */
@@ -1152,11 +1197,60 @@ function clearTransit(date,id){
 /* ---------- SHOPPING ---------- */
 let _shopFilter='ALL';
 let _shopViewMode='cat';       // 'cat'｜'who'｜'where'：待買清單目前用哪個維度篩選
+let _shopLayout='list';        // 'list'｜'grid'
+let _shopSort='created';       // 'created'｜'name'｜'who'
 const SHOP_VIEW_LABEL={cat:'分類',who:'人',where:'地點'};
-const SHOP_VIEW_KEY={cat:i=>i.cat||'未分類', who:i=>i.who||'未指定', where:i=>i.where||'未填地點'};
+// 「誰要買」一個東西可能好幾個人都要買，所以 who 存陣列；whoArr() 相容舊資料
+// （舊的 who 是單一字串），讀取時一律當陣列處理。
+function whoArr(i){ return Array.isArray(i.who)?i.who:(i.who?[i.who]:[]); }
+// 三種檢視維度的 key 一律回傳陣列——'人' 可能同時屬於好幾個人，'分類'/'地點'
+// 包成單一元素陣列，篩選/建立分類清單的邏輯就能共用同一套（flatMap/includes）。
+const SHOP_VIEW_KEY={
+  cat:i=>[i.cat||'未分類'],
+  who:i=>{ const w=whoArr(i); return w.length?w:['未指定']; },
+  where:i=>[i.where||'未填地點']
+};
 function setShopViewMode(m){ _shopViewMode=m; _shopFilter='ALL'; renderShop(); }
+function setShopLayout(m){ _shopLayout=m; renderShop(); }
+function setShopSort(m){ _shopSort=m; renderShop(); }
 let _shopFilterCats=['ALL'];
 function pickShopFilter(idx){ _shopFilter=_shopFilterCats[idx]; renderShop(); }
+// 待買分類可以自己新增/調整——t.shopCats 沒設過就先用內建的 SHOP_CATS 當預設，
+// 第一次新增/刪除才真的複製一份存進這趟旅程資料（不動到 SHOP_CATS 這個常數本身）。
+function shopCatList(t){ return (t.shopCats&&t.shopCats.length)?t.shopCats:SHOP_CATS; }
+function openShopCatManager(){
+  const t=trip(); if(!t) return;
+  const cats=shopCatList(t);
+  modal(`<h3>管理待買分類</h3>
+    <div id="catMgrList" class="mchips">${cats.map(c=>`<label>${esc(c)}<span style="margin-left:6px;color:var(--danger);cursor:pointer" onclick="delShopCat('${esc(c)}')">✕</span></label>`).join('')}</div>
+    <div class="f" style="margin-top:12px"><label>新增分類</label>
+      <div style="display:flex;gap:8px"><input id="newCatInput" placeholder="例：3C配件"><button class="btn btn-sm btn-brand" onclick="addShopCat()">加入</button></div>
+    </div>
+    <p class="help" style="margin-top:8px">刪掉的分類不會動到已經用這個分類的品項，只是之後新增/編輯時不會再出現在選單裡。</p>
+    <div class="btn-row" style="margin-top:12px"><button class="btn btn-block" onclick="closeModal()">關閉</button></div>`);
+}
+function addShopCat(){
+  const t=trip(); const v=(document.getElementById('newCatInput').value||'').trim();
+  if(!v) return;
+  if(!t.shopCats||!t.shopCats.length) t.shopCats=[...SHOP_CATS];
+  if(t.shopCats.includes(v)){ toast('已經有這個分類了','#b45309'); return; }
+  t.shopCats.push(v); save(); openShopCatManager();
+}
+function delShopCat(c){
+  const t=trip();
+  if(!t.shopCats||!t.shopCats.length) t.shopCats=[...SHOP_CATS];
+  t.shopCats=t.shopCats.filter(x=>x!==c);
+  save(); openShopCatManager();
+}
+function sortShopItems(items){
+  if(_shopSort==='name') return [...items].sort((a,b)=>(a.name||'').localeCompare(b.name||'','zh-Hant'));
+  if(_shopSort==='who') return [...items].sort((a,b)=>{
+    const aw=whoArr(a).join('、'), bw=whoArr(b).join('、');
+    if(!aw&&!bw) return 0; if(!aw) return 1; if(!bw) return -1;
+    return aw.localeCompare(bw,'zh-Hant');
+  });
+  return items; // 'created'：維持原始建立順序
+}
 function renderShop(){
   const t=trip(); const box=document.getElementById('shopList');
   const fbar=document.getElementById('shopFilter');
@@ -1166,11 +1260,13 @@ function renderShop(){
   if(vbar){
     vbar.innerHTML=Object.keys(SHOP_VIEW_LABEL).map(m=>
       `<div class="chip ${_shopViewMode===m?'on':''}" onclick="setShopViewMode('${m}')">${SHOP_VIEW_LABEL[m]}</div>`
-    ).join('');
+    ).join('')+`<div class="chip" onclick="openShopCatManager()">✎ 管理分類</div>`;
   }
+  document.querySelectorAll('#shopLayoutSeg button').forEach((b,i)=>b.classList.toggle('on', (i===0&&_shopLayout==='list')||(i===1&&_shopLayout==='grid')));
+  const sortSel=document.getElementById('shopSortSel'); if(sortSel) sortSel.value=_shopSort;
   const keyFn=SHOP_VIEW_KEY[_shopViewMode];
   const notDone=items.filter(i=>!i.done);
-  const cats=['ALL',...new Set(notDone.map(keyFn).filter(Boolean)),'✓已買'];
+  const cats=['ALL',...new Set(notDone.flatMap(keyFn).filter(Boolean)),'✓已買'];
   _shopFilterCats=cats; // 讓 chip 用 index 取值，避免人名/地點裡的引號等字元弄壞 onclick
   const doneCount=items.length-notDone.length;
   fbar.innerHTML=cats.map((c,idx)=>{
@@ -1182,13 +1278,23 @@ function renderShop(){
   let show;
   if(_shopFilter==='✓已買') show=items.filter(i=>i.done);
   else if(_shopFilter==='ALL') show=notDone;
-  else show=notDone.filter(i=>keyFn(i)===_shopFilter);
+  else show=notDone.filter(i=>keyFn(i).includes(_shopFilter));
+  show=sortShopItems(show);
   if(!show.length){
     box.innerHTML=`<div class="empty"><span class="ic">🛍</span>${_shopFilter==='✓已買'?'還沒有買過的東西':'都買完了！點右下 ＋ 可以再加'}</div>`;
     return;
   }
+  if(_shopLayout==='grid'){
+    box.innerHTML=`<div class="shop-grid">${show.map(i=>`
+      <div class="shop-grid-item ${i.done?'done':''}" onclick="showShopDetail('${i.id}')">
+        ${i.photo?`<img src="${i.photo}">`:'🛍'}
+        <div class="sg-name">${esc(i.name)}</div>
+      </div>`).join('')}</div>`;
+    return;
+  }
   box.innerHTML=show.map(i=>{
     const tw=i.price&&i.cur!=='TWD'?` <span class="li-sub">≈ ${fmtT(toTWD(i.price,i.cur||'JPY'))}</span>`:'';
+    const who=whoArr(i).join('、');
     return `<div class="li">
       <div class="li-thumb li-thumb-lg">${i.photo?`<img src="${i.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:10px" onclick="viewImg(this)">`:'🛍'}</div>
       <div class="li-body">
@@ -1197,7 +1303,7 @@ function renderShop(){
           ${i.cat?`<span class="pill">${esc(i.cat)}</span>`:''}
           ${i.price?`<span>${sym(i.cur||'JPY')}${Number(i.price).toLocaleString()}</span>`:''}${tw}
         </div>
-        ${(i.where||i.who)?`<div class="li-sub" style="margin-top:3px">${i.where?`📍 ${esc(i.where)}`:''}${i.where&&i.who?'　':''}${i.who?`👤 ${esc(i.who)}`:''}</div>`:''}
+        ${(i.where||who)?`<div class="li-sub" style="margin-top:3px">${i.where?`📍 ${esc(i.where)}`:''}${i.where&&who?'　':''}${who?`👤 ${esc(who)}`:''}</div>`:''}
         ${i.note?`<div class="li-sub" style="margin-top:3px;color:var(--ink3)">${esc(i.note)}</div>`:''}
         <div class="btn-row" style="margin-top:7px">
           <button class="btn btn-sm" onclick="toggleShop('${i.id}')">${i.done?'↩ 未買':'✓ 買了'}</button>
@@ -1207,6 +1313,27 @@ function renderShop(){
       </div>
     </div>`;
   }).join('');
+}
+// 相簿模式點圖不是只看大圖，還要看得到價格/地點/購買人這些內容，所以開一個
+// 跟清單模式資訊量一致的詳情彈窗，而不是單純丟去 viewImg()。
+function showShopDetail(id){
+  const t=trip(); const i=t.shopping.find(x=>x.id===id); if(!i) return;
+  const tw=i.price&&i.cur!=='TWD'?` ≈ ${fmtT(toTWD(i.price,i.cur||'JPY'))}`:'';
+  const who=whoArr(i).join('、');
+  modal(`<h3>${esc(i.name)}</h3>
+    ${i.photo?`<img src="${i.photo}" style="width:100%;border-radius:12px;margin-bottom:10px" onclick="viewImg(this)">`:''}
+    <div class="li-sub" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">
+      ${i.cat?`<span class="pill">${esc(i.cat)}</span>`:''}
+      ${i.price?`<span>${sym(i.cur||'JPY')}${Number(i.price).toLocaleString()}${tw}</span>`:''}
+    </div>
+    ${(i.where||who)?`<div class="li-sub" style="margin-bottom:6px">${i.where?`📍 ${esc(i.where)}`:''}${i.where&&who?'　':''}${who?`👤 ${esc(who)}`:''}</div>`:''}
+    ${i.note?`<div class="li-sub" style="margin-bottom:6px">${esc(i.note)}</div>`:''}
+    <div class="btn-row" style="margin-top:10px">
+      <button class="btn btn-sm" onclick="toggleShop('${i.id}');closeModal()">${i.done?'↩ 未買':'✓ 買了'}</button>
+      <button class="btn btn-sm" onclick="closeModal();editShop('${i.id}')">編輯</button>
+      <button class="btn btn-sm btn-danger" onclick="closeModal();delShop('${i.id}')">刪除</button>
+    </div>
+    <div class="btn-row" style="margin-top:8px"><button class="btn btn-block" onclick="closeModal()">關閉</button></div>`);
 }
 function toggleShop(id){ const t=trip(); const i=t.shopping.find(x=>x.id===id); i.done=!i.done; save(); renderShop(); }
 function delShop(id){ if(!confirm('刪除？'))return; const t=trip(); const i=t.shopping.find(x=>x.id===id); if(i&&i.photo)deleteImgUrls([i.photo]); markDeleted(t,id); t.shopping=t.shopping.filter(x=>x.id!==id); save(); renderShop(); }
@@ -1231,12 +1358,13 @@ function editShop(id){
   const t=trip(); if(!t.shopping) t.shopping=[];
   const i=id?t.shopping.find(x=>x.id===id):{cur:'JPY',cat:'藥妝'};
   const mem=t.members||[];
+  const iWho=whoArr(i);
   _imgBuf=i.photo?[i.photo]:[];
   modal(`<h3>${id?'編輯':'新增'}待買</h3>
     <div class="f"><label>品名</label><input id="s-name" value="${esc(i.name||'')}"></div>
     <div class="f"><label>照片</label>${imgPickerHTML(false)}</div>
     <div class="f-row">
-      <div class="f"><label>分類</label><select id="s-cat">${SHOP_CATS.map(c=>`<option ${i.cat===c?'selected':''}>${c}</option>`).join('')}</select></div>
+      <div class="f"><label>分類</label><select id="s-cat">${shopCatList(t).map(c=>`<option ${i.cat===c?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
       <div class="f" style="flex:0 0 92px"><label>幣別</label><select id="s-cur">${CURRENCIES.map(c=>`<option ${(i.cur||'JPY')===c?'selected':''}>${c}</option>`).join('')}</select></div>
       <div class="f" style="flex:0 0 96px"><label>價格</label><input id="s-price" type="number" value="${esc(i.price||'')}"></div>
     </div>
@@ -1245,7 +1373,9 @@ function editShop(id){
       ${shopWhereList(t).map(w=>`<option ${i.where===w?'selected':''}>${esc(w)}</option>`).join('')}
       <option value="__NEW__">✚ 新增地點...</option>
     </select></div>
-    <div class="f"><label>誰要買</label><select id="s-who"><option value="">—</option>${mem.map(m=>`<option ${i.who===m?'selected':''}>${esc(m)}</option>`).join('')}</select></div>
+    <div class="f"><label>誰要買（可複選，可能不只一人要買同一樣東西）</label>
+      <div class="mchips" id="s-who">${mem.map(m=>`<label><input type="checkbox" value="${esc(m)}" ${iWho.includes(m)?'checked':''}>${esc(m)}</label>`).join('')}</div>
+    </div>
     <div class="f"><label>備註</label><textarea id="s-note">${esc(i.note||'')}</textarea></div>
     <div class="btn-row">
       <button class="btn btn-brand btn-block" onclick="saveShop('${id||''}')">儲存</button>
@@ -1263,7 +1393,7 @@ function saveShop(id){
     cur:document.getElementById('s-cur').value,
     price:document.getElementById('s-price').value.trim(),
     where:document.getElementById('s-where').value.trim(),
-    who:document.getElementById('s-who').value,
+    who:[...document.querySelectorAll('#s-who input:checked')].map(x=>x.value),
     note:document.getElementById('s-note').value.trim(),
     done:id?(t.shopping.find(x=>x.id===id)||{}).done:false
   };
@@ -1490,6 +1620,7 @@ function renderCoupons(){
         </div>
         ${(c.spot||c.useDate)?`<div class="li-sub" style="margin-top:3px">${c.spot?`📍 ${esc(c.spot)}`:''}${c.spot&&c.useDate?'　':''}${c.useDate?`🗓 ${esc(c.useDate)}`:''}</div>`:''}
         ${c.note?`<div class="li-sub" style="margin-top:3px;color:var(--ink3)">${esc(c.note)}</div>`:''}
+        ${c.url?`<div class="spot-links" style="margin-top:6px"><a href="${esc(normUrl(c.url))}" target="_blank" rel="noopener">🔗 開啟連結</a></div>`:''}
         <div class="btn-row" style="margin-top:7px">
           <button class="btn btn-sm" onclick="toggleCoupon('${c.id}')">${c.used?'↩ 未用':'✓ 用掉'}</button>
           <button class="btn btn-sm" onclick="editCoupon('${c.id}')">編輯</button>
@@ -1506,7 +1637,8 @@ function showTicket(id){
   modal(`<h3>${esc(c.title)}</h3>
     ${c.code?`<p style="text-align:center;font-size:16px;font-weight:800;letter-spacing:1px">${esc(c.code)}</p>`:''}
     ${img?`<img src="${img}" style="width:100%;border-radius:12px;margin-bottom:10px">`:''}
-    <div class="btn-row"><button class="btn btn-block" onclick="closeModal()">關閉</button></div>`);
+    ${c.url?`<div class="btn-row"><a class="btn btn-block btn-brand" href="${esc(normUrl(c.url))}" target="_blank" rel="noopener">🔗 開啟連結</a></div>`:''}
+    <div class="btn-row" style="margin-top:8px"><button class="btn btn-block" onclick="closeModal()">關閉</button></div>`);
 }
 function editCoupon(id){
   const t=trip(); if(!t.coupons)t.coupons=[];
@@ -1516,6 +1648,7 @@ function editCoupon(id){
     <div class="f"><label>類型</label><div class="seg" id="c-kind">${TICKET_KINDS.map(k=>`<button type="button" class="${(c.kind||'票券')===k?'on':''}" onclick="segPick(this)">${k}</button>`).join('')}</div></div>
     <div class="f"><label>名稱</label><input id="c-title" value="${esc(c.title||'')}" placeholder="吉卜力公園 大散步券 / LaLaport 外國人優惠"></div>
     <div class="f"><label>訂位／訂票代碼、條碼號（選填）</label><input id="c-code" value="${esc(c.code||'')}"></div>
+    <div class="f"><label>連結（選填，優惠網頁/官網，有的優惠券要點連結不是圖）</label><input id="c-url" value="${esc(c.url||'')}" placeholder="https://..."></div>
     <div class="f"><label>圖片（訂票確認信截圖、QR、條碼…留一張最清楚的就好）</label>${imgPickerHTML(false)}</div>
     <div class="f-row">
       <div class="f"><label>使用日期 / 場次</label><input id="c-use" value="${esc(c.useDate||'')}" placeholder="12/27 大倉庫 11:00 場"></div>
@@ -1535,6 +1668,7 @@ function saveCoupon(id){
     kind:segVal('c-kind')||'票券',
     title:val('c-title'),
     code:val('c-code'),
+    url:val('c-url'),
     image:_imgBuf[0]||'',
     useDate:val('c-use'),
     expiry:document.getElementById('c-exp').value,
