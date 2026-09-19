@@ -328,7 +328,7 @@ h1,h2,h3,h4{margin:0}
         </div>
         <p class="help" style="margin-top:10px">換手機/瀏覽器看不到資料？點「🔗 同步與分享」拿這趟旅程的代碼或連結，在其他裝置輸入／打開就會加入即時同步——你自己的裝置、或同行朋友都用同一組，沒有誰上傳誰下載、不會互相覆蓋。<br>
         照片會自動上傳雲端相簿（Firebase Storage），不會佔滿本機/資料庫空間；若 Storage 還沒在 Firebase 後台啟用，照片會先退回存本機，之後啟用了新上傳的就會自動走雲端。<br>加到主畫面：iPhone Safari 分享鍵→「加入主畫面」；Android Chrome 選單→「安裝應用程式」。</p>
-        <p class="help" style="margin-top:14px;text-align:center;color:var(--ink3)">旅程手冊 v2.10</p>
+        <p class="help" style="margin-top:14px;text-align:center;color:var(--ink3)">旅程手冊 v2.11</p>
       </div>
     </div>
   </section>
@@ -348,7 +348,7 @@ h1,h2,h3,h4{margin:0}
 
 <script>
 /* ============================================================
-   旅程手冊 · trip-planner.html  v2.10
+   旅程手冊 · trip-planner.html  v2.11
    單檔 PWA。資料存 localStorage；每個旅程一律有 room，開 App 即
    自動雲端同步（Firebase Realtime DB）。跨裝置用「雲端同步碼」。
    圖片走 Firebase Storage（trips/<room>/<uid>.jpg），資料庫只存網址；
@@ -522,6 +522,18 @@ h1,h2,h3,h4{margin:0}
         全部改動都寫了隔離單元測試驗證（打包分組過濾/reset 不動個人清單/
         新舊警告備註分流/同關鍵字套用到多個不同名稱行程點，共 15 項）+
         既有 41 項回歸測試全過，語法檢查通過。
+   v2.11：【重要修正】v2.10 的「備註」類型選了還是會變成「注意事項」。
+        根因：`saveAreaAlert()` 用 `segVal('a-kind')` 讀值，但 `segVal()`
+        讀的是按鈕上「顯示的文字」（"⚠️ 注意事項"/"📌 備註"），不是內部
+        要存的 'alert'/'note'——兩個按鈕的文字都不等於 'note'，所以不管選
+        哪個，`kind` 存進去的都是中文標籤字串，任何 `kind==='note'` 的判斷
+        永遠是 false，一律被當成注意事項處理。改成跟 e-mode（分帳的平均分/
+        自訂金額，同樣是「內部值≠顯示文字」的情況）一樣的正確讀法：直接
+        讀 `document.querySelector('#a-kind button.on').dataset.v`。順便查了
+        一下 Jennifer 已經存進資料庫的資料，剛好抓到一筆被這個 bug 存壞的
+        （相鐵FRESA INN 那筆備註，kind 存成了 "📌 備註" 這個中文字串），
+        只更正這一個欄位（area/text/照片都沒有動），改完後重新查資料庫
+        確認 6 筆 areaAlerts 全部都在、目標那筆 kind 正確變成 'note'。
    ============================================================ */
 
 /* ---------- FIREBASE（換成你新開的專案）---------- */
@@ -1774,7 +1786,14 @@ function editAreaAlert(id){ const t=trip(); if(!t.areaAlerts)t.areaAlerts=[]; co
    <div class="f"><label>照片（示意圖、地圖…可多張）</label>${imgPickerHTML(true)}</div>
    <div class="btn-row"><button class="btn btn-brand btn-block" onclick="saveAreaAlert('${id||''}')">儲存</button><button class="btn btn-block" onclick="closeModal()">取消</button></div>`);
   renderImgBuf(); }
-function saveAreaAlert(id){ const t=trip(); const o={id:id||uid(),kind:segVal('a-kind')||'alert',area:val('a-k'),text:val('a-x'),photos:[..._imgBuf]};
+function saveAreaAlert(id){
+  const t=trip();
+  // 不能用 segVal()：它讀的是按鈕上顯示的文字（"⚠️ 注意事項"/"📌 備註"），
+  // 不是內部要存的 'alert'/'note'，之前這裡誤用 segVal() 導致 kind 存成
+  // 中文標籤字串，跟任何比對式都對不上，選了「備註」還是會被當成注意事項。
+  // 跟 e-mode（分帳的平均分/自訂金額）用一樣的正確讀法：直接讀 data-v。
+  const kindBtn=document.querySelector('#a-kind button.on');
+  const o={id:id||uid(),kind:kindBtn?kindBtn.dataset.v:'alert',area:val('a-k'),text:val('a-x'),photos:[..._imgBuf]};
   if(!o.area||!o.text){toast('都要填','#dc2626');return;} if(id)t.areaAlerts=t.areaAlerts.map(x=>x.id===id?o:x);else t.areaAlerts.push(o); save();closeModal();renderMore();renderItin(); }
 function delAreaAlert(id){ if(!confirm('刪除？'))return; const t=trip(); const a=t.areaAlerts.find(x=>x.id===id); if(a)deleteImgUrls(a.photos); markDeleted(t,id); t.areaAlerts=t.areaAlerts.filter(x=>x.id!==id); save(); renderMore(); renderItin(); }
 
