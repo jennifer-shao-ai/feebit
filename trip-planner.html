@@ -328,7 +328,7 @@ h1,h2,h3,h4{margin:0}
         </div>
         <p class="help" style="margin-top:10px">換手機/瀏覽器看不到資料？點「🔗 同步與分享」拿這趟旅程的代碼或連結，在其他裝置輸入／打開就會加入即時同步——你自己的裝置、或同行朋友都用同一組，沒有誰上傳誰下載、不會互相覆蓋。<br>
         照片會自動上傳雲端相簿（Firebase Storage），不會佔滿本機/資料庫空間；若 Storage 還沒在 Firebase 後台啟用，照片會先退回存本機，之後啟用了新上傳的就會自動走雲端。<br>加到主畫面：iPhone Safari 分享鍵→「加入主畫面」；Android Chrome 選單→「安裝應用程式」。</p>
-        <p class="help" style="margin-top:14px;text-align:center;color:var(--ink3)">旅程手冊 v2.11</p>
+        <p class="help" style="margin-top:14px;text-align:center;color:var(--ink3)">旅程手冊 v2.12</p>
       </div>
     </div>
   </section>
@@ -348,7 +348,7 @@ h1,h2,h3,h4{margin:0}
 
 <script>
 /* ============================================================
-   旅程手冊 · trip-planner.html  v2.11
+   旅程手冊 · trip-planner.html  v2.12
    單檔 PWA。資料存 localStorage；每個旅程一律有 room，開 App 即
    自動雲端同步（Firebase Realtime DB）。跨裝置用「雲端同步碼」。
    圖片走 Firebase Storage（trips/<room>/<uid>.jpg），資料庫只存網址；
@@ -534,6 +534,24 @@ h1,h2,h3,h4{margin:0}
         （相鐵FRESA INN 那筆備註，kind 存成了 "📌 備註" 這個中文字串），
         只更正這一個欄位（area/text/照片都沒有動），改完後重新查資料庫
         確認 6 筆 areaAlerts 全部都在、目標那筆 kind 正確變成 'note'。
+   v2.12：【重要修正】Jennifer 反應同步很容易卡住，卡在「同步中…」不動。
+        根因：`pushRemote()` 呼叫 `_ref.transaction()` 完全沒有逾時保護。
+        手機瀏覽器分頁切到背景會被凍結、或網路斷線又沒有明確斷線事件時，
+        這個 Promise 可能永遠不 resolve 也不 reject，畫面就卡住、沒有任何
+        錯誤提示也沒有重試按鈕，只能乾等——這才是「卡住」的真正原因，不是
+        資料檔案太大（實測整包資料才 113KB，遠低於會出問題的量級）。加了
+        15 秒逾時警戒線，超過就當失敗處理、跳出可以按的重試橫幅；如果之後
+        真的成功送達了畫面會自動翻回「已同步」。另外發現失敗橫幅的文字寫
+        「等恢復連線後會自動重試」，但完全沒有程式碼在做這件事——之前連線
+        真的恢復了也要使用者自己發現、自己按重試。這次補上真正的自動重試：
+        `initFB()` 接上 Firebase 自己的 `.info/connected`（比瀏覽器的
+        online 事件準，瀏覽器可能顯示online但Firebase連線其實還在重建中），
+        加上瀏覽器 `online` 事件當備援，偵測到恢復連線且還有未送達的變更
+        就自動補推，不用使用者自己救。已用模擬情境驗證：transaction 卡住
+        不回應時逾時機制正確跳出失敗、重試按鈕可用；transaction 正常成功
+        時不會被逾時機制誤判成失敗；transaction 真的失敗時顯示的是實際
+        錯誤訊息而不是逾時文字；連線恢復事件只在真的有未同步變更時才觸發
+        重推（共 7 項測試）+ 既有 56 項回歸測試全過，語法檢查通過。
    ============================================================ */
 
 /* ---------- FIREBASE（換成你新開的專案）---------- */
@@ -560,6 +578,15 @@ function initFB(){
     const app=firebase.initializeApp(FIREBASE_CONFIG);
     _db=firebase.database(app);
     try{ _storage=firebase.storage(app); }catch(e){ _storage=null; console.warn('Storage 未啟用，圖片會退回存在本機/資料庫裡',e); }
+    // 失敗橫幅一直寫「等恢復連線後會自動重試」，但之前完全沒有程式碼真的在
+    // 做這件事——連線真的恢復了也只能靠使用者自己按「立即重試」。這裡補上
+    // 真正的自動重試：Firebase 自己的 .info/connected（比瀏覽器的 online
+    // 事件更準，瀏覽器可能顯示online但Firebase的連線其實還在重建）跟瀏覽器
+    // online 事件都接，只要偵測到恢復連線、且還有未送達的變更(_dirty)，
+    // 就自動補推一次，不用使用者自己發現、自己按。
+    _db.ref('.info/connected').on('value',snap=>{
+      if(snap.val()===true && _dirty) pushRemote();
+    });
     return true;
   }catch(e){ console.warn('FB init fail',e); return false; }
 }
@@ -617,9 +644,21 @@ function pushRemote(){
   setSyncBadge('pending');
   _saveT=setTimeout(()=>{
     const t=trip(); if(!t||!_ref) return;
+    let done=false;
+    // transaction() 回傳的 Promise 沒有內建逾時——分頁被手機瀏覽器切到背景
+    // 凍結、或網路斷線又沒有明確斷線事件時，它可能永遠不 resolve 也不
+    // reject，畫面就會卡在「同步中…」動也不動，使用者只能乾等、也看不到
+    // 任何錯誤或重試按鈕（這正是 Jennifer 回報「卡住」的實際原因）。加一
+    // 個 15 秒警戒線，超過就當失敗處理讓使用者看得到、能按重試；如果之後
+    // 真的成功送達了也會自動翻回「已同步」，不影響資料本身。
+    const watchdog=setTimeout(()=>{
+      if(done) return;
+      setDot('off'); setSyncBadge('fail','同步超過15秒沒回應（可能網路不穩，或分頁被瀏覽器切到背景凍結）');
+    },15000);
     _ref.transaction(server=> server ? mergeTrip(server,t) : t, null, false)
-      .then(()=>{ _dirty=false; setSyncBadge('live'); })
+      .then(()=>{ done=true; clearTimeout(watchdog); _dirty=false; setSyncBadge('live'); })
       .catch(e=>{
+        done=true; clearTimeout(watchdog);
         setDot('off'); setSyncBadge('fail', e.message);
       });
   },600);
@@ -2168,6 +2207,9 @@ window.addEventListener('beforeunload', function(e){
     return e.returnValue;
   }
 });
+// 瀏覽器層級的連線恢復事件，當備援觸發點——主要靠 initFB() 裡 Firebase
+// 自己的 .info/connected（更準），這裡多接一層以防萬一。
+window.addEventListener('online', function(){ if(_dirty) pushRemote(); });
 </script>
 </body>
 </html>
