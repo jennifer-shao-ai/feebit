@@ -127,6 +127,8 @@ h1,h2,h3,h4{margin:0}
 .spot-note{font-size:13px;color:var(--ink2);margin-top:6px;white-space:pre-wrap}
 .spot-alert{margin-top:7px;background:var(--warn-bg);border:1px solid #fde68a;color:var(--warn);border-radius:9px;padding:7px 9px;font-size:12.5px;font-weight:600;white-space:pre-wrap}
 .spot-alert b{display:block;font-size:11px;letter-spacing:.05em;opacity:.8}
+.spot-note-auto{margin-top:7px;background:var(--brand-soft);border:1px solid #99f2e0;color:var(--brand-ink);border-radius:9px;padding:7px 9px;font-size:12.5px;font-weight:600;white-space:pre-wrap}
+.spot-note-auto b{display:block;font-size:11px;letter-spacing:.05em;opacity:.75}
 .spot-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
 .spot-tag{font-size:11.5px;background:#f3e8ff;color:#7e22ce;border-radius:6px;padding:2px 7px;font-weight:600}
 .spot-links{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
@@ -303,12 +305,7 @@ h1,h2,h3,h4{margin:0}
     </div>
 
     <div class="more-sec" data-sec="pack">
-      <div class="sec-title">打包清單</div>
-      <div class="card" id="packList"></div>
-      <div class="btn-row" style="margin:8px 0 4px">
-        <button class="btn btn-sm btn-ghost" onclick="addPack()">＋ 加一項</button>
-        <button class="btn btn-sm btn-ghost" onclick="resetPack()">帶入預設清單</button>
-      </div>
+      <div id="packList"></div>
     </div>
 
     <div class="more-sec" data-sec="guides">
@@ -331,7 +328,7 @@ h1,h2,h3,h4{margin:0}
         </div>
         <p class="help" style="margin-top:10px">換手機/瀏覽器看不到資料？點「🔗 同步與分享」拿這趟旅程的代碼或連結，在其他裝置輸入／打開就會加入即時同步——你自己的裝置、或同行朋友都用同一組，沒有誰上傳誰下載、不會互相覆蓋。<br>
         照片會自動上傳雲端相簿（Firebase Storage），不會佔滿本機/資料庫空間；若 Storage 還沒在 Firebase 後台啟用，照片會先退回存本機，之後啟用了新上傳的就會自動走雲端。<br>加到主畫面：iPhone Safari 分享鍵→「加入主畫面」；Android Chrome 選單→「安裝應用程式」。</p>
-        <p class="help" style="margin-top:14px;text-align:center;color:var(--ink3)">旅程手冊 v2.9</p>
+        <p class="help" style="margin-top:14px;text-align:center;color:var(--ink3)">旅程手冊 v2.10</p>
       </div>
     </div>
   </section>
@@ -351,7 +348,7 @@ h1,h2,h3,h4{margin:0}
 
 <script>
 /* ============================================================
-   旅程手冊 · trip-planner.html  v2.9
+   旅程手冊 · trip-planner.html  v2.10
    單檔 PWA。資料存 localStorage；每個旅程一律有 room，開 App 即
    自動雲端同步（Firebase Realtime DB）。跨裝置用「雲端同步碼」。
    圖片走 Firebase Storage（trips/<room>/<uid>.jpg），資料庫只存網址；
@@ -509,6 +506,22 @@ h1,h2,h3,h4{margin:0}
         既有 25 項回歸測試全過，資料修復動作事後 curl 重新拉整包資料確認
         0 筆重複、兩筆遺失內容都在 1/1、tombstones 已清空、spotLoc 已補上
         才回報完成。
+   v2.10：Jennifer 一樣先交代「絕對不要刪除已建立的清單內容，或先備份一
+        次」，動手前先備份整包資料（`/tmp/trip_backups/before_v30_*.json`）
+        才開始，這次沒有動到既有資料，純加功能。①打包清單之前只能加/刪/
+        勾選，沒有編輯功能，補上 `editPack()`；②打包清單分成「共用」跟
+        「每個人自己的」——`packing[].owner` 空字串/沒這個欄位＝共用（舊
+        資料沒有 owner 欄位，自然落在共用區，不用搬移），每個成員一個獨
+        立區塊各自加/改/刪，`resetPack()` 改成只重置共用清單，不會動到任
+        何人的個人清單。③「當區注意事項」加了「類型」欄位（⚠️注意事項／
+        📌備註），同一套關鍵字比對行程點名稱的機制（`matchedAreaAlerts`）
+        現在也能拿來放單純資訊性的共同備註（例如飯店地址、車站轉乘方式），
+        符合關鍵字的行程點會自動帶出對應內容不用每筆重複打；備註用跟警告
+        不同的視覺樣式（`.spot-note-auto`，藍綠色系跟既有紅色警告框區
+        分），舊資料沒有 kind 欄位的一律當「注意事項」處理，行為不變。
+        全部改動都寫了隔離單元測試驗證（打包分組過濾/reset 不動個人清單/
+        新舊警告備註分流/同關鍵字套用到多個不同名稱行程點，共 15 項）+
+        既有 41 項回歸測試全過，語法檢查通過。
    ============================================================ */
 
 /* ---------- FIREBASE（換成你新開的專案）---------- */
@@ -892,7 +905,9 @@ function normUrl(u){
 }
 function renderSpot(s,date){
   const cat=s.cat||'其他';
-  const alerts=[...(s.alerts||[]),...matchedAreaAlerts(s.name).map(a=>a.text)];
+  const matched=matchedAreaAlerts(s.name);
+  const alerts=[...(s.alerts||[]),...matched.filter(a=>a.kind!=='note').map(a=>a.text)];
+  const autoNotes=matched.filter(a=>a.kind==='note').map(a=>a.text);
   const meta=[];
   if(s.openHours) meta.push('🕐 '+esc(s.openHours));
   if(s.price) meta.push('🎫 '+esc(s.price));
@@ -913,6 +928,7 @@ function renderSpot(s,date){
         ${meta.length?`<div class="spot-meta">${meta.join('')}</div>`:''}
         ${s.note?`<div class="spot-note">${esc(s.note)}</div>`:''}
         ${alerts.map(a=>`<div class="spot-alert"><b>⚠️ 注意</b>${esc(a)}</div>`).join('')}
+        ${autoNotes.map(a=>`<div class="spot-note-auto"><b>📌 共同備註</b>${esc(a)}</div>`).join('')}
         ${(s.buy&&s.buy.length)?`<div class="spot-tags">${s.buy.map(b=>`<span class="spot-tag">🛍 ${esc(b)}</span>`).join('')}</div>`:''}
         ${(()=>{const ph=s.photos||(s.photo?[s.photo]:[]);return ph.length?`<div class="spot-photos">${ph.map(d=>`<img src="${d}" onclick="viewImg(this)">`).join('')}</div>`:'';})()}
         <div class="spot-links">${links.join('')}</div>
@@ -1714,18 +1730,13 @@ function renderMore(){
   </div></div>`).join(''):'<div class="empty" style="padding:20px"><span class="ic">📄</span>可放班機/訂房/密碼鎖</div>';
 
   document.getElementById('areaAlerts').innerHTML=(t.areaAlerts||[]).length?(t.areaAlerts).map(a=>
-    `<div style="padding:6px 0;border-bottom:1px dashed var(--line)"><b>${esc(a.area)}</b>：${esc(a.text)}
+    `<div style="padding:6px 0;border-bottom:1px dashed var(--line)"><span class="pill ${a.kind==='note'?'':'warn'}">${a.kind==='note'?'📌 備註':'⚠️ 注意事項'}</span> <b>${esc(a.area)}</b>：${esc(a.text)}
      ${(a.photos&&a.photos.length)?`<div class="li-photos">${a.photos.map(x=>`<img src="${x}" onclick="viewImg(this)">`).join('')}</div>`:''}
      <button class="btn btn-sm" style="margin-left:6px" onclick="editAreaAlert('${a.id}')">改</button>
      <button class="btn btn-sm btn-danger" onclick="delAreaAlert('${a.id}')">刪</button></div>`).join('')
-    :'名稱含此關鍵字的行程點，會自動帶出這段提醒。例：奈良公園 / 黑門市場 / 環球影城。';
+    :'名稱含此關鍵字的行程點，會自動帶出這段提醒或備註。例：飯店（住宿資訊）、近鐵日本橋車站（共通交通備註）、奈良公園（注意事項）。';
 
-  document.getElementById('packList').innerHTML=(t.packing||[]).length?(t.packing).map(p=>
-    `<div class="li" style="padding:9px 13px"><div class="li-body" style="display:flex;align-items:center;gap:9px">
-      <div class="spot-check ${p.done?'on':''}" style="width:24px;height:24px;font-size:13px" onclick="togglePack('${p.id}')">${p.done?'✓':''}</div>
-      <span style="${p.done?'text-decoration:line-through;color:#94a3b8':''};flex:1">${esc(p.text)}</span>
-      <button class="btn btn-sm btn-danger" onclick="delPack('${p.id}')">×</button>
-    </div></div>`).join(''):'<div class="empty" style="padding:16px">還沒有打包清單</div>';
+  renderPackList();
 
   document.getElementById('guideList').innerHTML=(t.guides||[]).length?(t.guides).map(g=>{
     const refs=[];
@@ -1751,23 +1762,57 @@ function saveDoc(id){ const t=trip(); const o={id:id||uid(),title:val('d-t'),typ
   if(!o.title){toast('請填標題','#dc2626');return;} if(id)t.docs=t.docs.map(x=>x.id===id?o:x);else t.docs.push(o); save();closeModal();renderMore(); }
 function delDoc(id){ if(!confirm('刪除？'))return; const t=trip(); const d=t.docs.find(x=>x.id===id); if(d)deleteImgUrls(d.photos); markDeleted(t,id); t.docs=t.docs.filter(x=>x.id!==id); save(); renderMore(); }
 
-function editAreaAlert(id){ const t=trip(); if(!t.areaAlerts)t.areaAlerts=[]; const a=id?t.areaAlerts.find(x=>x.id===id):{};
+function editAreaAlert(id){ const t=trip(); if(!t.areaAlerts)t.areaAlerts=[]; const a=id?t.areaAlerts.find(x=>x.id===id):{kind:'alert'};
   _imgBuf=[...(a.photos||[])];
-  modal(`<h3>${id?'編輯':'新增'}區域提醒</h3>
-   <div class="f"><label>關鍵字（會比對行程點名稱）</label><input id="a-k" value="${esc(a.area||'')}" placeholder="奈良公園"></div>
-   <div class="f"><label>提醒內容</label><textarea id="a-x">${esc(a.text||'')}</textarea></div>
+  modal(`<h3>${id?'編輯':'新增'}提醒／備註</h3>
+   <div class="f"><label>類型</label><div class="seg" id="a-kind">
+     <button type="button" class="${(a.kind||'alert')==='alert'?'on':''}" data-v="alert" onclick="segPick(this)">⚠️ 注意事項</button>
+     <button type="button" class="${a.kind==='note'?'on':''}" data-v="note" onclick="segPick(this)">📌 備註</button>
+   </div></div>
+   <div class="f"><label>關鍵字（會比對行程點名稱，同一段內容不用每個景點重複打）</label><input id="a-k" value="${esc(a.area||'')}" placeholder="例：飯店 / 近鐵日本橋車站"></div>
+   <div class="f"><label>內容</label><textarea id="a-x">${esc(a.text||'')}</textarea></div>
    <div class="f"><label>照片（示意圖、地圖…可多張）</label>${imgPickerHTML(true)}</div>
    <div class="btn-row"><button class="btn btn-brand btn-block" onclick="saveAreaAlert('${id||''}')">儲存</button><button class="btn btn-block" onclick="closeModal()">取消</button></div>`);
   renderImgBuf(); }
-function saveAreaAlert(id){ const t=trip(); const o={id:id||uid(),area:val('a-k'),text:val('a-x'),photos:[..._imgBuf]};
+function saveAreaAlert(id){ const t=trip(); const o={id:id||uid(),kind:segVal('a-kind')||'alert',area:val('a-k'),text:val('a-x'),photos:[..._imgBuf]};
   if(!o.area||!o.text){toast('都要填','#dc2626');return;} if(id)t.areaAlerts=t.areaAlerts.map(x=>x.id===id?o:x);else t.areaAlerts.push(o); save();closeModal();renderMore();renderItin(); }
 function delAreaAlert(id){ if(!confirm('刪除？'))return; const t=trip(); const a=t.areaAlerts.find(x=>x.id===id); if(a)deleteImgUrls(a.photos); markDeleted(t,id); t.areaAlerts=t.areaAlerts.filter(x=>x.id!==id); save(); renderMore(); renderItin(); }
 
-function addPack(){ const t=trip(); const v=prompt('要帶什麼？'); if(!v)return; if(!t.packing)t.packing=[]; t.packing.push({id:uid(),text:v.trim(),done:false}); save(); renderMore(); }
+// 打包清單分「共用」跟「每個人自己的」——owner 空字串/沒有這個欄位＝共用
+// （舊資料沒有 owner 欄位，自然落在共用區，不用搬移既有資料）。
+function addPack(owner){ const t=trip(); const v=prompt(owner?`${owner} 要帶什麼？`:'共用清單要帶什麼？'); if(!v)return; if(!t.packing)t.packing=[]; t.packing.push({id:uid(),text:v.trim(),done:false,owner:owner||''}); save(); renderMore(); }
+function editPack(id){ const t=trip(); const p=t.packing.find(x=>x.id===id); if(!p) return; const v=prompt('修改品項', p.text); if(v===null) return; const trimmed=v.trim(); if(!trimmed) return; p.text=trimmed; save(); renderMore(); }
 function togglePack(id){ const t=trip(); const p=t.packing.find(x=>x.id===id); p.done=!p.done; save(); renderMore(); }
 function delPack(id){ const t=trip(); markDeleted(t,id); t.packing=t.packing.filter(x=>x.id!==id); save(); renderMore(); }
-function resetPack(){ const t=trip(); if((t.packing||[]).length&&!confirm('用預設清單覆蓋現有打包清單？'))return;
-  t.packing=DEFAULT_PACK.map(x=>({id:uid(),text:x,done:false})); save(); renderMore(); }
+// 只重置「共用」清單，不動任何人自己的打包項目——DEFAULT_PACK（護照/轉接頭…）
+// 本來就是共通旅行用品，不該連帶洗掉個人清單。
+function resetPack(){ const t=trip(); const shared=(t.packing||[]).filter(p=>!p.owner);
+  if(shared.length&&!confirm('用預設清單覆蓋「共用清單」？（不會動到各自的個人清單）'))return;
+  const others=(t.packing||[]).filter(p=>p.owner);
+  t.packing=[...DEFAULT_PACK.map(x=>({id:uid(),text:x,done:false,owner:''})), ...others];
+  save(); renderMore();
+}
+function packGroupHTML(t,owner,label){
+  const items=(t.packing||[]).filter(p=>(p.owner||'')===owner);
+  const rows=items.length?items.map(p=>`
+      <div class="li" style="padding:9px 13px"><div class="li-body" style="display:flex;align-items:center;gap:9px">
+        <div class="spot-check ${p.done?'on':''}" style="width:24px;height:24px;font-size:13px" onclick="togglePack('${p.id}')">${p.done?'✓':''}</div>
+        <span style="${p.done?'text-decoration:line-through;color:#94a3b8':''};flex:1">${esc(p.text)}</span>
+        <button class="btn btn-sm" onclick="editPack('${p.id}')">✎</button>
+        <button class="btn btn-sm btn-danger" onclick="delPack('${p.id}')">×</button>
+      </div></div>`).join(''):'<div class="empty" style="padding:14px">還沒有項目</div>';
+  const resetBtn=owner?'':'<button class="btn btn-sm btn-ghost" onclick="resetPack()">帶入預設清單</button>';
+  return `<div class="sec-title">${label}</div>
+    <div class="card">${rows}</div>
+    <div class="btn-row" style="margin:8px 0 4px"><button class="btn btn-sm btn-ghost" onclick="addPack('${esc(owner)}')">＋ 加一項</button>${resetBtn}</div>`;
+}
+function renderPackList(){
+  const t=trip(); const box=document.getElementById('packList'); if(!t||!box) return;
+  const mem=t.members||[];
+  let html=packGroupHTML(t,'','🧳 共用清單');
+  mem.forEach(m=>{ html+=packGroupHTML(t,m,`👤 ${esc(m)} 的清單`); });
+  box.innerHTML=html;
+}
 
 function editGuide(id){ const t=trip(); if(!t.guides)t.guides=[]; const g=id?t.guides.find(x=>x.id===id):{};
   _imgBuf=[...(g.photos||[])];
