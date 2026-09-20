@@ -328,7 +328,7 @@ h1,h2,h3,h4{margin:0}
         </div>
         <p class="help" style="margin-top:10px">換手機/瀏覽器看不到資料？點「🔗 同步與分享」拿這趟旅程的代碼或連結，在其他裝置輸入／打開就會加入即時同步——你自己的裝置、或同行朋友都用同一組，沒有誰上傳誰下載、不會互相覆蓋。<br>
         照片會自動上傳雲端相簿（Firebase Storage），不會佔滿本機/資料庫空間；若 Storage 還沒在 Firebase 後台啟用，照片會先退回存本機，之後啟用了新上傳的就會自動走雲端。<br>加到主畫面：iPhone Safari 分享鍵→「加入主畫面」；Android Chrome 選單→「安裝應用程式」。</p>
-        <p class="help" style="margin-top:14px;text-align:center;color:var(--ink3)">旅程手冊 v2.13</p>
+        <p class="help" style="margin-top:14px;text-align:center;color:var(--ink3)">旅程手冊 v2.14</p>
       </div>
     </div>
   </section>
@@ -348,7 +348,7 @@ h1,h2,h3,h4{margin:0}
 
 <script>
 /* ============================================================
-   旅程手冊 · trip-planner.html  v2.13
+   旅程手冊 · trip-planner.html  v2.14
    單檔 PWA。資料存 localStorage；每個旅程一律有 room，開 App 即
    自動雲端同步（Firebase Realtime DB）。跨裝置用「雲端同步碼」。
    圖片走 Firebase Storage（trips/<room>/<uid>.jpg），資料庫只存網址；
@@ -571,6 +571,28 @@ h1,h2,h3,h4{margin:0}
         開兩個 transaction、排隊的那次會自動在前一個跑完後補送、送出的是
         當下最新資料而不是排隊當下的舊資料、逾時警戒線在新架構下依然正常
         運作（共 7 項測試）+ 既有 63 項回歸測試全過，語法檢查通過。
+   v2.14：【重要修正】v2.13 部署後 Jennifer 改單一個景點分類（12/25「晚餐
+        備案 矢場とん 炸豬排」景點→餐食）還是卡在同步中，且明確表示「之前
+        用都好好的，昨天開始變這樣」。這次不是連續存檔互相干擾（只改一
+        個），拿她真實資料實際模擬這個編輯動作，抓到真正原因：這個景點是
+        早期用腳本直接寫進資料庫、沒走過 App 的 saveSpot() 存檔流程，缺少
+        `done` 這個欄位。編輯這個景點存檔時，`saveSpot()` 把 `prev.done`
+        （值是 undefined，因為原本就沒有這個 key）原封不動複製到新物件
+        上，變成 `obj.done=undefined`。Firebase 只要寫入的資料裡有任何一
+        個欄位明確是 undefined 就會整個拒絕，而且不會乾脆地報錯失敗，會
+        卡住——這正是「卡在同步中」的真正成因。「昨天開始」的意思應該是
+        她昨天才第一次去編輯到這幾個早期用腳本加的景點，不是程式碼行為
+        本身昨天才改變。掃了一次全部資料，抓到 3 個同樣缺 done 欄位的
+        景點（晚餐備案矢場とん、名花之里園區內晚餐、長久手古戰場站），
+        先幫這 3 筆直接補上 `done:false`（只補這一個欄位，其餘內容完全
+        沒動），事後查資料庫確認 0 筆還缺這個欄位。同時修正 `saveSpot()`
+        本身：`prev.done` 是 undefined 的話一律轉成 false 才存，不會再原
+        封不動帶過去，以後就算又有類似早期腳本產生的殘缺資料，編輯存檔
+        也不會再卡住。已用單元測試驗證：缺 done 欄位的舊資料編輯後變成
+        false（不是 undefined）、已有 done 值的正常景點不會被重置、合併
+        結果裡確認不再含有任何 undefined 值（共 5 項測試）+ 既有 63 項
+        回歸測試全過，語法檢查通過；資料修復部分事後重新查詢雲端確認
+        3 筆都補上、目標景點分類/done狀態都正確。
    ============================================================ */
 
 /* ---------- FIREBASE（換成你新開的專案）---------- */
@@ -1258,7 +1280,11 @@ function saveSpot(id,oldDate){
   // 保留原本的完成狀態與交通資訊
   if(id){
     const prev=t.days.flatMap(x=>x.spots).find(x=>x.id===id);
-    if(prev){ obj.done=prev.done; obj.transitAfter=prev.transitAfter||null; }
+    // prev.done 若是 undefined（少數早期用腳本直接寫進資料庫、沒走過這個
+    // function 的舊景點會缺這個欄位）一定要轉成 false，不能直接原樣帶過去
+    // ——Firebase 寫入資料裡只要有任何一個欄位是 undefined 就會整個被拒絕，
+    // 存檔會卡在「同步中」出不去，而且這個錯誤不會乾脆地失敗，難以察覺。
+    if(prev){ obj.done=prev.done===undefined?false:prev.done; obj.transitAfter=prev.transitAfter||null; }
     const od=t.days.find(x=>x.date===oldDate); if(od) od.spots=od.spots.filter(x=>x.id!==id);
   }
   let d=t.days.find(x=>x.date===nd); if(!d){ d={id:uid(),date:nd,spots:[]}; t.days.push(d); }
