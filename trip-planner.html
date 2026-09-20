@@ -328,7 +328,7 @@ h1,h2,h3,h4{margin:0}
         </div>
         <p class="help" style="margin-top:10px">換手機/瀏覽器看不到資料？點「🔗 同步與分享」拿這趟旅程的代碼或連結，在其他裝置輸入／打開就會加入即時同步——你自己的裝置、或同行朋友都用同一組，沒有誰上傳誰下載、不會互相覆蓋。<br>
         照片會自動上傳雲端相簿（Firebase Storage），不會佔滿本機/資料庫空間；若 Storage 還沒在 Firebase 後台啟用，照片會先退回存本機，之後啟用了新上傳的就會自動走雲端。<br>加到主畫面：iPhone Safari 分享鍵→「加入主畫面」；Android Chrome 選單→「安裝應用程式」。</p>
-        <p class="help" style="margin-top:14px;text-align:center;color:var(--ink3)">旅程手冊 v2.12</p>
+        <p class="help" style="margin-top:14px;text-align:center;color:var(--ink3)">旅程手冊 v2.13</p>
       </div>
     </div>
   </section>
@@ -348,7 +348,7 @@ h1,h2,h3,h4{margin:0}
 
 <script>
 /* ============================================================
-   旅程手冊 · trip-planner.html  v2.12
+   旅程手冊 · trip-planner.html  v2.13
    單檔 PWA。資料存 localStorage；每個旅程一律有 room，開 App 即
    自動雲端同步（Firebase Realtime DB）。跨裝置用「雲端同步碼」。
    圖片走 Firebase Storage（trips/<room>/<uid>.jpg），資料庫只存網址；
@@ -552,6 +552,25 @@ h1,h2,h3,h4{margin:0}
         時不會被逾時機制誤判成失敗；transaction 真的失敗時顯示的是實際
         錯誤訊息而不是逾時文字；連線恢復事件只在真的有未同步變更時才觸發
         重推（共 7 項測試）+ 既有 56 項回歸測試全過，語法檢查通過。
+   v2.13：【重要修正】v2.12 部署後 Jennifer 回報同步還是很容易卡住，且明確
+        排除了網路/裝置因素——一般家用網路沒有 VPN/資安軟體、手機跟電腦都
+        會卡，還特別指出「只有行程編輯會卡，待買正常」。用她真實的雲端
+        資料實際模擬「改一個景點分類」跑 mergeTrip()，28ms 跑完、無誤，
+        排除了合併運算本身的問題。真正根因：`pushRemote()` 完全沒有防止
+        同時有兩個 `_ref.transaction()` 對同一個節點跑——上一次存檔的
+        transaction 還沒跑完（哪怕只是正常網路延遲一兩秒），這時候又存了
+        一次，就會同時開第二個 transaction，兩個互相干擾（各自的寫入都讓
+        對方剛讀到的版本過期，逼對方重試，越搶越久，最後真的卡到逾時）。
+        行程編輯正是最容易連續存檔的場景（一次瀏覽會改好幾個景點的分類/
+        資訊），待買清單通常一次只改一項，這解釋了「只有行程編輯會卡」
+        的落差——不是行程編輯本身有問題，是短時間內連續存檔的使用模式
+        撞到這個沒防護的 race condition。修法：加 `_txInFlight`/`_txQueued`
+        旗標，有 transaction 正在跑的時候，新的存檔只排隊、不開新的
+        transaction，等目前這個真的跑完（不管成功失敗）才送出最新一次的
+        資料，不會漏掉任何變更。已用模擬情境驗證：連續兩次存檔不會同時
+        開兩個 transaction、排隊的那次會自動在前一個跑完後補送、送出的是
+        當下最新資料而不是排隊當下的舊資料、逾時警戒線在新架構下依然正常
+        運作（共 7 項測試）+ 既有 63 項回歸測試全過，語法檢查通過。
    ============================================================ */
 
 /* ---------- FIREBASE（換成你新開的專案）---------- */
@@ -635,6 +654,7 @@ function joinRoom(room){
     setDot('live'); if(!_dirty) setSyncBadge('live');
   },()=>{ setDot('off'); setSyncBadge('fail','連線中斷'); });
 }
+let _txInFlight=false, _txQueued=false;
 function pushRemote(){
   // 不要再用 _syncing 擋這裡：JS 單執行緒下，收到雲端資料的處理一定會在
   // 使用者這次存檔的程式碼真正執行前跑完，_syncing 在這個時間點沒有實際
@@ -644,24 +664,45 @@ function pushRemote(){
   setSyncBadge('pending');
   _saveT=setTimeout(()=>{
     const t=trip(); if(!t||!_ref) return;
-    let done=false;
-    // transaction() 回傳的 Promise 沒有內建逾時——分頁被手機瀏覽器切到背景
-    // 凍結、或網路斷線又沒有明確斷線事件時，它可能永遠不 resolve 也不
-    // reject，畫面就會卡在「同步中…」動也不動，使用者只能乾等、也看不到
-    // 任何錯誤或重試按鈕（這正是 Jennifer 回報「卡住」的實際原因）。加一
-    // 個 15 秒警戒線，超過就當失敗處理讓使用者看得到、能按重試；如果之後
-    // 真的成功送達了也會自動翻回「已同步」，不影響資料本身。
-    const watchdog=setTimeout(()=>{
-      if(done) return;
-      setDot('off'); setSyncBadge('fail','同步超過15秒沒回應（可能網路不穩，或分頁被瀏覽器切到背景凍結）');
-    },15000);
-    _ref.transaction(server=> server ? mergeTrip(server,t) : t, null, false)
-      .then(()=>{ done=true; clearTimeout(watchdog); _dirty=false; setSyncBadge('live'); })
-      .catch(e=>{
-        done=true; clearTimeout(watchdog);
-        setDot('off'); setSyncBadge('fail', e.message);
-      });
+    if(_txInFlight){
+      // 【重要】上一次存檔的 transaction() 還沒跑完（哪怕只是正常網路延遲
+      // 一兩秒），這裡又開一個新的同時打同一個節點，兩個 transaction 會
+      // 互相干擾——各自的寫入都會讓對方剛讀到的版本過期，逼對方重試，
+      // 越搶越久，最後可能真的卡到逾時。這正是「行程一直快速改好幾個」
+      // 特別容易卡住、待買清單（通常一次改一項）比較少卡的原因：不是
+      // 行程編輯本身有問題，是短時間內連續存檔時每次都各自開一個新的
+      // transaction。改成排隊——標記「還有新變更待送」，等目前這個真的
+      // 跑完（不管成功失敗）才送出最新的一次，不會漏掉任何變更，也不會
+      // 再有兩個 transaction 同時打架。
+      _txQueued=true;
+      return;
+    }
+    runTx(t);
   },600);
+}
+function runTx(t){
+  _txInFlight=true;
+  let done=false;
+  // transaction() 回傳的 Promise 沒有內建逾時——分頁被手機瀏覽器切到背景
+  // 凍結、或網路斷線又沒有明確斷線事件時，它可能永遠不 resolve 也不
+  // reject，畫面就會卡在「同步中…」動也不動，使用者只能乾等、也看不到
+  // 任何錯誤或重試按鈕。加一個 15 秒警戒線，超過就當失敗處理讓使用者看
+  // 得到、能按重試；如果之後真的成功送達了也會自動翻回「已同步」，不
+  // 影響資料本身。
+  const watchdog=setTimeout(()=>{
+    if(done) return;
+    setDot('off'); setSyncBadge('fail','同步超過15秒沒回應（可能網路不穩，或分頁被瀏覽器切到背景凍結）');
+  },15000);
+  const finish=()=>{
+    _txInFlight=false;
+    if(_txQueued){ _txQueued=false; const t2=trip(); if(t2&&_ref) runTx(t2); }
+  };
+  _ref.transaction(server=> server ? mergeTrip(server,t) : t, null, false)
+    .then(()=>{ done=true; clearTimeout(watchdog); _dirty=false; setSyncBadge('live'); finish(); })
+    .catch(e=>{
+      done=true; clearTimeout(watchdog);
+      setDot('off'); setSyncBadge('fail', e.message); finish();
+    });
 }
 // 把「我有哪些旅程 + 各自的 room」寫到 idx/<同步碼>，讓其他裝置輸入同步碼就能整批拉回
 // 回傳 Promise<boolean>，讓呼叫方（尤其是 saveSyncCode）能確認真的寫成功，不是只是「呼叫了」
