@@ -285,6 +285,13 @@ h1,h2,h3,h4{margin:0}
   <!-- COUPONS -->
   <section class="page" id="pg-coupon">
     <div class="chip-row" id="couponFilter"></div>
+    <div class="chip-row" id="couponStatusFilter"></div>
+    <div class="shop-toolbar">
+      <div class="seg" id="couponSortSeg">
+        <button type="button" onclick="setCouponSort('book')">🎫 依購票日期</button>
+        <button type="button" onclick="setCouponSort('trip')">📅 依行程日期</button>
+      </div>
+    </div>
     <div class="card" id="couponList"></div>
   </section>
 
@@ -328,7 +335,7 @@ h1,h2,h3,h4{margin:0}
         </div>
         <p class="help" style="margin-top:10px">換手機/瀏覽器看不到資料？點「🔗 同步與分享」拿這趟旅程的代碼或連結，在其他裝置輸入／打開就會加入即時同步——你自己的裝置、或同行朋友都用同一組，沒有誰上傳誰下載、不會互相覆蓋。<br>
         照片會自動上傳雲端相簿（Firebase Storage），不會佔滿本機/資料庫空間；若 Storage 還沒在 Firebase 後台啟用，照片會先退回存本機，之後啟用了新上傳的就會自動走雲端。<br>加到主畫面：iPhone Safari 分享鍵→「加入主畫面」；Android Chrome 選單→「安裝應用程式」。</p>
-        <p class="help" style="margin-top:14px;text-align:center;color:var(--ink3)">旅程手冊 v2.16</p>
+        <p class="help" style="margin-top:14px;text-align:center;color:var(--ink3)">旅程手冊 v2.17</p>
       </div>
     </div>
   </section>
@@ -348,7 +355,7 @@ h1,h2,h3,h4{margin:0}
 
 <script>
 /* ============================================================
-   旅程手冊 · trip-planner.html  v2.16
+   旅程手冊 · trip-planner.html  v2.17
    單檔 PWA。資料存 localStorage；每個旅程一律有 room，開 App 即
    自動雲端同步（Firebase Realtime DB）。跨裝置用「雲端同步碼」。
    圖片走 Firebase Storage（trips/<room>/<uid>.jpg），資料庫只存網址；
@@ -614,6 +621,21 @@ h1,h2,h3,h4{margin:0}
         「10月中注意」（沒有斜線），排不出日期被丟到清單最後面，反而看
         起來最不急，跟實際情況相反。加一個「X月」的退而求其次解析（沒寫
         日期就當該月初，寧可提醒早一點也不要漏掉），改完排序正確。
+   v2.17：Jennifer 對訂票追蹤功能提四點優化。①「購票開始」跟「使用日期/
+        場次」原本混在小字的 li-sub 裡不顯眼，改成獨立一行、字體放大加粗
+        （購票開始用🎫圖示，使用日期用📅圖示＋brand色，一眼就分得出「何時
+        要訂」跟「訂哪一天用」）；②加「依購票日期／依行程日期」排序切換
+        （`_couponSortMode`）——這是兩套獨立邏輯不是疊加：依購票日期＝現在
+        該準備訂什麼（未預約/失敗優先＋依購票時間排，跟原本一樣）；依行程
+        日期＝單純照 `useDate` 的時間軸排，方便對照行程本身的時間順序；
+        ③加「不分狀態／未訂／已訂／免預約」篩選 chip（`_couponStatusFilter`，
+        「未訂」同時比對 未預約+預約失敗 兩種狀態）；④四種票券類型（票券/
+        優惠券/兌換券/訂位）加對應色系（`KIND_COLOR`：藍/黃/紫/綠），卡片
+        左側色條＋類型標籤底色，一眼辨識不用讀文字。已用單元測試驗證：
+        兩種排序模式行為正確、「未訂」篩選正確涵蓋兩種未完成狀態（共 6
+        項測試，1 項因為 `bookDateKey()` 本來就只做到「天」的粒度、不解析
+        時分，測試預期寫錯已修正）＋重跑 mergeTrip() 關鍵資料安全回歸測試
+        全過，語法檢查通過。
    ============================================================ */
 
 /* ---------- FIREBASE（換成你新開的專案）---------- */
@@ -1753,50 +1775,73 @@ function bookDateKey(s){
   const mo=s.match(/(\d{1,2})月/); if(mo) return +mo[1]*100; // 只有「X月」沒有日期（例如「10月中注意」）排在該月最前面，避免比同月有寫日期的項目晚
   return 9999;
 }
-// 排序：還沒訂/訂失敗的最優先（要有動作），依購票開始時間排；已預約、免預約
-// 其次；完全沒有訂票狀態的一般優惠券排最後。
+// 兩種排序邏輯是各自獨立的維度，不是疊在一起：
+// 「依購票日期」＝現在該準備訂什麼（還沒訂/訂失敗優先，依購票開始時間排）；
+// 「依行程日期」＝單純照旅程時間軸排，用哪天用到就排哪裡，方便對照行程。
+let _couponSortMode='book'; // 'book'｜'trip'
+function setCouponSort(m){ _couponSortMode=m; renderCoupons(); }
 function couponSortKey(c){
+  if(_couponSortMode==='trip') return [0, bookDateKey(c.useDate)];
   const pr={'預約失敗':0,'未預約':1,'已預約':2,'免預約':3};
   const p=c.bookStatus&&pr[c.bookStatus]!==undefined?pr[c.bookStatus]:4;
   return [p, bookDateKey(c.bookOpenAt)];
 }
+// 分類配色，卡片左側色條＋類型標籤底色，一眼分辨票券/優惠券/兌換券/訂位，
+// 不用每張都讀文字。顏色只是視覺提示，不影響任何篩選/排序邏輯。
+const KIND_COLOR={
+  '票券':{bd:'#93c5fd',bg:'#eff6ff',ink:'#1d4ed8'},
+  '優惠券':{bd:'#fde68a',bg:'#fffbeb',ink:'#b45309'},
+  '兌換券':{bd:'#ddd6fe',bg:'#f5f3ff',ink:'#6d28d9'},
+  '訂位':{bd:'#99f2e0',bg:'var(--brand-soft)',ink:'var(--brand-ink)'}
+};
 // 票券只留一張圖（跟待買清單一致），couponImg() 相容舊的多圖資料（沒有 image
 // 就退回用 images[0]），舊資料不會憑空消失，只是之後編輯存檔就會自然收斂成單圖。
 function couponImg(c){ return c.image || (c.images&&c.images[0]) || ''; }
 let _couponFilter='ALL';
 function pickCouponFilter(k){ _couponFilter=k; renderCoupons(); }
+let _couponStatusFilter='ALL'; // 'ALL'｜'未訂'｜'已訂'｜'免預約'
+function pickCouponStatus(v){ _couponStatusFilter=v; renderCoupons(); }
 function renderCoupons(){
   const t=trip(); const box=document.getElementById('couponList'); const fbar=document.getElementById('couponFilter');
+  const sbar=document.getElementById('couponStatusFilter');
   if(!t) return;
   const cs=t.coupons||[];
   if(fbar){
     const kinds=['ALL',...TICKET_KINDS,'✓已用'];
     fbar.innerHTML=kinds.map(k=>`<div class="chip ${_couponFilter===k?'on':''}" onclick="pickCouponFilter('${k}')">${k==='ALL'?'全部':k}</div>`).join('');
   }
+  if(sbar){
+    const opts=['ALL','未訂','已訂','免預約'];
+    sbar.innerHTML=opts.map(v=>`<div class="chip ${_couponStatusFilter===v?'on':''}" onclick="pickCouponStatus('${v}')">${v==='ALL'?'不分狀態':v}</div>`).join('');
+  }
+  document.querySelectorAll('#couponSortSeg button').forEach((b,i)=>b.classList.toggle('on',(i===0&&_couponSortMode==='book')||(i===1&&_couponSortMode==='trip')));
   let show=cs;
-  if(_couponFilter==='✓已用') show=cs.filter(c=>c.used);
-  else if(_couponFilter!=='ALL') show=cs.filter(c=>(c.kind||'票券')===_couponFilter);
-  // 依購票急迫度排序，不是單純建立順序——還沒訂/訂失敗的排最前面、依購票開始
-  // 時間排，一眼就看到現在該準備訂什麼，不用整份從頭找。
+  if(_couponFilter==='✓已用') show=show.filter(c=>c.used);
+  else if(_couponFilter!=='ALL') show=show.filter(c=>(c.kind||'票券')===_couponFilter);
+  if(_couponStatusFilter==='未訂') show=show.filter(c=>c.bookStatus==='未預約'||c.bookStatus==='預約失敗');
+  else if(_couponStatusFilter==='已訂') show=show.filter(c=>c.bookStatus==='已預約');
+  else if(_couponStatusFilter==='免預約') show=show.filter(c=>c.bookStatus==='免預約');
   show=[...show].sort((a,b)=>{ const ka=couponSortKey(a), kb=couponSortKey(b); return ka[0]-kb[0]||ka[1]-kb[1]; });
   box.innerHTML=(show.length?show.map(c=>{
     const exp=c.expiry&&c.expiry<todayStr();
     const img=couponImg(c);
     const needsAction=c.bookStatus==='未預約'||c.bookStatus==='預約失敗';
+    const kc=KIND_COLOR[c.kind]||{bd:'var(--line)',bg:'#fff',ink:'var(--ink2)'};
     // 放大出示只留一種點法：直接點縮圖開「出示」畫面（大圖＋代碼），不再另外放一顆
     // 「放大出示」按鈕重複同一件事。
-    return `<div class="li">
+    return `<div class="li" style="border-left:4px solid ${kc.bd}">
       <div class="li-thumb" ${img?`onclick="showTicket('${c.id}')" style="cursor:pointer"`:''}>${img?`<img src="${img}" style="width:100%;height:100%;object-fit:cover;border-radius:10px">`:(c.kind==='優惠券'?'🎫':'🎟')}</div>
       <div class="li-body">
         <div class="li-title" style="${c.used||exp?'color:#94a3b8;text-decoration:line-through':''}">
-          <span class="pill ${c.kind==='票券'?'ok':''}">${esc(c.kind||'票券')}</span>${esc(c.title)}</div>
-        <div class="li-sub" style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:3px">
-          ${c.bookStatus?`<span class="pill ${needsAction?'warn':(c.bookStatus==='已預約'?'ok':'')}">${esc(c.bookStatus)}</span>`:''}
-          ${c.bookOpenAt?`<span>🗓 購票開始：${esc(c.bookOpenAt)}</span>`:''}
+          <span class="pill" style="background:${kc.bg};color:${kc.ink};border-color:${kc.bd}">${esc(c.kind||'票券')}</span>${esc(c.title)}</div>
+        ${c.bookOpenAt?`<div style="margin-top:5px;font-size:14px;font-weight:700;color:var(--ink)">🎫 購票開始：${esc(c.bookOpenAt)}${c.bookStatus?` <span class="pill ${needsAction?'warn':(c.bookStatus==='已預約'?'ok':'')}" style="font-size:11.5px">${esc(c.bookStatus)}</span>`:''}</div>`
+          :(c.bookStatus?`<div style="margin-top:5px"><span class="pill ${needsAction?'warn':(c.bookStatus==='已預約'?'ok':'')}">${esc(c.bookStatus)}</span></div>`:'')}
+        ${c.useDate?`<div style="margin-top:4px;font-size:14px;font-weight:700;color:var(--brand-ink)">📅 訂哪一天：${esc(c.useDate)}</div>`:''}
+        <div class="li-sub" style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:4px">
           ${c.code?`<span class="pill">${esc(c.code)}</span>`:''}
           ${c.expiry?`<span class="pill ${exp?'warn':''}">${exp?'已過期 ':'期限 '}${esc(c.expiry)}</span>`:''}
         </div>
-        ${(c.spot||c.useDate)?`<div class="li-sub" style="margin-top:3px">${c.spot?`📍 ${esc(c.spot)}`:''}${c.spot&&c.useDate?'　':''}${c.useDate?`🗓 ${esc(c.useDate)}`:''}</div>`:''}
+        ${c.spot?`<div class="li-sub" style="margin-top:3px">📍 ${esc(c.spot)}</div>`:''}
         ${c.note?`<div class="li-sub" style="margin-top:3px;color:var(--ink3)">${esc(c.note)}</div>`:''}
         ${c.url?`<div class="spot-links" style="margin-top:6px"><a href="${esc(normUrl(c.url))}" target="_blank" rel="noopener">🔗 開啟連結</a></div>`:''}
         <div class="btn-row" style="margin-top:7px">
