@@ -335,7 +335,7 @@ h1,h2,h3,h4{margin:0}
         </div>
         <p class="help" style="margin-top:10px">換手機/瀏覽器看不到資料？點「🔗 同步與分享」拿這趟旅程的代碼或連結，在其他裝置輸入／打開就會加入即時同步——你自己的裝置、或同行朋友都用同一組，沒有誰上傳誰下載、不會互相覆蓋。<br>
         照片會自動上傳雲端相簿（Firebase Storage），不會佔滿本機/資料庫空間；若 Storage 還沒在 Firebase 後台啟用，照片會先退回存本機，之後啟用了新上傳的就會自動走雲端。<br>加到主畫面：iPhone Safari 分享鍵→「加入主畫面」；Android Chrome 選單→「安裝應用程式」。</p>
-        <p class="help" style="margin-top:14px;text-align:center;color:var(--ink3)">旅程手冊 v2.17</p>
+        <p class="help" style="margin-top:14px;text-align:center;color:var(--ink3)">旅程手冊 v2.18</p>
       </div>
     </div>
   </section>
@@ -355,7 +355,7 @@ h1,h2,h3,h4{margin:0}
 
 <script>
 /* ============================================================
-   旅程手冊 · trip-planner.html  v2.17
+   旅程手冊 · trip-planner.html  v2.18
    單檔 PWA。資料存 localStorage；每個旅程一律有 room，開 App 即
    自動雲端同步（Firebase Realtime DB）。跨裝置用「雲端同步碼」。
    圖片走 Firebase Storage（trips/<room>/<uid>.jpg），資料庫只存網址；
@@ -636,6 +636,21 @@ h1,h2,h3,h4{margin:0}
         項測試，1 項因為 `bookDateKey()` 本來就只做到「天」的粒度、不解析
         時分，測試預期寫錯已修正）＋重跑 mergeTrip() 關鍵資料安全回歸測試
         全過，語法檢查通過。
+   v2.18：Jennifer 採用我主動提的兩個優化建議。①「即將開賣」/「已過購票
+        日」提醒（`daysUntilBookOpen()`）——只用嚴格 M/D 格式算天數，不用
+        `bookDateKey()` 給排序用的「X月」退而求其次規則，避免把「12月看
+        營業日」這種模糊文字當成精確日期顯示誤導性的倒數；購票日已過還沒
+        訂的用最重的紅色警示「🔴 已過購票日 N 天」，14天內顯示「⏰ N天後
+        開賣」，只在 bookStatus 是未預約/預約失敗時才顯示（已訂/免預約
+        不需要提醒）。②票券卡片的「地點」改成可點擊按鈕，點了會依名稱去
+        行程裡找對應的景點、切到那天並捲動＋短暫高亮（`jumpToCouponSpot()`，
+        跟攻略筆記已有的雙向跳轉同一套 `flashEl()` 機制），找不到就 toast
+        提示「名稱不完全一致」而不是靜默失敗。地點文字比對只傳 coupon id
+        進函式內部查，不把自由文字直接嵌進 onclick 字串（沿用待買清單踩過
+        的教訓：地點文字若含引號會弄壞 onclick）。已用單元測試驗證：天數
+        計算（已過期/當天/未來/無法解析共6項）、地點跳轉（找到景點正確
+        觸發跳轉、找不到只顯示提示不誤跳，共2項）＋重跑 mergeTrip() 關鍵
+        資料安全回歸測試全過，語法檢查通過。
    ============================================================ */
 
 /* ---------- FIREBASE（換成你新開的專案）---------- */
@@ -1775,6 +1790,16 @@ function bookDateKey(s){
   const mo=s.match(/(\d{1,2})月/); if(mo) return +mo[1]*100; // 只有「X月」沒有日期（例如「10月中注意」）排在該月最前面，避免比同月有寫日期的項目晚
   return 9999;
 }
+// 「即將開賣」/「已過購票日」提醒——只認嚴格的 M/D 格式（不用上面
+// bookDateKey 那個「X月」退而求其次的規則），像「12月看營業日」這種模糊
+// 文字不該被當成精確日期算緊急度，會誤導。年份固定當今年（購票日一定在
+// 出發前，不會跨到隔年），算不出來就回傳 null，不顯示提醒。
+function daysUntilBookOpen(s){
+  const m=(s||'').match(/(\d{1,2})\/(\d{1,2})/); if(!m) return null;
+  const target=new Date(new Date().getFullYear(), +m[1]-1, +m[2]);
+  const today=new Date(todayStr()+'T00:00:00');
+  return Math.round((target-today)/86400000);
+}
 // 兩種排序邏輯是各自獨立的維度，不是疊在一起：
 // 「依購票日期」＝現在該準備訂什麼（還沒訂/訂失敗優先，依購票開始時間排）；
 // 「依行程日期」＝單純照旅程時間軸排，用哪天用到就排哪裡，方便對照行程。
@@ -1797,6 +1822,18 @@ const KIND_COLOR={
 // 票券只留一張圖（跟待買清單一致），couponImg() 相容舊的多圖資料（沒有 image
 // 就退回用 images[0]），舊資料不會憑空消失，只是之後編輯存檔就會自然收斂成單圖。
 function couponImg(c){ return c.image || (c.images&&c.images[0]) || ''; }
+// 票券的「綁定地點」是自由文字，不是存行程點 id，所以用名稱比對去找——只傳
+// coupon id 進來、在函式裡面查，不要把地點文字直接嵌進 onclick 字串（地點
+// 文字裡如果有引號會弄壞 onclick，之前待買清單的人名/地點篩選就踩過這個坑）。
+function jumpToCouponSpot(couponId){
+  const t=trip(); if(!t) return;
+  const c=(t.coupons||[]).find(x=>x.id===couponId); if(!c||!c.spot) return;
+  for(const day of t.days||[]){
+    const s=(day.spots||[]).find(x=>x.name&&(x.name.includes(c.spot)||c.spot.includes(x.name)));
+    if(s){ nav('trip'); pickDay(day.date); setTimeout(()=>flashEl('sp-'+s.id),80); return; }
+  }
+  toast('找不到對應的行程點，可能名稱不完全一致','#b45309');
+}
 let _couponFilter='ALL';
 function pickCouponFilter(k){ _couponFilter=k; renderCoupons(); }
 let _couponStatusFilter='ALL'; // 'ALL'｜'未訂'｜'已訂'｜'免預約'
@@ -1827,6 +1864,14 @@ function renderCoupons(){
     const img=couponImg(c);
     const needsAction=c.bookStatus==='未預約'||c.bookStatus==='預約失敗';
     const kc=KIND_COLOR[c.kind]||{bd:'var(--line)',bg:'#fff',ink:'var(--ink2)'};
+    const dLeft=needsAction?daysUntilBookOpen(c.bookOpenAt):null;
+    // dLeft<0：購票日已經過了人還沒訂，比「快到了」更急，用最重的警示；
+    // 0~14 天內：快到了，提醒準備；超過 14 天或算不出來：不特別標。
+    const urgencyBadge = dLeft===null?'' : dLeft<0
+      ? `<span class="pill warn" style="margin-left:4px">🔴 已過購票日 ${-dLeft} 天</span>`
+      : dLeft<=14
+      ? `<span class="pill warn" style="margin-left:4px">⏰ ${dLeft===0?'今天開賣':dLeft+'天後開賣'}</span>`
+      : '';
     // 放大出示只留一種點法：直接點縮圖開「出示」畫面（大圖＋代碼），不再另外放一顆
     // 「放大出示」按鈕重複同一件事。
     return `<div class="li" style="border-left:4px solid ${kc.bd}">
@@ -1834,14 +1879,14 @@ function renderCoupons(){
       <div class="li-body">
         <div class="li-title" style="${c.used||exp?'color:#94a3b8;text-decoration:line-through':''}">
           <span class="pill" style="background:${kc.bg};color:${kc.ink};border-color:${kc.bd}">${esc(c.kind||'票券')}</span>${esc(c.title)}</div>
-        ${c.bookOpenAt?`<div style="margin-top:5px;font-size:14px;font-weight:700;color:var(--ink)">🎫 購票開始：${esc(c.bookOpenAt)}${c.bookStatus?` <span class="pill ${needsAction?'warn':(c.bookStatus==='已預約'?'ok':'')}" style="font-size:11.5px">${esc(c.bookStatus)}</span>`:''}</div>`
+        ${c.bookOpenAt?`<div style="margin-top:5px;font-size:14px;font-weight:700;color:var(--ink)">🎫 購票開始：${esc(c.bookOpenAt)}${c.bookStatus?` <span class="pill ${needsAction?'warn':(c.bookStatus==='已預約'?'ok':'')}" style="font-size:11.5px">${esc(c.bookStatus)}</span>`:''}${urgencyBadge}</div>`
           :(c.bookStatus?`<div style="margin-top:5px"><span class="pill ${needsAction?'warn':(c.bookStatus==='已預約'?'ok':'')}">${esc(c.bookStatus)}</span></div>`:'')}
         ${c.useDate?`<div style="margin-top:4px;font-size:14px;font-weight:700;color:var(--brand-ink)">📅 訂哪一天：${esc(c.useDate)}</div>`:''}
         <div class="li-sub" style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:4px">
           ${c.code?`<span class="pill">${esc(c.code)}</span>`:''}
           ${c.expiry?`<span class="pill ${exp?'warn':''}">${exp?'已過期 ':'期限 '}${esc(c.expiry)}</span>`:''}
         </div>
-        ${c.spot?`<div class="li-sub" style="margin-top:3px">📍 ${esc(c.spot)}</div>`:''}
+        ${c.spot?`<div class="li-sub" style="margin-top:3px"><button class="btn btn-sm btn-ghost" style="padding:2px 8px" onclick="jumpToCouponSpot('${c.id}')">📍 ${esc(c.spot)}</button></div>`:''}
         ${c.note?`<div class="li-sub" style="margin-top:3px;color:var(--ink3)">${esc(c.note)}</div>`:''}
         ${c.url?`<div class="spot-links" style="margin-top:6px"><a href="${esc(normUrl(c.url))}" target="_blank" rel="noopener">🔗 開啟連結</a></div>`:''}
         <div class="btn-row" style="margin-top:7px">
