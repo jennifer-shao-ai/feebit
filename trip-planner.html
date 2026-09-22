@@ -328,7 +328,7 @@ h1,h2,h3,h4{margin:0}
         </div>
         <p class="help" style="margin-top:10px">換手機/瀏覽器看不到資料？點「🔗 同步與分享」拿這趟旅程的代碼或連結，在其他裝置輸入／打開就會加入即時同步——你自己的裝置、或同行朋友都用同一組，沒有誰上傳誰下載、不會互相覆蓋。<br>
         照片會自動上傳雲端相簿（Firebase Storage），不會佔滿本機/資料庫空間；若 Storage 還沒在 Firebase 後台啟用，照片會先退回存本機，之後啟用了新上傳的就會自動走雲端。<br>加到主畫面：iPhone Safari 分享鍵→「加入主畫面」；Android Chrome 選單→「安裝應用程式」。</p>
-        <p class="help" style="margin-top:14px;text-align:center;color:var(--ink3)">旅程手冊 v2.15</p>
+        <p class="help" style="margin-top:14px;text-align:center;color:var(--ink3)">旅程手冊 v2.16</p>
       </div>
     </div>
   </section>
@@ -348,7 +348,7 @@ h1,h2,h3,h4{margin:0}
 
 <script>
 /* ============================================================
-   旅程手冊 · trip-planner.html  v2.15
+   旅程手冊 · trip-planner.html  v2.16
    單檔 PWA。資料存 localStorage；每個旅程一律有 room，開 App 即
    自動雲端同步（Firebase Realtime DB）。跨裝置用「雲端同步碼」。
    圖片走 Firebase Storage（trips/<room>/<uid>.jpg），資料庫只存網址；
@@ -609,6 +609,11 @@ h1,h2,h3,h4{margin:0}
         後、免預約再後、無狀態的一般優惠券排最後，共 5 項測試）＋重跑
         mergeTrip() 關鍵資料安全回歸測試（改日期不重複/刪除不誤殺不相關
         資料，5 項）全過，語法檢查通過。
+   v2.16：v2.15 部署後匯入 Jennifer 的訂票時程表資料，發現 `bookDateKey()`
+        只認得「M/D」格式，最急迫的一筆「環球影城跨年門票」購票開始寫的是
+        「10月中注意」（沒有斜線），排不出日期被丟到清單最後面，反而看
+        起來最不急，跟實際情況相反。加一個「X月」的退而求其次解析（沒寫
+        日期就當該月初，寧可提醒早一點也不要漏掉），改完排序正確。
    ============================================================ */
 
 /* ---------- FIREBASE（換成你新開的專案）---------- */
@@ -1742,7 +1747,12 @@ const BOOK_STATUS=['免預約','未預約','已預約','預約失敗'];
 // 從「購票開始」欄位（自由輸入文字，例如「10/10下午13:00」「12月看營業日」）
 // 抓開頭的 M/D 當排序依據，抓不到就排到最後——只是用來讓「快到的優先顯示」，
 // 不強求精準日期解析。
-function bookDateKey(s){ const m=(s||'').match(/(\d{1,2})\/(\d{1,2})/); return m?(+m[1]*100+ +m[2]):9999; }
+function bookDateKey(s){
+  s=s||'';
+  const md=s.match(/(\d{1,2})\/(\d{1,2})/); if(md) return +md[1]*100+ +md[2];
+  const mo=s.match(/(\d{1,2})月/); if(mo) return +mo[1]*100; // 只有「X月」沒有日期（例如「10月中注意」）排在該月最前面，避免比同月有寫日期的項目晚
+  return 9999;
+}
 // 排序：還沒訂/訂失敗的最優先（要有動作），依購票開始時間排；已預約、免預約
 // 其次；完全沒有訂票狀態的一般優惠券排最後。
 function couponSortKey(c){
