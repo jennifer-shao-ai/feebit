@@ -335,7 +335,7 @@ h1,h2,h3,h4{margin:0}
         </div>
         <p class="help" style="margin-top:10px">換手機/瀏覽器看不到資料？點「🔗 同步與分享」拿這趟旅程的代碼或連結，在其他裝置輸入／打開就會加入即時同步——你自己的裝置、或同行朋友都用同一組，沒有誰上傳誰下載、不會互相覆蓋。<br>
         照片會自動上傳雲端相簿（Firebase Storage），不會佔滿本機/資料庫空間；若 Storage 還沒在 Firebase 後台啟用，照片會先退回存本機，之後啟用了新上傳的就會自動走雲端。<br>加到主畫面：iPhone Safari 分享鍵→「加入主畫面」；Android Chrome 選單→「安裝應用程式」。</p>
-        <p class="help" style="margin-top:14px;text-align:center;color:var(--ink3)">旅程手冊 v2.18</p>
+        <p class="help" style="margin-top:14px;text-align:center;color:var(--ink3)">旅程手冊 v2.19</p>
       </div>
     </div>
   </section>
@@ -355,7 +355,7 @@ h1,h2,h3,h4{margin:0}
 
 <script>
 /* ============================================================
-   旅程手冊 · trip-planner.html  v2.18
+   旅程手冊 · trip-planner.html  v2.19
    單檔 PWA。資料存 localStorage；每個旅程一律有 room，開 App 即
    自動雲端同步（Firebase Realtime DB）。跨裝置用「雲端同步碼」。
    圖片走 Firebase Storage（trips/<room>/<uid>.jpg），資料庫只存網址；
@@ -651,6 +651,21 @@ h1,h2,h3,h4{margin:0}
         計算（已過期/當天/未來/無法解析共6項）、地點跳轉（找到景點正確
         觸發跳轉、找不到只顯示提示不誤跳，共2項）＋重跑 mergeTrip() 關鍵
         資料安全回歸測試全過，語法檢查通過。
+   v2.19：【重要修正】Jennifer 回報「環球影城跨年門票」（購票開始寫「10月
+        中注意」）沒有出現即將開賣的提醒。根因：v2.18 的 `daysUntilBookOpen()`
+        當初刻意只認嚴格「M/D」格式，理由是怕把「X月」這種模糊文字當成
+        精確日期顯示誤導性的倒數——但這個決定漏掉了最需要提醒的那一筆
+        （唯一沒有斜線格式的購票日，剛好就是全部行程裡最急迫的那個）。
+        改成兩種格式都處理，但區分「精確」跟「模糊」兩種提醒方式：有確切
+        M/D 的維持原本行為（已過/N天後開賣的精確天數）；只有「X月」沒寫
+        日期的，不再聲稱精確天數或「已過期」（原本的 day=1 假設不夠準），
+        改成範圍性的「該月/下個月留意開賣」，太遠的月份不提醒避免每次打開
+        都看到用不到的警示。`bookDateKey()`／`daysUntilBookOpen()` 共用同一個
+        `parseBookDateParts()` 解析邏輯，避免兩處各自實作、行為不一致。已用
+        單元測試驗證：精確日期已過期/未來天數不變、月份文字落在本月或下月
+        才顯示提醒、落在較遠月份不顯示、無法解析回傳 null（共 9 項）＋重跑
+        排序邏輯（10月中注意排序位置不變）＋mergeTrip() 關鍵資料安全回歸
+        測試全過，語法檢查通過。
    ============================================================ */
 
 /* ---------- FIREBASE（換成你新開的專案）---------- */
@@ -1784,21 +1799,28 @@ const BOOK_STATUS=['免預約','未預約','已預約','預約失敗'];
 // 從「購票開始」欄位（自由輸入文字，例如「10/10下午13:00」「12月看營業日」）
 // 抓開頭的 M/D 當排序依據，抓不到就排到最後——只是用來讓「快到的優先顯示」，
 // 不強求精準日期解析。
-function bookDateKey(s){
+// 「購票開始」是自由文字（Jennifer 的原始資料本來就有「10月中注意」
+// 「12月看營業日」這種沒有斜線的格式，不是每一筆都能改成標準日期），
+// 所以排序跟提醒都要能處理兩種寫法：嚴格的「M/D」跟只有「X月」。統一在
+// 這裡解析一次，exact 標記是否有解析到確切日期（給提醒功能判斷該顯示
+// 精確天數、還是比較保守的「本月/下月留意」）。
+function parseBookDateParts(s){
   s=s||'';
-  const md=s.match(/(\d{1,2})\/(\d{1,2})/); if(md) return +md[1]*100+ +md[2];
-  const mo=s.match(/(\d{1,2})月/); if(mo) return +mo[1]*100; // 只有「X月」沒有日期（例如「10月中注意」）排在該月最前面，避免比同月有寫日期的項目晚
-  return 9999;
+  const md=s.match(/(\d{1,2})\/(\d{1,2})/); if(md) return {mo:+md[1],day:+md[2],exact:true};
+  const mo=s.match(/(\d{1,2})月/); if(mo) return {mo:+mo[1],day:1,exact:false};
+  return null;
 }
-// 「即將開賣」/「已過購票日」提醒——只認嚴格的 M/D 格式（不用上面
-// bookDateKey 那個「X月」退而求其次的規則），像「12月看營業日」這種模糊
-// 文字不該被當成精確日期算緊急度，會誤導。年份固定當今年（購票日一定在
+function bookDateKey(s){ const p=parseBookDateParts(s); return p?p.mo*100+p.day:9999; }
+// 「即將開賣」/「已過購票日」提醒。有確切 M/D 的才顯示精確天數（已過/N天
+// 後開賣）；只有「X月」沒寫日期的（day 當作 1 號只是排序用的假設，不夠準
+// 到可以喊「已過期」或算出精確天數），改成比較保守的「本月/下月留意」，
+// 不對外面的人聲稱一個可能誤導的精確倒數。年份固定當今年（購票日一定在
 // 出發前，不會跨到隔年），算不出來就回傳 null，不顯示提醒。
 function daysUntilBookOpen(s){
-  const m=(s||'').match(/(\d{1,2})\/(\d{1,2})/); if(!m) return null;
-  const target=new Date(new Date().getFullYear(), +m[1]-1, +m[2]);
+  const p=parseBookDateParts(s); if(!p) return null;
+  const target=new Date(new Date().getFullYear(), p.mo-1, p.day);
   const today=new Date(todayStr()+'T00:00:00');
-  return Math.round((target-today)/86400000);
+  return {days:Math.round((target-today)/86400000), exact:p.exact, mo:p.mo};
 }
 // 兩種排序邏輯是各自獨立的維度，不是疊在一起：
 // 「依購票日期」＝現在該準備訂什麼（還沒訂/訂失敗優先，依購票開始時間排）；
@@ -1864,14 +1886,21 @@ function renderCoupons(){
     const img=couponImg(c);
     const needsAction=c.bookStatus==='未預約'||c.bookStatus==='預約失敗';
     const kc=KIND_COLOR[c.kind]||{bd:'var(--line)',bg:'#fff',ink:'var(--ink2)'};
-    const dLeft=needsAction?daysUntilBookOpen(c.bookOpenAt):null;
-    // dLeft<0：購票日已經過了人還沒訂，比「快到了」更急，用最重的警示；
-    // 0~14 天內：快到了，提醒準備；超過 14 天或算不出來：不特別標。
-    const urgencyBadge = dLeft===null?'' : dLeft<0
-      ? `<span class="pill warn" style="margin-left:4px">🔴 已過購票日 ${-dLeft} 天</span>`
-      : dLeft<=14
-      ? `<span class="pill warn" style="margin-left:4px">⏰ ${dLeft===0?'今天開賣':dLeft+'天後開賣'}</span>`
-      : '';
+    const dInfo=needsAction?daysUntilBookOpen(c.bookOpenAt):null;
+    let urgencyBadge='';
+    if(dInfo&&dInfo.exact){
+      // 有確切 M/D：已過購票日還沒訂，比「快到了」更急，用最重的警示；
+      // 0~14 天內快到了，提醒準備；超過 14 天不特別標。
+      if(dInfo.days<0) urgencyBadge=`<span class="pill warn" style="margin-left:4px">🔴 已過購票日 ${-dInfo.days} 天</span>`;
+      else if(dInfo.days<=14) urgencyBadge=`<span class="pill warn" style="margin-left:4px">⏰ ${dInfo.days===0?'今天開賣':dInfo.days+'天後開賣'}</span>`;
+    } else if(dInfo){
+      // 只有「X月」沒寫確切日期：不喊「已過期」或精確天數（day 是假設的
+      // 1號，不夠準），改成月份範圍的提醒——這個月或下個月才標，太遠的
+      // 不提醒，避免每次打開都看到一堆用不到的警示。
+      const curMo=new Date(todayStr()+'T00:00:00').getMonth()+1;
+      const nextMo=curMo%12+1;
+      if(dInfo.mo===curMo||dInfo.mo===nextMo) urgencyBadge=`<span class="pill warn" style="margin-left:4px">⏰ ${dInfo.mo}月留意開賣</span>`;
+    }
     // 放大出示只留一種點法：直接點縮圖開「出示」畫面（大圖＋代碼），不再另外放一顆
     // 「放大出示」按鈕重複同一件事。
     return `<div class="li" style="border-left:4px solid ${kc.bd}">
