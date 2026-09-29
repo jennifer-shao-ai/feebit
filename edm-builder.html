@@ -150,6 +150,9 @@
       <textarea id="brand" rows="4" style="margin-top:8px"></textarea>
       <p class="sub" style="margin:16px 0 4px"><b>社群區塊</b>　追蹤我們 + LINE/IG/FB 三顆按鈕，每封自動加在圖片表格後面（真文字＋連結，不用切圖）</p>
       <div class="colorrow">
+        <label>區塊底色 <input type="color" id="soc-blk-c"><input type="text" class="hex" id="soc-blk-h" maxlength="7"></label>
+        <label>標題文字色 <input type="color" id="soc-ti-c"><input type="text" class="hex" id="soc-ti-h" maxlength="7"></label>
+        <label>按鈕文字色 <input type="color" id="soc-tx-c"><input type="text" class="hex" id="soc-tx-h" maxlength="7"></label>
         <label>按鈕底色 <input type="color" id="soc-bg-c"><input type="text" class="hex" id="soc-bg-h" maxlength="7"></label>
         <label>按鈕邊框 <input type="color" id="soc-bd-c"><input type="text" class="hex" id="soc-bd-h" maxlength="7"></label>
       </div>
@@ -180,7 +183,7 @@ const DEFAULT_SLOTS = [
 // 品牌段、社群段、頁尾都不再切圖，改成工具內建 HTML 區塊。
 // 輸出順序：圖片表格(01–08) → 品牌區塊 → 送禮圖(09) → 社群區塊 → 頁尾。
 // 顏色由色板控制，brandHTML()/socialHTML()/tailHTML() 依目前顏色重新產生語法。
-const SOCIAL_DEFAULTS = { btnBg:"#fcf6f2", btnBorder:"#bc8772" };
+const SOCIAL_DEFAULTS = { bg:"#ffffff", title:"#855554", btnText:"#915a50", btnBg:"#fcf6f2", btnBorder:"#bc8772" };
 const TAIL_DEFAULTS   = { bg:"#f6eae4", text:"#8d5f5b" };
 const BRAND_DEFAULTS  = { bg:"#f8efe9", title:"#5d3d3c", orn:"#d7aaa2" };
 // 已上傳 SHOPLINE 的 7 張品牌膠囊圖（ONDO→Dr.SEED→MARY&MAY→athens→rom&nd→AXIS-Y→V4U）
@@ -213,11 +216,11 @@ function brandHTML(c, pills){
   }).join('\n');
   return [
    '<table role="presentation" width="750" cellpadding="0" cellspacing="0" border="0" align="center" style="width:750px;max-width:100%;margin:0 auto;border-collapse:collapse;">',
-   '  <tr><td style="background:'+c.bg+';padding:34px 40px 42px;text-align:center;font-family:\'PingFang TC\',\'Noto Sans TC\',\'Microsoft JhengHei\',sans-serif;">',
+   '  <tr><td style="border:0;background:'+c.bg+';padding:34px 40px 42px;text-align:center;font-family:\'PingFang TC\',\'Noto Sans TC\',\'Microsoft JhengHei\',sans-serif;">',
    '    <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 20px;"><tr>',
-   '      <td style="width:90px;vertical-align:middle;"><div style="height:1px;background:'+c.orn+';font-size:0;line-height:0;">&#8203;</div></td>',
-   '      <td style="padding:0 14px;white-space:nowrap;vertical-align:middle;font-family:\'Noto Serif TC\',serif;font-size:22px;letter-spacing:4px;font-weight:700;"><span style="color:'+c.orn+';">✦</span> <span style="color:'+c.title+';">人氣熱銷品牌</span> <span style="color:'+c.orn+';">✦</span></td>',
-   '      <td style="width:90px;vertical-align:middle;"><div style="height:1px;background:'+c.orn+';font-size:0;line-height:0;">&#8203;</div></td>',
+   '      <td style="width:90px;padding:0;border:0;vertical-align:middle;"><div style="height:1px;background:'+c.orn+';font-size:0;line-height:0;">&#8203;</div></td>',
+   '      <td style="padding:0 14px;border:0;white-space:nowrap;vertical-align:middle;font-family:\'Noto Serif TC\',serif;font-size:22px;letter-spacing:4px;font-weight:700;"><span style="color:'+c.orn+';">✦</span> <span style="color:'+c.title+';">人氣熱銷品牌</span> <span style="color:'+c.orn+';">✦</span></td>',
+   '      <td style="width:90px;padding:0;border:0;vertical-align:middle;"><div style="height:1px;background:'+c.orn+';font-size:0;line-height:0;">&#8203;</div></td>',
    '    </tr></table>',
    pillRows,
    '    <a href="https://www.lala-v.com/" target="_blank" rel="noopener" style="display:block;margin-top:30px;color:'+c.title+';text-decoration:none;font-family:Georgia,\'Times New Roman\',serif;font-size:22px;letter-spacing:1px;">and more…</a>',
@@ -227,11 +230,12 @@ function brandHTML(c, pills){
 }
 
 function socialHTML(c){
-  const bs = "display:block;margin:12px auto;border:1px solid "+c.btnBorder+";border-radius:50px;padding:13px 20px;color:#915a50;font-family:Georgia,'Times New Roman',serif;letter-spacing:4px;font-size:20px;background:"+c.btnBg+";text-decoration:none;";
+  c = Object.assign({}, SOCIAL_DEFAULTS, c);
+  const bs = "display:block;max-width:510px;margin:12px auto;border:1px solid "+c.btnBorder+";border-radius:50px;padding:13px 20px;color:"+c.btnText+";font-family:Georgia,'Times New Roman',serif;letter-spacing:4px;font-size:20px;background:"+c.btnBg+";text-decoration:none;";
   return [
    '<table role="presentation" width="750" cellpadding="0" cellspacing="0" border="0" align="center" style="width:750px;max-width:100%;margin:0 auto;border-collapse:collapse;">',
-   '  <tr><td style="background:#ffffff;text-align:center;padding:42px 100px 38px;font-family:\'PingFang TC\',\'Noto Sans TC\',\'Microsoft JhengHei\',sans-serif;">',
-   '    <div style="font-size:26px;color:#855554;letter-spacing:3px;font-weight:700;line-height:1.4;margin-bottom:22px;">追蹤LaLa V<br>搶先領會員折扣&amp;資訊</div>',
+   '  <tr><td style="border:0;background:'+c.bg+';text-align:center;padding:42px 20px 38px;font-family:\'PingFang TC\',\'Noto Sans TC\',\'Microsoft JhengHei\',sans-serif;">',
+   '    <div style="font-size:26px;color:'+c.title+';letter-spacing:3px;font-weight:700;line-height:1.4;margin-bottom:22px;">追蹤LaLa V<br>搶先領會員折扣&amp;資訊</div>',
    '    <a href="https://line.me/R/ti/p/%40940lqvkn" target="_blank" rel="noopener" style="'+bs+'">LINE</a>',
    '    <a href="https://www.instagram.com/lalavcollection/?hl=zh-tw" target="_blank" rel="noopener" style="'+bs+'">INSTAGRAM</a>',
    '    <a href="https://www.facebook.com/lalavcollection/" target="_blank" rel="noopener" style="'+bs+'">FACEBOOK</a>',
@@ -242,7 +246,7 @@ function socialHTML(c){
 function tailHTML(c){
   return [
    '<table role="presentation" width="750" cellpadding="0" cellspacing="0" border="0" align="center" style="width:750px;max-width:100%;margin:0 auto;border-collapse:collapse;">',
-   '  <tr><td style="background:'+c.bg+';text-align:center;padding:28px 28px 30px;font-family:\'PingFang TC\',\'Noto Sans TC\',\'Microsoft JhengHei\',sans-serif;color:'+c.text+';">',
+   '  <tr><td style="border:0;background:'+c.bg+';text-align:center;padding:28px 28px 30px;font-family:\'PingFang TC\',\'Noto Sans TC\',\'Microsoft JhengHei\',sans-serif;color:'+c.text+';">',
    '    <div style="font-size:19px;font-weight:700;color:'+c.text+';letter-spacing:1px;">LaLa V Collection 💗 安心嚴選　美麗加倍</div>',
    '    <div style="font-size:14px;line-height:1.8;letter-spacing:.6px;margin-top:9px;">',
    '      <a href="https://www.lala-v.com/" target="_blank" rel="noopener" style="color:'+c.text+';text-decoration:none;">lala-v.com</a><br>',
@@ -274,6 +278,9 @@ function loadCfg(){
   brandP.bg = initColorPair('brd-bg-c','brd-bg-h', brCol.bg    || BRAND_DEFAULTS.bg,    regenBrand);
   brandP.ti = initColorPair('brd-ti-c','brd-ti-h', brCol.title || BRAND_DEFAULTS.title, regenBrand);
   brandP.or = initColorPair('brd-or-c','brd-or-h', brCol.orn   || BRAND_DEFAULTS.orn,   regenBrand);
+  socP.blk = initColorPair('soc-blk-c','soc-blk-h', scCol.bg    || SOCIAL_DEFAULTS.bg,    regenSocial);
+  socP.ti  = initColorPair('soc-ti-c','soc-ti-h',   scCol.title || SOCIAL_DEFAULTS.title, regenSocial);
+  socP.tx  = initColorPair('soc-tx-c','soc-tx-h',   scCol.btnText || SOCIAL_DEFAULTS.btnText, regenSocial);
   socP.bg = initColorPair('soc-bg-c','soc-bg-h', scCol.btnBg     || SOCIAL_DEFAULTS.btnBg,     regenSocial);
   socP.bd = initColorPair('soc-bd-c','soc-bd-h', scCol.btnBorder || SOCIAL_DEFAULTS.btnBorder, regenSocial);
   tailP.bg = initColorPair('tail-bg-c','tail-bg-h', tlCol.bg   || TAIL_DEFAULTS.bg,   regenTail);
@@ -291,6 +298,8 @@ function loadCfg(){
   tailEl.value = (t!==null ? t : tailHTML(tailColors()));
   tailEl.oninput=()=>{ try{localStorage.setItem(LS_TAIL,tailEl.value)}catch(e){} };
   let sc=null; try{sc=localStorage.getItem(LS_SOCIAL)}catch(e){}
+  // 舊版社群語法（左右 padding 100px、底色寫死白）手機會撐寬 → 自動用目前色板重產
+  if(sc!==null && sc.indexOf('padding:42px 100px')>=0) sc=null;
   socEl.value = (sc!==null ? sc : socialHTML(socialColors()));
   socEl.oninput=()=>{ try{localStorage.setItem(LS_SOCIAL,socEl.value)}catch(e){} };
 }
@@ -306,7 +315,7 @@ function initColorPair(cId,hId,initial,onChange){
            set:(v)=>{ v=(hexOk(v)?v:'#000000').toLowerCase(); c.value=v; h.value=v; } };
 }
 const socP={}, tailP={}, brandP={};
-function socialColors(){ return { btnBg:socP.bg.get(), btnBorder:socP.bd.get() }; }
+function socialColors(){ return { bg:socP.blk.get(), title:socP.ti.get(), btnText:socP.tx.get(), btnBg:socP.bg.get(), btnBorder:socP.bd.get() }; }
 function tailColors(){ return { bg:tailP.bg.get(), text:tailP.tx.get() }; }
 function brandColors(){ return { bg:brandP.bg.get(), title:brandP.ti.get(), orn:brandP.or.get() }; }
 function getBrandPills(){
@@ -361,6 +370,7 @@ function resetCfg(){
        localStorage.removeItem(LS_SOCIAL_C); localStorage.removeItem(LS_TAIL_C);
        localStorage.removeItem(LS_BRAND); localStorage.removeItem(LS_BRAND_C); }catch(e){}
   brandP.bg.set(BRAND_DEFAULTS.bg); brandP.ti.set(BRAND_DEFAULTS.title); brandP.or.set(BRAND_DEFAULTS.orn);
+  socP.blk.set(SOCIAL_DEFAULTS.bg); socP.ti.set(SOCIAL_DEFAULTS.title); socP.tx.set(SOCIAL_DEFAULTS.btnText);
   socP.bg.set(SOCIAL_DEFAULTS.btnBg); socP.bd.set(SOCIAL_DEFAULTS.btnBorder);
   tailP.bg.set(TAIL_DEFAULTS.bg);     tailP.tx.set(TAIL_DEFAULTS.text);
   document.getElementById('brand').value=brandHTML(BRAND_DEFAULTS, getBrandPills());
@@ -480,10 +490,11 @@ function build(){
     let href="";
     if(type==="fixed") href=url;
     else if(type==="monthly") href=(mon[key]!==undefined?mon[key]:url).trim();
-    const img='<img src="'+u+'" alt="'+esc(alt)+'" width="750" style="display:block;width:100%;border:0;">';
-    const cell=href ? '<a href="'+esc(href)+'" target="_blank" rel="noopener">'+img+'</a>' : img;
+    const img='<img src="'+u+'" alt="'+esc(alt)+'" width="750" style="display:block;width:100%;max-width:100%;height:auto;border:0;margin:0;">';
+    const cell=href ? '<a href="'+esc(href)+'" target="_blank" rel="noopener" style="display:block;border:0;margin:0;padding:0;">'+img+'</a>' : img;
     emitted++;
-    return '  <tr><td>'+cell+'</td></tr>';
+    // td 一定要寫死 padding:0/border:0：SHOPLINE 編輯器的 CSS 會替沒寫 padding 的 td 內縮，圖片就比色塊窄
+    return '  <tr><td style="padding:0;margin:0;border:0;font-size:0;line-height:0;">'+cell+'</td></tr>';
   });
   function wrap(arr){ return '<table role="presentation" width="750" cellpadding="0" cellspacing="0" border="0" align="center" style="width:750px;max-width:100%;margin:0 auto;border-collapse:collapse;font-size:0;line-height:0;">\n'+arr.join("\n")+'\n</table>'; }
   const giftIdx=SLOTS.findIndex(s=>/gift/i.test(s[0]));
