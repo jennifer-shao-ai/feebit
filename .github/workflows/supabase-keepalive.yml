@@ -1,0 +1,29 @@
+name: Supabase Keepalive（防止免費專案閒置暫停）
+
+on:
+  schedule:
+    # 台灣時間週一、週四 11:00 (UTC 03:00)，兩者間隔最多 4 天，安全邊際在 Supabase 7 天閒置暫停門檻內
+    - cron: '0 3 * * 1,4'
+  workflow_dispatch: # 允許手動觸發
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping tokhhoyzztaynppcatci（研發筆記資料庫）
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' \
+            'https://tokhhoyzztaynppcatci.supabase.co/rest/v1/' \
+            -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRva2hob3l6enRheW5wcGNhdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMDAyODMsImV4cCI6MjA5MDg3NjI4M30.PQB4lJGF3OMatv5wIedCu3zIWq0urrFbniBRYTbNtUU' \
+            -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRva2hob3l6enRheW5wcGNhdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMDAyODMsImV4cCI6MjA5MDg3NjI4M30.PQB4lJGF3OMatv5wIedCu3zIWq0urrFbniBRYTbNtUU')
+          echo "tokhhoyzztaynppcatci: HTTP $code"
+          if [ "$code" = "000" ]; then echo "::error::連線失敗，Supabase 未被 ping 到"; exit 1; fi
+
+      - name: Ping eavrayumrtkbfolimjiq（feebit-cost-db 成本資料庫）
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' \
+            'https://eavrayumrtkbfolimjiq.supabase.co/rest/v1/' \
+            -H 'apikey: sb_publishable_zpZ39RlF8eRDZHYPuosXdg_mQWXl52x' \
+            -H 'Authorization: Bearer sb_publishable_zpZ39RlF8eRDZHYPuosXdg_mQWXl52x')
+          echo "eavrayumrtkbfolimjiq: HTTP $code"
+          if [ "$code" = "000" ]; then echo "::error::連線失敗，Supabase 未被 ping 到"; exit 1; fi
