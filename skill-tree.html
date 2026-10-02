@@ -309,7 +309,7 @@
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
 
-  <div class="sidebar-footer">v1.1 · Feebit © 2026</div>
+  <div class="sidebar-footer">v1.2 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -358,37 +358,37 @@ const SKILLS = [
   { icon:'💾', name:'商品成本資料庫',   cat:'財務帳務', ver:'v1.0', desc:'品牌／條碼查詢成本、多供應商比價、成本歷史、匯率模擬器', url:'cost-database.html' },
   { icon:'📗', name:'分錄帳轉換',       cat:'財務帳務', ver:'v1.0', desc:'帳務轉換產出的分類明細，依四階科目自動產生月度分錄帳', url:'journal-voucher.html' },
   { icon:'🏦', name:'帳務轉換',         cat:'財務帳務', ver:'v2.4', desc:'彰化銀行交易明細轉 Ragic 格式，支援拆帳與手動分類', url:'bank-converter.html' },
-  { icon:'📅', name:'例行帳務作業',     cat:'財務帳務', ver:'v3.3', desc:'日常帳務處理流程，定期對帳與結帳作業', url:'accounting-ops.html' },
-  { icon:'📊', name:'帳務分析',         cat:'財務帳務', ver:'v2.3', desc:'財務報表視覺化，月收支趨勢與年度淨利圖表', url:'finance-dashboard.html' },
-  { icon:'💰', name:'毛利試算機',       cat:'財務帳務', ver:'v1.8', desc:'輸入成本與售價，即時計算毛利率與建議定價', url:'profit-calculator.html' },
-  { icon:'📄', name:'採購單轉換',       cat:'財務帳務', ver:'v1.0', desc:'採購單格式轉換，快速匯出供廠商確認', url:'purchase-order.html' },
+  { icon:'📅', name:'例行帳務作業',     cat:'財務帳務', ver:'v4.1', desc:'各平台對帳、發票開立、請款截止日整合，附平台 SOP 連結與對帳單歸檔資料夾', url:'accounting-ops.html' },
+  { icon:'📊', name:'帳務分析',         cat:'財務帳務', ver:'v3.0', desc:'上傳 Ragic CSV 自動存檔，月收支趨勢、年度淨利、任意區間回查，帳戶餘額附共用備注', url:'finance-dashboard.html' },
+  { icon:'💰', name:'毛利試算機',       cat:'財務帳務', ver:'v1.0', desc:'單品／套組成本輸入，跨平台毛利率即時試算，建議售價自動計算', url:'profit-calculator.html' },
+  { icon:'📄', name:'採購單轉換',       cat:'財務帳務', ver:'v2.0', desc:'上傳廠商 invoice（圖片／Excel／文字），自動比對商品並直接在 Ragic 建採購單', url:'purchase-order.html' },
   { icon:'🧾', name:'酷澎發票轉檔',     cat:'財務帳務', ver:'v1.0', desc:'酷澎發票 Excel 解析與重新整理匯出', url:'coupang-invoice.html' },
   { icon:'🔍', name:'酷澎商城對帳',     cat:'財務帳務', ver:'v1.0', desc:'酷澎帳款明細核對，快速找出差異', url:'coupang-reconcile.html' },
-  { icon:'🛒', name:'蝦皮撥款轉換',     cat:'財務帳務', ver:'v1.0', desc:'蝦皮撥款明細格式轉換，對應 Ragic 帳務分類', url:'shopee-converter.html' },
+  { icon:'🛒', name:'蝦皮撥款轉換',     cat:'財務帳務', ver:'v1.3', desc:'蝦皮撥款明細轉 Ragic 帳務匯入格式，欄位對齊自帳戶／主分類／子分類', url:'shopee-converter.html' },
   { icon:'🚚', name:'蝦皮運費補助申請', cat:'財務帳務', ver:'v1.1', desc:'蝦皮補助申請自動整理，減少手動填表時間', url:'shopee-subsidy.html' },
   { icon:'🖋️', name:'發票蓋章工具',     cat:'財務帳務', ver:'v1.0', desc:'上傳請款單 PDF 拖曳定位，一鍵蓋發票章下載，印章純本機', url:'invoice-stamp.html' },
   // ── 庫存管理 ──
   { icon:'📦', name:'庫存訂貨分析',     cat:'庫存管理', ver:'v2.5', desc:'庫存週轉率分析、訂貨建議與安全庫存計算', url:'stock-analysis.html' },
-  { icon:'🔴', name:'滯銷品警示',       cat:'庫存管理', ver:'v1.0', desc:'自動偵測超過預設天數未售出的商品並產生警示', url:'slow-mover-alert.html' },
-  { icon:'🏪', name:'商品篩選工具',     cat:'庫存管理', ver:'v2.0', desc:'多條件篩選商品清單，快速定位特定商品', url:'feebit-inventory-filter.html' },
-  { icon:'🔄', name:'庫存訂貨建議',     cat:'庫存管理', ver:'—',    desc:'依銷售速度與現有庫存自動產生訂貨建議清單', url:'reorder-suggestions.html' },
+  { icon:'🔴', name:'滯銷品警示',       cat:'庫存管理', ver:'v3.0', desc:'每月自動抓 Ragic 庫存偵測滯銷商品，附競品比價連結，可隱藏活動貨號', url:'slow-mover-alert.html' },
+  { icon:'🏪', name:'商品篩選工具',     cat:'庫存管理', ver:'v2.0', desc:'上傳 Excel 以貨號或 EAN13 隱藏停產品項，匯出自動標記持續上架 Y/N', url:'feebit-inventory-filter.html' },
+  { icon:'🔄', name:'庫存訂貨建議',     cat:'庫存管理', ver:'v1.1',    desc:'依月銷量與剩餘月份分緊急／一般／預備三級補貨，可排除停產與套組商品', url:'reorder-suggestions.html' },
   { icon:'🔎', name:'商品銷售履歷', cat:'庫存管理', ver:'v1.0', desc:'輸入商品代號查詢每日銷量歷史、趨勢圖與累積總銷量，可從訂貨預警信連結直接查看', url:'product-sales-history.html' },
   // ── 電商銷售 ──
-  { icon:'📈', name:'品牌銷售轉換', cat:'電商銷售', ver:'—',   desc:'各品牌銷售數字彙整與走勢分析', url:'brand-sales.html' },
-  { icon:'🔭', name:'品類競品分析', cat:'電商銷售', ver:'—',   desc:'追蹤蝦皮競品動態，分析市場定位與價格帶', url:'market-tracker.html' },
+  { icon:'📈', name:'品牌銷售轉換', cat:'電商銷售', ver:'v2.2',   desc:'上傳商品銷售 CSV，自動加總各品牌銷售額、排名與佔比', url:'brand-sales.html' },
+  { icon:'🔭', name:'品類競品分析', cat:'電商銷售', ver:'v1.0',   desc:'追蹤蝦皮競品熱銷、品牌破價警示、自家銷量趨勢與關鍵字文章排行', url:'market-tracker.html' },
   { icon:'📊', name:'品牌趨勢分析', cat:'電商銷售', ver:'v4.7', desc:'跨賣場跨月份品牌營收彙總、預估利潤、YoY 與潛力分析', url:'brand-trend.html' },
   { icon:'🛍️', name:'通路營收分析', cat:'電商銷售', ver:'v3.0', desc:'各通路逐月營收比對、區間篩選、YoY 對比，Supabase 雲端', url:'channel-revenue.html' },
-  { icon:'🎨', name:'商品圖生成', cat:'電商銷售', ver:'v2.6', desc:'蝦皮新品上架 9 步驟：AI 命名→標題→SEO→Drive→Ragic 同步', url:'product-image-gen.html' },
+  { icon:'🎨', name:'商品圖生成', cat:'電商銷售', ver:'v2.7', desc:'新品上架 9 步驟：抓圖、AI 生圖、命名、文案、SEO、蝦皮標題，存 Sheet 並同步 Ragic', url:'product-image-gen.html' },
   { icon:'🎯', name:'Meta顧客名單轉換', cat:'電商銷售', ver:'v1.1', desc:'官網顧客名單轉 Meta 廣告受眾格式，多檔合併去重下載', url:'meta-audience.html' },
   { icon:'🖼️', name:'圖片語法加寬器', cat:'電商銷售', ver:'v1.1', desc:'貼 HTML 語法自動把每個 alt 前補上 width=750px，一鍵複製，附 Chrome 外掛', url:'alt-width-replacer.html' },
   { icon:'📧', name:'電子報產生器', cat:'電商銷售', ver:'v1.0', desc:'切好的電子報分段圖上傳 SHOPLINE 後貼回圖片語法，自動補連結與 alt、產出可貼 HTML', url:'edm-builder.html' },
   // ── 研發法規 ──
   { icon:'📚', name:'研發筆記',   cat:'研發法規', ver:'v2.4', desc:'YouTube 字幕擷取、OCR 圖片辨識轉筆記，後端 Supabase', url:'research-notes.html' },
-  { icon:'🧪', name:'化粧品登錄', cat:'研發法規', ver:'—',    desc:'化粧品衛福部登錄作業管理', url:'fda-registration.html' },
+  { icon:'🧪', name:'化粧品登錄轉換', cat:'研發法規', ver:'v1.10',    desc:'從 Ragic 選品，產生衛福部化粧品產品登錄平台匯入 Excel', url:'fda-registration.html' },
   { icon:'📋', name:'PIF Builder', cat:'研發法規', ver:'—',   desc:'化粧品 PIF 產品資訊檔案建置，本機 5050 port 運行', url:'http://127.0.0.1:5050', ext:true },
   { icon:'🧫', name:'食品成分比對', cat:'研發法規', ver:'v1.0', desc:'貼全成分比對 FIRDI 食品原料清單，未收錄可 AI 查法規來源', url:'ingredient-checker.html' },
   // ── 人事行政 ──
-  { icon:'🗓️', name:'考勤查驗', cat:'人事行政', ver:'v2.6', desc:'員工出勤記錄查驗與異常標記', url:'attendance.html' },
+  { icon:'🗓️', name:'考勤查驗', cat:'人事行政', ver:'v3.3', desc:'正職／工讀打卡稽核、遲到早退異常標記、請假加班紀錄、年度考勤評分與雲端報告', url:'attendance.html' },
   // ── AI Skill ──
   { icon:'💬', name:'/cs-reply',      cat:'AI Skill', ver:'skill', desc:'客服回覆產生器，依情境產出溫和但不退讓的回覆草稿', cmd:'/cs-reply' },
   { icon:'📋', name:'/daily-review',  cat:'AI Skill', ver:'skill', desc:'每日營運狀況整理，串接行事曆與 Asana 待辦', cmd:'/daily-review' },
@@ -426,13 +426,13 @@ const SKILLS = [
   { icon:'🎨', name:'新品上架後端',          cat:'自動化', ver:'GAS',    desc:'product-image-gen.html 的後端：寫入 Google Sheet、建 Drive 資料夾、同步 Ragic（含 onEdit 觸發）', url:null, info:'Google Apps Script Web App · AKfycbx34i…/exec', host:'Google Apps Script' },
   { icon:'🧾', name:'Google 發票轉 Ragic 請款單', cat:'自動化', ver:'排程',   desc:'每日 7-8 點掃 Google 統一發票信，PDF 發票號寫入 Ragic 請款單並帶附件，備註附原信連結，Gmail 標籤＋發票號雙重防重複', url:null, info:'Google Apps Script · 獨立專案「google one發票自動新建請款單」· 每日 7-8 點觸發', host:'Google Apps Script' },
   // ── 系統 ──
-  { icon:'🏠', name:'首頁',     cat:'系統', ver:'v3.0', desc:'飛比特營運工具箱入口，所有工具快速導覽', url:'index.html' },
+  { icon:'🏠', name:'首頁',     cat:'系統', ver:'v4.4', desc:'飛比特營運工具箱入口，所有工具快速導覽', url:'index.html' },
   { icon:'🔧', name:'使用工具', cat:'系統', ver:'v1.1', desc:'外部平台與後台連結總覽，點擊前往各系統', url:'tools.html' },
-  { icon:'🌳', name:'技能樹',   cat:'系統', ver:'v1.0', desc:'飛比特所有工具與技能可視化總覽，含版本與說明', url:'skill-tree.html' },
+  { icon:'🌳', name:'技能樹',   cat:'系統', ver:'v1.2', desc:'飛比特所有工具與技能可視化總覽，含版本與說明', url:'skill-tree.html' },
   { icon:'💳', name:'訂閱服務管理', cat:'系統', ver:'v2.1', desc:'付費工具/平台方案、價格、結帳日、帳號、後台、付款統編＋各公司每月/每年分攤，Supabase 共用', url:'subscriptions.html' },
   // ── 生活 ──
   { icon:'✈️', name:'旅行規劃', cat:'生活', ver:'v4.4', desc:'旅行行程協作規劃，Firebase 即時同步，多瀏覽器共用', url:'travel-planner.html' },
-  { icon:'🧳', name:'旅程手冊', cat:'生活', ver:'v1.0', desc:'手機優先旅程 PWA：行程勾選隱藏、景點注意事項、購物清單、三人分帳、優惠券、即時匯率，好友即時同步', url:'trip-planner.html' },
+  { icon:'🧳', name:'旅程手冊', cat:'生活', ver:'v2.20', desc:'手機優先旅程 PWA：行程勾選、景點注意事項、購物清單、分帳、優惠券、即時匯率，好友即時同步', url:'trip-planner.html' },
 ];
 
 const CATS = ['全部', ...new Set(SKILLS.map(s => s.cat))];
