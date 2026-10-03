@@ -1,0 +1,40 @@
+
+
+# === Feebit managed Git safety: start ===
+
+# Secrets and environment files
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+secrets.*
+!secrets.example
+credentials.json
+service-account*.json
+*serviceAccount*.json
+.mcp.json
+
+# Logs, temporary files, and local settings
+*.log
+*.tmp
+*.temp
+*.bak
+.DS_Store
+.AppleDouble
+Thumbs.db
+playwright-images/
+playwright-report/
+test-results/
+screenshots/
+.claude/settings.local.json
+
+# Supabase local state
+supabase/.temp/
+supabase/.env
+
+# === Feebit managed Git safety: end ===
