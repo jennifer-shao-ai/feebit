@@ -309,7 +309,7 @@
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
 
-  <div class="sidebar-footer">v1.5 · Feebit © 2026</div>
+  <div class="sidebar-footer">v1.6 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -319,7 +319,7 @@
       <button class="btn-hamburger" onclick="openSidebar()">☰</button>
       <span class="topbar-title">技能樹</span>
       <span class="topbar-badge">工具總覽</span>
-      <span style="font-size:11px;color:var(--gray-400);margin-left:4px">v1.1</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:4px">v1.6</span>
     </div>
   </div>
   <div class="page">
@@ -409,6 +409,7 @@ const SKILLS = [
   { icon:'📓', name:'/daily-log', cat:'AI Skill', ver:'skill', desc:'把對話的決策與完成/未完成事項寫入當日工作日誌，供下次接續', cmd:'/daily-log' },
   { icon:'💸', name:'/portaly-payment', cat:'AI Skill', ver:'skill', desc:'Portaly Payment 金流串接：訂閱方案、結帳頁與付款回呼驗證', cmd:'/portaly-payment' },
   { icon:'🌐', name:'/shopline-product-seo-update', cat:'AI Skill', ver:'skill', desc:'逐筆更新官網商品描述、FAQ 與 AI 搜尋 SEO，驗證後隱藏完成列', cmd:'/shopline-product-seo-update' },
+  { icon:'🧮', name:'/mo-store-reconcile', cat:'AI Skill', ver:'skill', desc:'每月核對 mo 店+ 扣款與運費、開立發票、下載檔案並回填 Ragic', cmd:'/mo-store-reconcile' },
   // ── 自動化 ──
   { icon:'🟢', name:'供應商建檔 LINE Bot',    cat:'自動化', ver:'Worker', desc:'展場掃名片 → Claude 辨識 → 自動建 Ragic 供應商記錄', url:null, info:'Cloudflare Worker · feebit-line-bot.esuse-adobe.workers.dev', host:'Cloudflare Worker' },
   { icon:'🛍️', name:'淘寶訂單匯出外掛',      cat:'自動化', ver:'外掛',   desc:'Chrome 外掛一鍵抓取淘寶訂單，自動翻頁並送至 Apps Script', url:null, info:'Chrome Extension · ~/Desktop/淘寶訂單匯出/', host:'本機 Chrome（手動觸發）' },
@@ -429,7 +430,7 @@ const SKILLS = [
   // ── 系統 ──
   { icon:'🏠', name:'首頁',     cat:'系統', ver:'v4.4', desc:'飛比特營運工具箱入口，所有工具快速導覽', url:'index.html' },
   { icon:'🔧', name:'使用工具', cat:'系統', ver:'v1.1', desc:'外部平台與後台連結總覽，點擊前往各系統', url:'tools.html' },
-  { icon:'🌳', name:'技能樹',   cat:'系統', ver:'v1.5', desc:'飛比特所有工具與技能可視化總覽，含版本與說明', url:'skill-tree.html' },
+  { icon:'🌳', name:'技能樹',   cat:'系統', ver:'v1.6', desc:'飛比特所有工具與技能可視化總覽，含版本與說明', url:'skill-tree.html' },
   { icon:'💳', name:'訂閱服務管理', cat:'系統', ver:'v2.1', desc:'付費工具/平台方案、價格、結帳日、帳號、後台、付款統編＋各公司每月/每年分攤，Supabase 共用', url:'subscriptions.html' },
   { icon:'🛡️', name:'Git 安全防護', cat:'系統', ver:'v1.0', desc:'.gitignore 禁止上傳清單：擋下 .env、金鑰、憑證等機密檔，避免推上公開 repo', url:null, info:'repo 根目錄 .gitignore · 由 /project-security-bootstrap 建立 · 2026-10-03 上線', host:'GitHub repo jennifer-shao-ai/feebit' },
   // ── 生活 ──
