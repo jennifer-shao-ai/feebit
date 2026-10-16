@@ -130,6 +130,16 @@
 .skill-card-host { font-size: 10px; color: var(--gray-500); display:flex; align-items:center; gap:3px; margin-top:2px; }
 .skill-card-action { font-size: 10px; font-weight: 600; display: flex; align-items: center; gap: 3px; margin-top: 2px; }
 
+
+/* 交接工具（前員工建立）：橘底 */
+.skill-card.handover { background:#fff7ed; border-color:#fdba74; }
+.skill-card.handover:hover { border-color:#f97316; box-shadow:0 4px 12px rgba(249,115,22,0.15); }
+.skill-card-where { font-size:10px; font-weight:700; padding:2px 7px; border-radius:10px; width:fit-content; }
+.where-cloud { background:#e0f2fe; color:#0369a1; }
+.where-pc { background:#fee2e2; color:#b91c1c; }
+.st-legend { font-size:11px; color:var(--gray-600); margin:6px 0 2px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+.st-legend .lg-swatch { display:inline-block; width:14px; height:14px; border-radius:4px; background:#fff7ed; border:1.5px solid #fdba74; vertical-align:-2px; margin-right:4px; }
+
 /* Tag & icon colours */
 .tag-財務帳務 { background:#dbeafe; color:#1d4ed8; }
 .tag-庫存管理 { background:#dcfce7; color:#15803d; }
@@ -309,7 +319,7 @@
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
 
-  <div class="sidebar-footer">v1.6 · Feebit © 2026</div>
+  <div class="sidebar-footer">v1.7 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -327,6 +337,7 @@
     <div class="st-search-bar">
       <input class="st-search-input" id="st-search" type="text" placeholder="🔍  搜尋工具名稱或說明…" oninput="render()">
       <div class="st-filter-chips" id="st-chips"></div>
+      <div class="st-legend"><span><span class="lg-swatch"></span>橘底卡片＝交接工具（前員工建立，帳號不在你名下）</span><span class="skill-card-where where-cloud">☁️ 雲端主機</span>他電腦關機也照跑<span class="skill-card-where where-pc">💻 舊電腦</span>sales6 那台要開機才會跑</div>
     </div>
     <div id="st-content"></div>
     <div class="st-empty" id="st-empty" style="display:none">
@@ -430,15 +441,45 @@ const SKILLS = [
   // ── 系統 ──
   { icon:'🏠', name:'首頁',     cat:'系統', ver:'v4.4', desc:'飛比特營運工具箱入口，所有工具快速導覽', url:'index.html' },
   { icon:'🔧', name:'使用工具', cat:'系統', ver:'v1.1', desc:'外部平台與後台連結總覽，點擊前往各系統', url:'tools.html' },
-  { icon:'🌳', name:'技能樹',   cat:'系統', ver:'v1.6', desc:'飛比特所有工具與技能可視化總覽，含版本與說明', url:'skill-tree.html' },
+  { icon:'🌳', name:'技能樹',   cat:'系統', ver:'v1.7', desc:'飛比特所有工具與技能可視化總覽，含版本與說明', url:'skill-tree.html' },
   { icon:'💳', name:'訂閱服務管理', cat:'系統', ver:'v2.1', desc:'付費工具/平台方案、價格、結帳日、帳號、後台、付款統編＋各公司每月/每年分攤，Supabase 共用', url:'subscriptions.html' },
   { icon:'🛡️', name:'Git 安全防護', cat:'系統', ver:'v1.0', desc:'.gitignore 禁止上傳清單：擋下 .env、金鑰、憑證等機密檔，避免推上公開 repo', url:null, info:'repo 根目錄 .gitignore · 由 /project-security-bootstrap 建立 · 2026-10-03 上線', host:'GitHub repo jennifer-shao-ai/feebit' },
   // ── 生活 ──
   { icon:'✈️', name:'旅行規劃', cat:'生活', ver:'v4.4', desc:'旅行行程協作規劃，Firebase 即時同步，多瀏覽器共用', url:'travel-planner.html' },
   { icon:'🧳', name:'旅程手冊', cat:'生活', ver:'v2.20', desc:'手機優先旅程 PWA：行程勾選、景點注意事項、購物清單、分帳、優惠券、即時匯率，好友即時同步', url:'trip-planner.html' },
+  // ── 交接工具（前員工建立，帳號不在 Jennifer 名下） ──
+  { icon:"🧠", name:"n8n 自動化主機", cat:"自動化", ver:"n8n", desc:"40 支自動化流程的主機（35 支啟用、5 支停用），下面各卡片都是跑在這裡", url:"https://n8n-production-e240.up.railway.app/home/workflows", ext:true, host:"Railway · n8n-production", handover:true, where:"cloud" },
+  { icon:"🧾", name:"n8n 標準化紀錄", cat:"自動化", ver:"n8n", desc:"共用子流程：各流程跑完把成功／失敗寫進 Ragic 自動化執行紀錄，失敗會觸發即時通知信", url:"https://n8n-production-e240.up.railway.app/workflow/S2gLarsItIdoZ9cL", ext:true, host:"n8n", handover:true, where:"cloud" },
+  { icon:"🖼️", name:"LINE 圖文選單自動更新", cat:"自動化", ver:"n8n", desc:"雲端硬碟換圖或排程時間到，自動更新 LINE 官方帳號圖文選單（分本期／往期）", url:"https://n8n-production-e240.up.railway.app/workflow/N8Q5wd57QTzimwq3", ext:true, host:"n8n", handover:true, where:"cloud" },
+  { icon:"✉️", name:"邀請加入與登入小流程", cat:"自動化", ver:"n8n", desc:"邀請加入發信（Admin）、Supplier Hub 登入、蝦皮登入收信 2 支，由其他流程或儀表板呼叫", url:"https://n8n-production-e240.up.railway.app/workflow/AhjZqm8n1oUBFLsn", ext:true, host:"n8n", handover:true, where:"cloud" },
+  { icon:"⏸️", name:"已停用的 n8n 流程", cat:"自動化", ver:"n8n", desc:"合作邀約自動寄信、每日價格比對、商品價格比對發信、粉專自動排程發文、自動更新商品介紹", url:"https://n8n-production-e240.up.railway.app/home/workflows", ext:true, host:"n8n", handover:true, where:"cloud" },
+  { icon:"🧮", name:"AI／雲端服務發票轉 Ragic 請款", cat:"財務帳務", ver:"n8n", desc:"Claude、OpenAI、Zeabur 三家月費發票自動建 Ragic 請款單（各一支流程）", url:"https://n8n-production-e240.up.railway.app/workflow/pjnQoGWcmo1hvb2m", ext:true, host:"n8n", handover:true, where:"cloud" },
+  { icon:"🏬", name:"寶雅月初自動請款", cat:"財務帳務", ver:"n8n", desc:"每月 1 日 06:00 自動到寶雅供應商平台請款（另有 Python 版，注意可能重複請款）", url:"https://n8n-production-e240.up.railway.app/workflow/nLrjebgAzA0q4Glj", ext:true, host:"n8n", handover:true, where:"cloud" },
+  { icon:"📈", name:"營業額與動銷率表單填入", cat:"電商銷售", ver:"n8n", desc:"LALA V 營業額表單填入、公式計算表（動銷率）填入，每月固定日期自動更新", url:"https://n8n-production-e240.up.railway.app/workflow/WmY26Hi0YnI1Qp44", ext:true, host:"n8n", handover:true, where:"cloud" },
+  { icon:"💳", name:"SHOPLINE 交易明細上傳", cat:"電商銷售", ver:"n8n", desc:"定期抓 SHOPLINE 交易明細上傳 Ragic", url:"https://n8n-production-e240.up.railway.app/workflow/9Dw8Vd4C9mcc8fuF", ext:true, host:"n8n", handover:true, where:"cloud" },
+  { icon:"⭐", name:"SHOPLINE 評論與評價購物金", cat:"電商銷售", ver:"n8n", desc:"會員評論掃描、評價購物金發放、每月銷售排行寫入（Step 1）、商品評論生成發布（Step 2）", url:"https://n8n-production-e240.up.railway.app/workflow/maxapzNgio3xehvB", ext:true, host:"n8n", handover:true, where:"cloud" },
+  { icon:"📅", name:"商品描述效期自動更新", cat:"電商銷售", ver:"n8n", desc:"商城、玩美、桑爹、寶媽、官網 5 個賣場的商品描述效期，共用一支子流程自動更新", url:"https://n8n-production-e240.up.railway.app/workflow/zO1zaQ1Voe94Pq3E", ext:true, host:"n8n", handover:true, where:"cloud" },
+  { icon:"📣", name:"廣告報表與餘額提醒", cat:"電商銷售", ver:"n8n", desc:"每週廣告報表、每月廣告比較報表、廣告餘額自動提醒", url:"https://n8n-production-e240.up.railway.app/workflow/vcF64mcI5Wg64fam", ext:true, host:"n8n", handover:true, where:"cloud" },
+  { icon:"🛒", name:"蝦皮 API 主控台", cat:"電商銷售", ver:"n8n", desc:"蝦皮賣家 API 串接：營業數據抓取與其他流程的資料來源", url:"https://n8n-production-e240.up.railway.app/workflow/wGI1BcAMripL8VKb", ext:true, host:"n8n", handover:true, where:"cloud" },
+  { icon:"🚚", name:"酷澎訂單與月訂單比對", cat:"電商銷售", ver:"n8n", desc:"酷澎訂單收信建檔、訂單資訊更新、月訂單自動比對", url:"https://n8n-production-e240.up.railway.app/workflow/SpvC1J4hMkChUFmP", ext:true, host:"n8n", handover:true, where:"cloud" },
+  { icon:"📦", name:"Ragic 庫存監控與進貨通知", cat:"庫存管理", ver:"n8n", desc:"庫存數量比對通知、庫存歸零監控、進貨單通知", url:"https://n8n-production-e240.up.railway.app/workflow/YLc0oOlspOrfhTyG", ext:true, host:"n8n", handover:true, where:"cloud" },
+  { icon:"📥", name:"進貨單 Ragic 腳本", cat:"庫存管理", ver:"Ragic JS", desc:"進貨單結案拋轉庫存、異常品對照、列印進貨單並改狀態，寄拋轉成功通知", url:"https://ap13.ragic.com/feebit50968407/ragicpurchasing/20007", ext:true, host:"Ragic JavaScript Workflow", handover:true, where:"cloud" },
+  { icon:"🧭", name:"LaLa V 內部儀表板", cat:"系統", ver:"Zeabur", desc:"內部儀表板：公告、文件、資源、廣告報表、排程；程式碼在 GitHub Rhoen-f/lalav-dashboard（私人）", url:"https://lalav.zeabur.app", ext:true, host:"Zeabur · lalav.zeabur.app（10/16 下午 502）", handover:true, where:"cloud" },
+  { icon:"🗓️", name:"排班表系統", cat:"人事行政", ver:"Railway", desc:"排班表網頁系統；你的 GitHub 帳號目前沒有這個 repo 的權限", url:"https://github.com/Rhoen-f/lalav-scheduling", ext:true, host:"GitHub Rhoen-f/lalav-scheduling（私人）", handover:true, where:"cloud" },
+  { icon:"💡", name:"ESUSE LED 模擬器", cat:"研發法規", ver:"Railway", desc:"LED 產品效果模擬網頁；程式碼在 GitHub Rhoen-f/led-simulator（私人）", url:"https://github.com/Rhoen-f/led-simulator", ext:true, host:"Railway · led-simulator", handover:true, where:"cloud" },
+  { icon:"🛍️", name:"蝦皮管理主控台", cat:"電商銷售", ver:"Railway", desc:"蝦皮後台資料主控台與 Chrome 外掛（用 cookie 登入蝦皮）", url:"https://railway.com/dashboard", ext:true, host:"Railway · shopee-console（含 Redis）", handover:true, where:"cloud" },
+  { icon:"🐒", name:"Tampermonkey 腳本服務", cat:"自動化", ver:"Railway", desc:"提供瀏覽器 Tampermonkey 腳本安裝與更新的服務", url:"https://railway.com/dashboard", ext:true, host:"Railway · tm-script", handover:true, where:"cloud" },
+  { icon:"❓", name:"anadetint（用途待確認）", cat:"系統", ver:"Railway", desc:"Railway 上的專案，用途還沒確認，交接時要問清楚或評估關閉", url:"https://railway.com/dashboard", ext:true, host:"Railway · anadetint", handover:true, where:"cloud" },
+  { icon:"🖨️", name:"蝦皮出貨單自動列印", cat:"電商銷售", ver:"Python", desc:"print_flow.py：自動到蝦皮後台列印出貨單、標籤", url:null, info:"舊電腦 sales6 · shopee-print-automation", host:"舊電腦 sales6 · shopee-print-automation", handover:true, where:"pc" },
+  { icon:"🔄", name:"庫存更新（數碼通）", cat:"庫存管理", ver:"Python", desc:"下載庫存 Excel 後更新 Ragic 數碼庫存", url:null, info:"舊電腦 sales6 · stock_flow.py", host:"舊電腦 sales6 · stock_flow.py", handover:true, where:"pc" },
+  { icon:"🧾", name:"寶雅請款 Python 版", cat:"財務帳務", ver:"Python", desc:"寶雅供應商平台自動請款（跟 n8n 版可能重複，要擇一）", url:null, info:"舊電腦 sales6 · poya_claim.py", host:"舊電腦 sales6 · poya_claim.py", handover:true, where:"pc" },
+  { icon:"💾", name:"雲端硬碟增量備份", cat:"系統", ver:"Python", desc:"把 NAS 資料夾增量備份到 Google 雲端硬碟", url:null, info:"舊電腦 sales6 · drive_incremental_backup.py", host:"舊電腦 sales6 · drive_incremental_backup.py", handover:true, where:"pc" },
+  { icon:"💬", name:"第二 LINE＋蝦皮素材下載", cat:"自動化", ver:"排程", desc:"每週三、五 09:30 開第二個 LINE 讀「蝦蝦 X Jasmine」群組，下載最新蝦皮宣傳素材", url:null, info:"舊電腦 sales6 · Sandboxie＋Claude 排程", host:"舊電腦 sales6 · Sandboxie＋Claude 排程", handover:true, where:"pc" },
+  { icon:"📝", name:"評論爬蟲與 SHOPLINE 匯入", cat:"電商銷售", ver:"Python", desc:"review_scraper.py 抓評論、shopline_importer.py 匯入 SHOPLINE", url:null, info:"舊電腦 sales6 · R備份\\Review", host:"舊電腦 sales6 · R備份\\Review", handover:true, where:"pc" },
+  { icon:"📊", name:"每月報表自動下載", cat:"財務帳務", ver:"Python", desc:"每月報表自動下載、發票自動化工具、蝦皮商品描述圖上傳工具", url:null, info:"舊電腦 sales6 · R備份\\Application", host:"舊電腦 sales6 · R備份\\Application", handover:true, where:"pc" },
 ];
 
-const CATS = ['全部', ...new Set(SKILLS.map(s => s.cat))];
+const CATS = ['全部', ...new Set(SKILLS.map(s => s.cat)), '🟧 交接工具'];
 let activeFilter = '全部';
 
 function ck(cat) { return cat.replace(/\s/g, '-'); }
@@ -483,7 +524,8 @@ function renderStats(data) {
 function render() {
   const q = document.getElementById('st-search').value.trim().toLowerCase();
   let data = SKILLS;
-  if (activeFilter !== '全部') data = data.filter(s => s.cat === activeFilter);
+  if (activeFilter === '🟧 交接工具') data = data.filter(s => s.handover);
+  else if (activeFilter !== '全部') data = data.filter(s => s.cat === activeFilter);
   if (q) data = data.filter(s =>
     s.name.toLowerCase().includes(q) ||
     s.desc.toLowerCase().includes(q) ||
@@ -510,9 +552,9 @@ function render() {
         html += `<div class="skill-card clickable" onclick="openModal(${idx})">`;
       } else if (s.url) {
         const tgt = s.ext ? ' target="_blank" rel="noopener"' : '';
-        html += `<a class="skill-card" href="${s.url}"${tgt}>`;
+        html += `<a class="skill-card${s.handover ? ' handover' : ''}" href="${s.url}"${tgt}>`;
       } else {
-        html += `<div class="skill-card no-link">`;
+        html += `<div class="skill-card no-link${s.handover ? ' handover' : ''}">`;
       }
       html += `
         <div class="skill-card-top">
@@ -522,6 +564,7 @@ function render() {
         <div class="skill-card-name">${s.name}</div>
         <span class="skill-card-tag tag-${key}">${s.cat}</span>
         <div class="skill-card-desc">${s.desc}</div>
+        ${s.where ? `<span class="skill-card-where where-${s.where}">${s.where === 'pc' ? '💻 舊電腦' : '☁️ 雲端主機'}</span>` : ''}
         ${s.host ? `<div class="skill-card-host">🖥️ ${s.host}</div>` : ''}
       `;
       if (s.cmd)       html += `<div class="skill-card-action action-cmd">⌨️ 點擊查看指令</div>`;
