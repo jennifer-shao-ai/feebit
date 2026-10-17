@@ -452,7 +452,7 @@ const SKILLS = [
   { icon:'✈️', name:'旅行規劃', cat:'生活', ver:'v4.4', desc:'旅行行程協作規劃，Firebase 即時同步，多瀏覽器共用', url:'travel-planner.html' },
   { icon:'🧳', name:'旅程手冊', cat:'生活', ver:'v2.20', desc:'手機優先旅程 PWA：行程勾選、景點注意事項、購物清單、分帳、優惠券、即時匯率，好友即時同步', url:'trip-planner.html' },
   // ── 交接工具（前員工建立，帳號不在 Jennifer 名下） ──
-  { icon:"🧠", name:"n8n 自動化主機", cat:"自動化", ver:"n8n", desc:"41 支自動化流程的主機（35 支啟用、6 支停用，含 2026-10 新增的錯誤總管），下面各卡片都是跑在這裡", url:"https://n8n-production-e240.up.railway.app/home/workflows", ext:true, host:"Railway · n8n-production", handover:true, where:"cloud" },
+  { icon:"🧠", name:"n8n 自動化主機", cat:"自動化", ver:"n8n", desc:"41 支自動化流程的主機（35 支啟用、6 支停用，含 2026-10 新增的錯誤總管），下面各卡片都是跑在這裡", url:"https://n8n-production-e240.up.railway.app/home/workflows", ext:true, host:"Railway · anadetint 專案的 n8n 服務", handover:true, where:"cloud" },
   { icon:"🧾", name:"n8n 標準化紀錄", cat:"自動化", ver:"n8n", desc:"共用子流程：各流程跑完把成功／失敗寫進 Ragic 自動化執行紀錄，失敗會觸發即時通知信", url:"https://n8n-production-e240.up.railway.app/workflow/S2gLarsItIdoZ9cL", ext:true, host:"n8n", handover:true, where:"cloud" },
   { icon:"🖼️", name:"LINE 圖文選單自動更新", cat:"自動化", ver:"n8n", desc:"雲端硬碟換圖或排程時間到，自動更新 LINE 官方帳號圖文選單（分本期／往期）", url:"https://n8n-production-e240.up.railway.app/workflow/N8Q5wd57QTzimwq3", ext:true, host:"n8n", handover:true, where:"cloud" },
   { icon:"✉️", name:"邀請加入與登入小流程", cat:"自動化", ver:"n8n", desc:"邀請加入發信（Admin）、Supplier Hub 登入、蝦皮登入收信 2 支，由其他流程或儀表板呼叫", url:"https://n8n-production-e240.up.railway.app/workflow/AhjZqm8n1oUBFLsn", ext:true, host:"n8n", handover:true, where:"cloud" },
@@ -472,7 +472,7 @@ const SKILLS = [
   { icon:"💡", name:"ESUSE LED 模擬器", cat:"ESUSE", ver:"Railway", desc:"LED 產品效果模擬網頁；程式碼在 GitHub Rhoen-f/led-simulator（私人）", url:"https://github.com/Rhoen-f/led-simulator", ext:true, host:"Railway · led-simulator", handover:true, where:"cloud" },
   { icon:"🛍️", name:"蝦皮管理主控台", cat:"電商銷售", ver:"Railway", desc:"蝦皮後台資料主控台與 Chrome 外掛（用 cookie 登入蝦皮）", url:"https://railway.com/dashboard", ext:true, host:"Railway · shopee-console（含 Redis）", handover:true, where:"cloud" },
   { icon:"🐒", name:"Tampermonkey 腳本服務", cat:"自動化", ver:"Railway", desc:"提供瀏覽器 Tampermonkey 腳本安裝與更新的服務", url:"https://railway.com/dashboard", ext:true, host:"Railway · tm-script", handover:true, where:"cloud" },
-  { icon:"❓", name:"anadetint（用途待確認）", cat:"系統", ver:"Railway", desc:"Railway 上的專案，用途還沒確認，交接時要問清楚或評估關閉", url:"https://railway.com/dashboard", ext:true, host:"Railway · anadetint", handover:true, where:"cloud" },
+  { icon:"🗄️", name:"anadetint（n8n 主機專案）", cat:"自動化", ver:"Railway", desc:"n8n 在 Railway 上的專案：n8n 主程式、PostgreSQL 資料庫、query-failed-workflows 函式。不能關，關了所有 n8n 流程都會停", url:"https://railway.com/project/415de380-5672-40a2-a8f2-7b859accbe74", ext:true, host:"Railway · anadetint（n8n＋Postgres）", handover:true, where:"cloud" },
   { icon:"🖨️", name:"蝦皮出貨單自動列印", cat:"自動化", ver:"Python", desc:"print_flow.py：自動到蝦皮後台列印出貨單、標籤", url:null, info:"Feebit 主機 · shopee-print-automation", host:"Feebit 主機 · shopee-print-automation", handover:true, where:"pc" },
   { icon:"🔄", name:"庫存更新（數碼通）", cat:"自動化", ver:"Python", desc:"下載庫存 Excel 後更新 Ragic 數碼庫存", url:null, info:"Feebit 主機 · stock_flow.py", host:"Feebit 主機 · stock_flow.py", handover:true, where:"pc" },
   { icon:"🧾", name:"寶雅請款 Python 版", cat:"自動化", ver:"Python", desc:"寶雅供應商平台自動請款（跟 n8n 版可能重複，要擇一）", url:null, info:"Feebit 主機 · poya_claim.py", host:"Feebit 主機 · poya_claim.py", handover:true, where:"pc" },
