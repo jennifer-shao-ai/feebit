@@ -189,7 +189,7 @@
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
 
-  <div class="sidebar-footer">v2.0 · Feebit © 2026</div>
+  <div class="sidebar-footer">v2.1 · Feebit © 2026</div>
 </div>
 
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
@@ -200,7 +200,7 @@
     <div style="display:flex;align-items:center;gap:10px">
       <button class="btn-hamburger" onclick="openSidebar()">☰</button>
       <span class="topbar-title">採購單轉換</span>
-      <span class="topbar-badge">v2.0</span>
+      <span class="topbar-badge">v2.1</span>
     </div>
     <button class="btn-share" onclick="syncProducts()" title="強制重新載入 Ragic 商品清單">↻ 更新商品庫</button>
   </div>
@@ -373,6 +373,10 @@
 <script>
 // ── 常數 ──
 const RAGIC_BASE   = 'https://ap13.ragic.com/feebit50968407';
+// Ragic 金鑰走 Authorization 標頭，不放網址（避免留在瀏覽紀錄與伺服器紀錄）；貼上時多帶「Basic 」也能用
+function ragicAuth(key) {
+  return { 'Authorization': 'Basic ' + String(key || '').trim().replace(/^Basic\s+/i, '') };
+}
 const PRODUCT_PATH = '/product/16';
 const PO_PATH      = '/ragicpurchasing/20003';
 const PO_SUBTABLE  = '_subtable_3001286';
@@ -455,8 +459,8 @@ async function fetchProducts() {
   const key = get(LS_RAGIC);
   if (!key) throw new Error('請先在「設定」填入 Ragic API Token');
   showLoading('載入商品清單...');
-  const url = `${RAGIC_BASE}${PRODUCT_PATH}?api&APIKey=${encodeURIComponent(key)}&limit=9999`;
-  const res = await fetch(url);
+  const url = `${RAGIC_BASE}${PRODUCT_PATH}?api&limit=9999`;
+  const res = await fetch(url, { headers: ragicAuth(key) });
   if (!res.ok) throw new Error(`Ragic 商品 API 錯誤：${res.status}`);
   const data = await res.json();
   const list = Object.values(data)
@@ -740,10 +744,10 @@ async function submitNewProduct() {
   status.textContent = '建立中...';
   status.style.color = 'var(--gray-500)';
   try {
-    const url = `${RAGIC_BASE}${PRODUCT_PATH}?api&APIKey=${encodeURIComponent(ragicKey)}`;
+    const url = `${RAGIC_BASE}${PRODUCT_PATH}?api`;
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...ragicAuth(ragicKey) },
       body: JSON.stringify({ '產品代號': code, 'EAN13碼': barcode, '產品名稱': name, '廠商代號': vendor })
     });
     const d = await res.json();
@@ -864,10 +868,10 @@ async function createPurchaseOrder() {
   };
   try {
     showLoading('建立採購單...');
-    const url = `${RAGIC_BASE}${PO_PATH}?api&APIKey=${encodeURIComponent(ragicKey)}`;
+    const url = `${RAGIC_BASE}${PO_PATH}?api`;
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...ragicAuth(ragicKey) },
       body: JSON.stringify(body)
     });
     const d = await res.json();
