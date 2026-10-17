@@ -219,7 +219,7 @@ select[multiple]{padding:4px}
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
 
-  <div class="sidebar-footer">v1.10 · Feebit © 2026</div>
+  <div class="sidebar-footer">v1.11 · Feebit © 2026</div>
 </div>
 
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
@@ -231,7 +231,7 @@ select[multiple]{padding:4px}
       <button class="btn-hamburger" onclick="openSidebar()">☰</button>
       <span class="topbar-title">FDA 化粧品登錄</span>
       <span class="topbar-badge">法規登錄</span>
-      <span style="font-size:11px;color:var(--gray-400);margin-left:6px">v1.10</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:6px">v1.11</span>
     </div>
   </div>
 
@@ -574,6 +574,10 @@ const TEMPLATES = ["非組合式單一產品","非組合式系列產品","組合
 // STATE
 // ════════════════════════════════════════════════════════
 const KEY_KEY      = 'fb_fda_ragic_key';
+// Ragic 金鑰走 Authorization 標頭，不放網址（避免留在瀏覽紀錄與伺服器紀錄）；貼上時多帶「Basic 」也能用
+function ragicAuth(key) {
+  return { 'Authorization': 'Basic ' + String(key || '').trim().replace(/^Basic\s+/i, '') };
+}
 const KEY_FACTORIES= 'fb_fda_factories';
 const KEY_FORMS    = 'fb_fda_forms';
 const KEY_SETTINGS = 'fb_fda_settings';
@@ -802,8 +806,8 @@ async function loadFromRagic() {
   btn.textContent = '載入中...'; btn.disabled = true;
   setStatus('ragic-status', '連線中...', 'loading');
   try {
-    const url = `https://ap13.ragic.com/feebit50968407/product/16?api&APIKey=${encodeURIComponent(key)}&limit=9999`;
-    const resp = await fetch(url);
+    const url = `https://ap13.ragic.com/feebit50968407/product/16?api&limit=9999`;
+    const resp = await fetch(url, { headers: ragicAuth(key) });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
     loadedProducts = [];
@@ -891,8 +895,8 @@ async function syncStatusToRagic(code) {
   const syncEl = document.querySelector(`[data-sync="${code}"]`);
   if (syncEl) { syncEl.textContent = '⟳'; syncEl.style.color = 'var(--gray-400)'; }
   try {
-    const url = `https://ap13.ragic.com/feebit50968407/product/16/${ragicId}?api&APIKey=${encodeURIComponent(key)}`;
-    const resp = await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const url = `https://ap13.ragic.com/feebit50968407/product/16/${ragicId}?api`;
+    const resp = await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json', ...ragicAuth(key)}, body: JSON.stringify(body) });
     if (!resp.ok) throw new Error();
     if (syncEl) { syncEl.textContent = '✓'; syncEl.style.color = 'var(--success)'; setTimeout(() => { if(syncEl) syncEl.textContent=''; }, 3000); }
   } catch(e) {
@@ -2528,8 +2532,8 @@ async function doRagicSync() {
     const resultEl = document.getElementById(`sync-result-${pi}`);
     if (resultEl) resultEl.innerHTML = '<span style="color:var(--gray-400);font-size:12px">同步中...</span>';
     try {
-      const url = `https://ap13.ragic.com/feebit50968407/product/16/${p.ragicId}?api&APIKey=${encodeURIComponent(key)}`;
-      const resp = await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      const url = `https://ap13.ragic.com/feebit50968407/product/16/${p.ragicId}?api`;
+      const resp = await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json', ...ragicAuth(key)}, body: JSON.stringify(body) });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       if (resultEl) resultEl.innerHTML = '<span class="sync-result sync-ok">✓ 成功</span>';
     } catch(e) {
