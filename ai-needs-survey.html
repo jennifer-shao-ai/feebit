@@ -68,6 +68,9 @@ pre { white-space:pre-wrap; font-size:12px; background:var(--g50); padding:10px;
 .bar-row { display:flex; align-items:center; gap:8px; font-size:13px; margin-top:4px; }
 .bar-l { width:150px; flex-shrink:0; } .bar { flex:1; height:8px; background:var(--g100); border-radius:4px; overflow:hidden; }
 .bar span { display:block; height:100%; background:var(--primary); } .bar-n { width:24px; text-align:right; font-variant-numeric:tabular-nums; }
+.admin-bar { display:flex; gap:8px; flex-wrap:wrap; margin:6px 0 14px; }
+.admin-bar .btn-primary { width:auto; }
+.admin-bar a.btn { text-decoration:none; }
 .notice { background:#fef9c3; border:1.5px solid #fde047; color:#713f12; border-radius:var(--radius); padding:12px 14px; font-size:15px; margin-bottom:14px; }
 [hidden] { display:none !important; }
 </style>
@@ -108,11 +111,15 @@ pre { white-space:pre-wrap; font-size:12px; background:var(--g50); padding:10px;
 <!-- ── 後台：所有填答（?admin=1，需登入） ── -->
 <section id="adminView" hidden>
   <h1>📊 AI 需求問卷結果</h1>
+  <div class="admin-bar">
+    <button class="btn btn-primary" id="copyLinkBtn">📋 複製問卷連結（給別人填）</button>
+    <a class="btn btn-ghost" id="openFormLink" href="ai-needs-survey.html" target="_blank" rel="noopener">開啟問卷看看</a>
+  </div>
   <p class="lead" id="adminMsg">讀取中…</p>
   <div id="adminBody"></div>
 </section>
 
-<div class="ver">AI 需求問卷 v1.1</div>
+<div class="ver">AI 需求問卷 v2.1</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -330,6 +337,13 @@ document.getElementById('backBtn').addEventListener('click', () => {
 });
 
 // ── 後台 ──
+const FORM_URL = location.origin + location.pathname;  // 不帶 ?admin=1 的填寫連結
+document.getElementById('copyLinkBtn').addEventListener('click', async e => {
+  const btn = e.currentTarget, label = btn.textContent;
+  try { await navigator.clipboard.writeText(FORM_URL); btn.textContent = '✅ 已複製，可以直接貼給對方'; }
+  catch { prompt('請複製這個連結：', FORM_URL); }
+  setTimeout(() => btn.textContent = label, 2500);
+});
 async function renderAdmin() {
   document.getElementById('surveyView').hidden = true;
   document.getElementById('adminView').hidden = false;
