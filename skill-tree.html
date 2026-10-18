@@ -153,6 +153,7 @@
 .tag-自動化   { background:#cffafe; color:#0e7490; }
 .tag-系統     { background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; }
 .tag-生活     { background:#fce7f3; color:#9d174d; }
+.tag-AI-員工   { background:#1e293b; color:#fde68a; }
 
 .icon-財務帳務 { background:#dbeafe; }
 .icon-庫存管理 { background:#dcfce7; }
@@ -163,6 +164,19 @@
 .icon-自動化   { background:#cffafe; }
 .icon-系統     { background:#f1f5f9; }
 .icon-生活     { background:#fce7f3; }
+.icon-AI-員工   { background:#fef3c7; }
+
+/* AI 員工卡（有職稱、管理的 skill 與職責） */
+.skill-card.staff { grid-column: span 2; background:linear-gradient(135deg,#fffbeb,#ffffff); border-color:#fcd34d; }
+.skill-card.staff:hover { border-color:#f59e0b; box-shadow:0 4px 12px rgba(245,158,11,0.18); }
+.staff-title { font-size:11px; font-weight:700; color:#b45309; }
+.staff-label { font-size:10px; font-weight:700; color:var(--gray-500); margin-top:2px; }
+.staff-members { display:flex; flex-wrap:wrap; gap:4px; }
+.staff-member { font-size:10px; font-family:monospace; background:#ede9fe; color:#6d28d9; padding:2px 6px; border-radius:6px; }
+.staff-duties { margin:0; padding-left:16px; font-size:11px; color:var(--gray-600); line-height:1.6; }
+.skill-card-manager { font-size:10px; font-weight:700; padding:2px 7px; border-radius:10px; width:fit-content; background:#fef3c7; color:#92400e; border:1px solid #fcd34d; }
+.st-modal-staff { font-size:12px; color:var(--gray-600); margin-bottom:12px; line-height:1.6; }
+@media (max-width: 640px) { .skill-card.staff { grid-column: span 1; } }
 
 .action-go   { color: var(--primary); }
 .action-cmd  { color: #7c3aed; }
@@ -322,7 +336,7 @@
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
 
-  <div class="sidebar-footer">v1.11 · Feebit © 2026</div>
+  <div class="sidebar-footer">v1.12 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -332,7 +346,7 @@
       <button class="btn-hamburger" onclick="openSidebar()">☰</button>
       <span class="topbar-title">技能樹</span>
       <span class="topbar-badge">工具總覽</span>
-      <span style="font-size:11px;color:var(--gray-400);margin-left:4px">v1.11</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:4px">v1.12</span>
     </div>
   </div>
   <div class="page">
@@ -340,7 +354,7 @@
     <div class="st-search-bar">
       <input class="st-search-input" id="st-search" type="text" placeholder="🔍  搜尋工具名稱或說明…" oninput="render()">
       <div class="st-filter-chips" id="st-chips"></div>
-      <div class="st-legend"><span><span class="lg-swatch"></span>橘底卡片＝交接工具（前員工建立，帳號不在你名下）</span><span class="skill-card-where where-cloud">☁️ 雲端主機</span>在雲端上跑，不用開電腦<span class="skill-card-where where-pc">🖥️ Feebit 主機</span>公司那台電腦要開機才會跑<span class="skill-card-off">⏸️ 停用</span>目前沒有在跑</div>
+      <div class="st-legend"><span><span class="lg-swatch"></span>橘底卡片＝交接工具（前員工建立，帳號不在你名下）</span><span class="skill-card-where where-cloud">☁️ 雲端主機</span>在雲端上跑，不用開電腦<span class="skill-card-where where-pc">🖥️ Feebit 主機</span>公司那台電腦要開機才會跑<span class="skill-card-off">⏸️ 停用</span>目前沒有在跑<span class="skill-card-manager">👤 Milo 管理</span>這個指令由該 AI 員工統一調度</div>
     </div>
     <div id="st-content"></div>
     <div class="st-empty" id="st-empty" style="display:none">
@@ -357,6 +371,7 @@
     <div class="st-modal-name" id="modal-name"></div>
     <div class="st-modal-tag"  id="modal-tag"></div>
     <div class="st-modal-desc" id="modal-desc"></div>
+    <div class="st-modal-staff" id="modal-staff"></div>
     <div class="st-modal-cmd">
       <span id="modal-cmd"></span>
       <button class="st-copy-btn" onclick="copyCmd()" title="複製指令">📋</button>
@@ -368,6 +383,12 @@
 
 <script>
 const SKILLS = [
+  // ── AI 員工（有職稱、管理底下 skill；放最上面） ──
+  { icon:'🎩', name:'Milo', title:'完工上線總管', cat:'AI 員工', ver:'skill', staff:true,
+    desc:'東西做完叫 Milo，判斷要跑哪些收尾指令、排好順序，對外寫入一次放行後依序執行並回報',
+    members:['/project-security-bootstrap','/github-tool','/github-review','/tool-save','/skill-tree-sync'],
+    duties:['判斷收尾要跑哪些指令並排順序','開派工單，推 GitHub／寫 Ragic 先等放行','登記 Ragic 自動化排程總表 info/16','檢查通知方式與是否真的跑過一次','彙總回報（四種狀態附證據）'],
+    cmd:'/milo' },
   // ── 財務帳務 ──
   { icon:'💾', name:'商品成本資料庫',   cat:'財務帳務', ver:'v1.0', desc:'品牌／條碼查詢成本、多供應商比價、成本歷史、匯率模擬器', url:'cost-database.html' },
   { icon:'📗', name:'分錄帳轉換',       cat:'財務帳務', ver:'v1.0', desc:'帳務轉換產出的分類明細，依四階科目自動產生月度分錄帳', url:'journal-voucher.html' },
@@ -446,7 +467,7 @@ const SKILLS = [
   // ── 系統 ──
   { icon:'🏠', name:'首頁',     cat:'系統', ver:'v4.4', desc:'飛比特營運工具箱入口，所有工具快速導覽', url:'index.html' },
   { icon:'🔧', name:'使用工具', cat:'系統', ver:'v1.1', desc:'外部平台與後台連結總覽，點擊前往各系統', url:'tools.html' },
-  { icon:'🌳', name:'技能樹',   cat:'系統', ver:'v1.11', desc:'飛比特所有工具與技能可視化總覽，含版本與說明', url:'skill-tree.html' },
+  { icon:'🌳', name:'技能樹',   cat:'系統', ver:'v1.12', desc:'飛比特所有工具與技能可視化總覽，含版本與說明', url:'skill-tree.html' },
   { icon:'💳', name:'訂閱服務管理', cat:'系統', ver:'v2.1', desc:'付費工具/平台方案、價格、結帳日、帳號、後台、付款統編＋各公司每月/每年分攤，Supabase 共用', url:'subscriptions.html' },
   { icon:'🛡️', name:'Git 安全防護', cat:'系統', ver:'v1.0', desc:'.gitignore 禁止上傳清單：擋下 .env、金鑰、憑證等機密檔，避免推上公開 repo', url:null, info:'repo 根目錄 .gitignore · 由 /project-security-bootstrap 建立 · 2026-10-03 上線', host:'GitHub repo jennifer-shao-ai/feebit' },
   // ── 生活 ──
@@ -495,6 +516,11 @@ const SKILLS = [
 const CATS = ['全部', ...new Set(SKILLS.map(s => s.cat)), '🟧 交接工具'];
 let activeFilter = '全部';
 
+// 指令 → 管理它的 AI 員工
+const MANAGER = {};
+SKILLS.filter(s => s.staff).forEach(m => (m.members || []).forEach(c => { MANAGER[c] = m; }));
+function managerOf(s) { return s.cmd && !s.staff ? MANAGER[s.cmd] : null; }
+
 function ck(cat) { return cat.replace(/\s/g, '-'); }
 
 // Build filter chips
@@ -542,7 +568,9 @@ function render() {
   if (q) data = data.filter(s =>
     s.name.toLowerCase().includes(q) ||
     s.desc.toLowerCase().includes(q) ||
-    s.cat.toLowerCase().includes(q)
+    s.cat.toLowerCase().includes(q) ||
+    (s.title || '').toLowerCase().includes(q) ||
+    (managerOf(s) ? managerOf(s).name.toLowerCase().includes(q) : false)
   );
 
   renderStats(data);
@@ -562,7 +590,7 @@ function render() {
       const key = ck(s.cat);
       if (s.cmd) {
         const idx = SKILLS.indexOf(s);
-        html += `<div class="skill-card clickable" onclick="openModal(${idx})">`;
+        html += `<div class="skill-card clickable${s.staff ? ' staff' : ''}" onclick="openModal(${idx})">`;
       } else if (s.url) {
         const tgt = s.ext ? ' target="_blank" rel="noopener"' : '';
         html += `<a class="skill-card${s.handover ? ' handover' : ''}" href="${s.url}"${tgt}>`;
@@ -575,8 +603,12 @@ function render() {
           <span class="skill-card-version">${s.ver}</span>
         </div>
         <div class="skill-card-name">${s.name}</div>
+        ${s.title ? `<div class="staff-title">職稱：${s.title}</div>` : ''}
         <span class="skill-card-tag tag-${key}">${s.cat}</span>
         <div class="skill-card-desc">${s.desc}</div>
+        ${s.members ? `<div class="staff-label">管理的指令</div><div class="staff-members">${s.members.map(c => `<span class="staff-member">${c}</span>`).join('')}</div>` : ''}
+        ${s.duties ? `<div class="staff-label">職責</div><ul class="staff-duties">${s.duties.map(d => `<li>${d}</li>`).join('')}</ul>` : ''}
+        ${managerOf(s) ? `<span class="skill-card-manager">👤 ${managerOf(s).name} 管理</span>` : ''}
         ${s.off ? `<span class="skill-card-off">⏸️ 停用</span>` : ''}
         ${s.where ? `<span class="skill-card-where where-${s.where}">${s.where === 'pc' ? '🖥️ Feebit 主機' : '☁️ 雲端主機'}</span>` : ''}
         ${s.host ? `<div class="skill-card-host">🖥️ ${s.host}</div>` : ''}
@@ -599,6 +631,12 @@ function openModal(idx) {
   document.getElementById('modal-tag').innerHTML = `<span class="skill-card-tag tag-${key}">${s.cat}</span>`;
   document.getElementById('modal-desc').textContent = s.desc;
   document.getElementById('modal-cmd').textContent = s.cmd;
+  const staffEl = document.getElementById('modal-staff');
+  const mgr = managerOf(s);
+  if (s.staff) staffEl.innerHTML = `<b>職稱：</b>${s.title}<br><b>管理的指令：</b>${s.members.join('、')}<br><b>職責：</b>${s.duties.join('；')}`;
+  else if (mgr) staffEl.innerHTML = `👤 由 <b>${mgr.name}</b>（${mgr.title}）管理調度`;
+  else staffEl.innerHTML = '';
+  staffEl.style.display = staffEl.innerHTML ? 'block' : 'none';
   const linkEl = document.getElementById('modal-link');
   if (s.link) { linkEl.href = s.link; linkEl.style.display = 'block'; }
   else { linkEl.style.display = 'none'; }
