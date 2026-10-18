@@ -55,6 +55,19 @@ td.num { text-align:right; font-variant-numeric:tabular-nums; }
 details summary { cursor:pointer; color:var(--primary); font-size:13px; }
 pre { white-space:pre-wrap; font-size:12px; background:var(--g50); padding:10px; border-radius:8px; }
 .ver { text-align:center; color:var(--g400); font-size:12px; margin-top:30px; }
+.person .p-head { display:flex; justify-content:space-between; align-items:baseline; gap:8px; flex-wrap:wrap; margin-bottom:6px; }
+.muted { color:var(--g400); font-size:13px; }
+.sec { border-top:1px solid var(--g100); padding-top:12px; margin-top:12px; }
+.sec-t { font-weight:700; font-size:14px; margin-bottom:6px; }
+.warn-box { background:#fffbeb; border:1.5px solid #fde68a; border-radius:10px; padding:12px; }
+.qa { margin-top:8px; } .qa-q { font-size:12px; color:var(--g500); } .qa-a { font-size:14px; white-space:pre-wrap; }
+.kv { font-size:13px; color:var(--g700); margin-top:4px; } .kv b { display:inline-block; min-width:68px; color:var(--g500); font-weight:600; }
+.rank .score { float:right; font-size:13px; color:var(--primary); font-weight:700; }
+.chip { display:inline-block; background:var(--g100); border-radius:8px; padding:1px 8px; margin:0 4px 4px 0; font-size:13px; }
+.hints { margin:6px 0 0; padding-left:18px; font-size:13px; color:var(--warn); }
+.bar-row { display:flex; align-items:center; gap:8px; font-size:13px; margin-top:4px; }
+.bar-l { width:150px; flex-shrink:0; } .bar { flex:1; height:8px; background:var(--g100); border-radius:4px; overflow:hidden; }
+.bar span { display:block; height:100%; background:var(--primary); } .bar-n { width:24px; text-align:right; font-variant-numeric:tabular-nums; }
 .notice { background:#fef9c3; border:1.5px solid #fde047; color:#713f12; border-radius:var(--radius); padding:12px 14px; font-size:15px; margin-bottom:14px; }
 [hidden] { display:none !important; }
 </style>
@@ -99,7 +112,7 @@ pre { white-space:pre-wrap; font-size:12px; background:var(--g50); padding:10px;
   <div id="adminBody"></div>
 </section>
 
-<div class="ver">AI 需求問卷 v1.0</div>
+<div class="ver">AI 需求問卷 v1.1</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -333,24 +346,112 @@ async function renderAdmin() {
   msg.textContent = `共 ${data.length} 份填答。同一人重填會有多筆，以最新的為準。`;
   if (!data.length) return;
 
-  // 每人分數（同一人只取最新一筆；data 已依時間新到舊排序）
-  const latest = {};
-  for (const row of data) latest[row.respondent] ??= row;
-  const people = Object.keys(latest);
-  const total = k => people.reduce((t, p) => t + (latest[p].scores?.[k] || 0), 0);
+  renderAdminData(data);
+}
+
+// 後台用：每個功能飛比特現有的基礎、做法、要再跟填寫人確認的問題（填寫人看不到）
+const FEATURE_NOTES = {
+  week:       { base:'已有 /daily-review（每天 08:30 整合 Asana、Gmail、Slack、Notion 寄信）', how:'加「週一模式」，多接 Google 行事曆，列本週會議、到期事項、待回信件', ask:['要看自己的行程，還是整間公司的？','哪些會議需要事先準備資料？'] },
+  daily:      { base:'已有 /daily-review，目前只寄給 Jennifer', how:'複製一份給填寫人，資料來源與收件人改成設定檔', ask:['哪些數字每天一定要看？','用 Email 還是 LINE 收？'] },
+  status:     { base:'Asana 各人專案已有，但多數任務沒填負責人與到期日', how:'每週從 Asana 撈完成／逾期／卡住，整理成報告（Email 或 Gamma）', ask:['要看哪幾個人、哪幾個專案？','要細到每個任務，還是只看卡住的？'] },
+  mailtrack:  { base:'已有 Apps Script 讀 Gmail 寫 Ragic 的經驗（Google 帳單→請款單）', how:'指定標籤的信每天抓日期與截止日，寫進 Sheet／Ragic，到期前通知', ask:['哪一類信最常漏？','是哪個信箱收的？'] },
+  vendor:     { base:'批發報價規則、Notion 廠商資料、LINE Bot 廠商流程', how:'做 Skill：讀整個資料夾 → 建檔進廠商表 → 產出報價或合約草稿', ask:['最近一批廠商資料的實際檔案能給一份嗎？','產出要交給誰、用什麼格式？'] },
+  newsletter: { base:'已有 edm-builder（對外會員電子報），沒有內部版', how:'每月從 Slack、Asana、營收數字撈重點，產出內部電子報', ask:['給誰看：員工、股東還是合作夥伴？','多久一次？'] },
+  browser:    { base:'已有通路營收、品牌趨勢、廣告報表等頁面', how:'用 Chrome 讀平台後台圖表，加上本機報表，整理成分析報告', ask:['是哪個後台、哪些指標？','分析完要拿來做什麼決定？'] },
+  routine:    { base:'Ragic 自動化排程總表已有 58 支自動化可參考', how:'先看開放題寫的「最花時間的重複作業」，評估用 n8n／Apps Script／主機腳本自動化', ask:['那件事每次多久、多久做一次？','中間會用到哪些系統或檔案？'] },
+  compare:    { base:'無，屬於隨叫隨用', how:'做比較分析 Skill 範本：評估表＋成本／毛利＋風險＋建議', ask:['目前正在比較的是什麼？','什麼時候要做決定？'] },
+  market:     { base:'無，可接 deep-research', how:'研究市場規模、競爭者、預估營收，產出報告', ask:['要評估的對象是什麼？','決策的時間點？'] },
+  flow:       { base:'無', how:'做流程圖 Skill，統一 SOP 圖的樣式', ask:['哪個流程？','給誰看？'] },
+};
+
+// 從答案文字反推每個功能是因為勾了哪些選項
+function reasonsFrom(answers) {
+  const out = {};
+  for (const q of QUESTIONS) for (const label of answers?.[q.id] || []) {
+    const opt = q.opts.find(o => o[0] === label);
+    if (opt) for (const f of opt[1]) (out[f] ??= []).push(label + (q.w > 1 ? '（×2）' : ''));
+  }
+  return out;
+}
+function otherItems(answers) {
+  const items = [];
+  for (const q of QUESTIONS.concat(INFO_QUESTIONS)) for (const a of answers?.[q.id] || []) if (a.startsWith('其他：')) items.push([q.title, a.slice(3)]);
+  return items;
+}
+function toolHints(tools) {
+  const t = tools || [], hints = [];
+  if (!t.length) return hints;  // 這題跳過就不推測
+  if (t.some(x => x.includes('Outlook'))) hints.push('信箱是 Outlook／Microsoft 365，跟飛比特的 Gmail 不同，信件類功能要另外串接');
+  if (!t.some(x => x.includes('Asana'))) hints.push('沒勾任務工具：專案進度報告沒有現成資料來源，要先決定進度記在哪');
+  if (t.some(x => x.includes('LINE')) && !t.some(x => x.includes('Slack'))) hints.push('主要用 LINE 溝通：通知與簡報建議改用 LINE 推播');
+  if (t.some(x => x.includes('ERP'))) hints.push('有用 ERP：可直接接 Ragic 類資料');
+  return hints;
+}
+const chips = arr => (arr || []).length ? arr.map(a => `<span class="chip">${esc(a)}</span>`).join('') : '<span class="muted">（沒填）</span>';
+
+function renderAdminData(data) {
+  const msg = document.getElementById('adminMsg');
+  msg.textContent = `共 ${data.length} 份填答。同一人重填會有多筆，以最新的為準，舊的收在每人卡片最下面。`;
+  if (!data.length) return;
+
+  // 同一人只取最新一筆（data 已依時間新到舊排序）
+  const byPerson = {};
+  for (const row of data) (byPerson[row.respondent] ??= []).push(row);
+  const people = Object.keys(byPerson);
+  const latest = p => byPerson[p][0];
+  const total = k => people.reduce((t, p) => t + (latest(p).scores?.[k] || 0), 0);
   const keys = Object.keys(FEATURES).sort((a, b) => total(b) - total(a));
-  let html = `<div class="card"><div class="q-title">每人分數（取最新一筆）</div><div class="tw"><table><thead><tr><th>功能</th>${people.map(p => `<th>${esc(p)}</th>`).join('')}${people.length > 1 ? '<th>合計</th>' : ''}</tr></thead><tbody>` +
-    keys.map(k => `<tr><td>${esc(FEATURES[k].name)}</td>${people.map(p => `<td class="num">${latest[p].scores?.[k] || 0}</td>`).join('')}${people.length > 1 ? `<td class="num">${total(k)}</td>` : ''}</tr>`).join('') +
+
+  let html = `<div class="card"><div class="q-title">總覽：每人分數（取最新一筆）</div><div class="tw"><table><thead><tr><th>功能</th>${people.map(p => `<th>${esc(p)}</th>`).join('')}${people.length > 1 ? '<th>合計</th>' : ''}</tr></thead><tbody>` +
+    keys.map(k => `<tr><td>${esc(FEATURES[k].name)}</td>${people.map(p => `<td class="num">${latest(p).scores?.[k] || 0}</td>`).join('')}${people.length > 1 ? `<td class="num">${total(k)}</td>` : ''}</tr>`).join('') +
     `</tbody></table></div></div>`;
 
-  html += `<div class="card"><div class="q-title">每一份填答</div><div class="tw"><table><thead><tr><th>時間</th><th>填寫人</th><th>前五名</th><th>內容</th></tr></thead><tbody>` +
-    data.map(row => {
-      const t = new Date(row.created_at).toLocaleString('zh-TW', { hour12:false });
-      const r = { answers: row.answers || {}, scores: row.scores || {}, top: row.top_picks || [] };
-      return `<tr><td>${esc(t)}</td><td>${esc(row.respondent)}</td>
-        <td>${r.top.map((k, i) => `${i + 1}. ${esc(FEATURES[k]?.name || k)}`).join('<br>') || '—'}</td>
-        <td><details><summary>展開</summary><pre>${esc(resultText(r, row.respondent))}</pre></details></td></tr>`;
-    }).join('') + `</tbody></table></div></div>`;
+  for (const p of people) {
+    const row = latest(p), a = row.answers || {}, sc = row.scores || {}, top = row.top_picks || [];
+    const reasons = reasonsFrom(a), others = otherItems(a), hints = toolHints(a.tools);
+    const t = new Date(row.created_at).toLocaleString('zh-TW', { hour12:false });
+    const max = Math.max(1, ...Object.values(sc));
+
+    html += `<div class="card person"><div class="p-head"><div class="q-title" style="margin:0">👤 ${esc(p)}</div><div class="muted">${esc(t)}${byPerson[p].length > 1 ? `・共填 ${byPerson[p].length} 次` : ''}</div></div>`;
+
+    // 清單外的需求放最上面
+    if (a.first || a.repeat || others.length) {
+      html += `<div class="sec warn-box"><div class="sec-t">💬 清單外的需求（自填內容，最可能是真正想要的）</div>`;
+      if (a.first) html += `<div class="qa"><div class="qa-q">第一件想交給助理的事</div><div class="qa-a">${esc(a.first)}</div></div>`;
+      if (a.repeat) html += `<div class="qa"><div class="qa-q">最花時間的重複作業</div><div class="qa-a">${esc(a.repeat)}</div></div>`;
+      for (const [q, v] of others) html += `<div class="qa"><div class="qa-q">${esc(q)}（其他）</div><div class="qa-a">${esc(v)}</div></div>`;
+      html += `</div>`;
+    }
+
+    // 前五名：原因＋現有基礎＋做法＋要追問的
+    html += `<div class="sec"><div class="sec-t">🏆 建議先做的前 ${top.length} 項</div>` + (top.length ? top.map((k, i) => {
+      const f = FEATURES[k], n = FEATURE_NOTES[k] || {};
+      return `<div class="rank${i === 0 ? ' first' : ''}"><div class="t">${i + 1}. ${esc(f?.name || k)}<span class="badge ${LV_TEXT[f?.lv]?.[1] || ''}">${LV_TEXT[f?.lv]?.[0] || ''}</span><span class="score">${sc[k] || 0} 分</span></div>
+        <div class="kv"><b>他勾了</b>${(reasons[k] || []).map(esc).join('、') || '—'}</div>
+        <div class="kv"><b>現有基礎</b>${esc(n.base || '—')}</div>
+        <div class="kv"><b>做法</b>${esc(n.how || '—')}</div>
+        <div class="kv"><b>要再問他</b>${(n.ask || []).map(esc).join('／') || '—'}</div></div>`;
+    }).join('') : '<div class="muted">沒有勾到任何計分選項</div>') + `</div>`;
+
+    // 交付偏好與工具
+    html += `<div class="sec"><div class="sec-t">📮 交付方式與使用工具</div>
+      <div class="kv"><b>頻率</b>${chips(a.freq)}</div>
+      <div class="kv"><b>收件方式</b>${chips(a.channel)}</div>
+      <div class="kv"><b>使用工具</b>${chips(a.tools)}</div>
+      ${hints.length ? `<ul class="hints">${hints.map(h => `<li>${esc(h)}</li>`).join('')}</ul>` : ''}</div>`;
+
+    // 全部功能分數長條
+    html += `<div class="sec"><div class="sec-t">📊 11 項功能分數</div>` + Object.keys(FEATURES).sort((x, y) => (sc[y] || 0) - (sc[x] || 0)).map(k =>
+      `<div class="bar-row"><span class="bar-l">${esc(FEATURES[k].name)}</span><span class="bar"><span style="width:${(sc[k] || 0) / max * 100}%"></span></span><span class="bar-n">${sc[k] || 0}</span></div>`).join('') + `</div>`;
+
+    // 逐題原始回答
+    html += `<details class="sec"><summary>📝 逐題原始回答</summary>` + QUESTIONS.concat(INFO_QUESTIONS).map(q =>
+      `<div class="qa"><div class="qa-q">${esc(q.title)}</div><div class="qa-a">${(a[q.id] || []).length ? (a[q.id]).map(esc).join('、') : '<span class="muted">跳過</span>'}</div></div>`).join('') + `</details>`;
+
+    if (byPerson[p].length > 1) html += `<details class="sec"><summary>🕘 之前的填答（${byPerson[p].length - 1} 份）</summary>` + byPerson[p].slice(1).map(old =>
+      `<pre>${esc(new Date(old.created_at).toLocaleString('zh-TW', { hour12:false }) + '\n' + resultText({ answers: old.answers || {}, scores: old.scores || {}, top: old.top_picks || [] }, p))}</pre>`).join('') + `</details>`;
+    html += `</div>`;
+  }
   document.getElementById('adminBody').innerHTML = html;
 }
 
