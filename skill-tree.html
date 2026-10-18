@@ -336,7 +336,7 @@
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
 
-  <div class="sidebar-footer">v1.12 · Feebit © 2026</div>
+  <div class="sidebar-footer">v1.13 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -346,7 +346,7 @@
       <button class="btn-hamburger" onclick="openSidebar()">☰</button>
       <span class="topbar-title">技能樹</span>
       <span class="topbar-badge">工具總覽</span>
-      <span style="font-size:11px;color:var(--gray-400);margin-left:4px">v1.12</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:4px">v1.13</span>
     </div>
   </div>
   <div class="page">
@@ -388,7 +388,7 @@ const SKILLS = [
     desc:'東西做完叫 Milo，判斷要跑哪些收尾指令、排好順序，對外寫入一次放行後依序執行並回報',
     members:['/project-security-bootstrap','/github-tool','/github-review','/tool-save','/skill-tree-sync'],
     duties:['判斷收尾要跑哪些指令並排順序','開派工單，推 GitHub／寫 Ragic 先等放行','登記 Ragic 自動化排程總表 info/16','檢查通知方式與是否真的跑過一次','彙總回報（四種狀態附證據）'],
-    cmd:'/milo' },
+    cmd:'/milo', link:'https://www.notion.so/3fdc0daeef57812bbc0cf2dbd3cc369f' },
   // ── 財務帳務 ──
   { icon:'💾', name:'商品成本資料庫',   cat:'財務帳務', ver:'v1.0', desc:'品牌／條碼查詢成本、多供應商比價、成本歷史、匯率模擬器', url:'cost-database.html' },
   { icon:'📗', name:'分錄帳轉換',       cat:'財務帳務', ver:'v1.0', desc:'帳務轉換產出的分類明細，依四階科目自動產生月度分錄帳', url:'journal-voucher.html' },
@@ -467,7 +467,7 @@ const SKILLS = [
   // ── 系統 ──
   { icon:'🏠', name:'首頁',     cat:'系統', ver:'v4.4', desc:'飛比特營運工具箱入口，所有工具快速導覽', url:'index.html' },
   { icon:'🔧', name:'使用工具', cat:'系統', ver:'v1.1', desc:'外部平台與後台連結總覽，點擊前往各系統', url:'tools.html' },
-  { icon:'🌳', name:'技能樹',   cat:'系統', ver:'v1.12', desc:'飛比特所有工具與技能可視化總覽，含版本與說明', url:'skill-tree.html' },
+  { icon:'🌳', name:'技能樹',   cat:'系統', ver:'v1.13', desc:'飛比特所有工具與技能可視化總覽，含版本與說明', url:'skill-tree.html' },
   { icon:'💳', name:'訂閱服務管理', cat:'系統', ver:'v2.1', desc:'付費工具/平台方案、價格、結帳日、帳號、後台、付款統編＋各公司每月/每年分攤，Supabase 共用', url:'subscriptions.html' },
   { icon:'🛡️', name:'Git 安全防護', cat:'系統', ver:'v1.0', desc:'.gitignore 禁止上傳清單：擋下 .env、金鑰、憑證等機密檔，避免推上公開 repo', url:null, info:'repo 根目錄 .gitignore · 由 /project-security-bootstrap 建立 · 2026-10-03 上線', host:'GitHub repo jennifer-shao-ai/feebit' },
   // ── 生活 ──
