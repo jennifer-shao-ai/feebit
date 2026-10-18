@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 需求問卷 · 飛比特營運工具箱</title>
+<link rel="icon" href="favicon.svg">
+<style>
+:root {
+  --primary:#2563eb; --primary-50:#eff6ff; --ok:#16a34a; --warn:#d97706; --danger:#dc2626;
+  --g50:#f8fafc; --g100:#f1f5f9; --g200:#e2e8f0; --g400:#94a3b8; --g500:#64748b; --g700:#334155; --g800:#1e293b;
+  --radius:12px;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--g50); color:var(--g800); font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif; line-height:1.6; }
+.wrap { max-width:720px; margin:0 auto; padding:24px 16px 80px; }
+h1 { font-size:22px; margin:0 0 6px; }
+.lead { color:var(--g500); font-size:14px; margin:0 0 20px; }
+.card { background:white; border-radius:var(--radius); box-shadow:0 1px 3px rgba(0,0,0,.08); padding:18px; margin-bottom:14px; }
+.q-no { font-size:12px; font-weight:700; color:var(--primary); letter-spacing:.5px; }
+.q-title { font-weight:700; font-size:16px; margin:2px 0 4px; }
+.q-hint { font-size:13px; color:var(--g500); margin:0 0 10px; }
+.opts { display:flex; flex-direction:column; gap:8px; }
+.opt { display:flex; gap:10px; align-items:flex-start; padding:10px 12px; border:1.5px solid var(--g200); border-radius:10px; cursor:pointer; font-size:15px; }
+.opt:hover { border-color:var(--g400); }
+.opt input { margin-top:4px; width:18px; height:18px; flex-shrink:0; accent-color:var(--primary); }
+.opt:has(input:checked) { border-color:var(--primary); background:var(--primary-50); }
+input[type=text], textarea { width:100%; padding:10px 12px; border:1.5px solid var(--g200); border-radius:10px; font:inherit; font-size:15px; }
+textarea { min-height:80px; resize:vertical; }
+input[type=text]:focus, textarea:focus { outline:none; border-color:var(--primary); }
+.opt.other { align-items:center; flex-wrap:wrap; }
+.opt.other input.other-text { flex:1; min-width:160px; padding:6px 10px; font-size:14px; width:auto; margin:0; }
+label.f { display:block; font-size:13px; font-weight:600; color:var(--g700); margin-bottom:4px; }
+.btn { display:inline-block; border:none; border-radius:10px; padding:12px 20px; font:inherit; font-size:15px; font-weight:700; cursor:pointer; }
+.btn-primary { background:var(--primary); color:white; width:100%; }
+.btn-primary:disabled { background:var(--g400); cursor:wait; }
+.btn-ghost { background:var(--g100); color:var(--g700); }
+.err { color:var(--danger); font-size:14px; margin-top:8px; }
+.result h2 { font-size:18px; margin:0 0 4px; }
+.rank { border:1.5px solid var(--g200); border-radius:10px; padding:14px; margin-top:10px; }
+.rank.first { border-color:var(--primary); background:var(--primary-50); }
+.rank .t { font-weight:700; font-size:16px; }
+.rank .badge { display:inline-block; font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px; margin-left:6px; vertical-align:middle; }
+.b-easy { background:#dcfce7; color:var(--ok); } .b-mid { background:#fef3c7; color:var(--warn); }
+.rank .d { font-size:14px; color:var(--g700); margin-top:4px; }
+.rank .why { font-size:13px; color:var(--g500); margin-top:6px; }
+.save-msg { font-size:13px; margin-top:12px; }
+.actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; }
+/* 後台結果 */
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th, td { padding:8px 10px; border-bottom:1px solid var(--g100); text-align:left; vertical-align:top; }
+th { background:var(--g50); font-size:12px; color:var(--g500); }
+td.num { text-align:right; font-variant-numeric:tabular-nums; }
+.tw { overflow-x:auto; }
+details summary { cursor:pointer; color:var(--primary); font-size:13px; }
+pre { white-space:pre-wrap; font-size:12px; background:var(--g50); padding:10px; border-radius:8px; }
+.ver { text-align:center; color:var(--g400); font-size:12px; margin-top:30px; }
+.notice { background:#fef9c3; border:1.5px solid #fde047; color:#713f12; border-radius:var(--radius); padding:12px 14px; font-size:15px; margin-bottom:14px; }
+[hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ── 問卷 ── -->
+<section id="surveyView">
+  <h1>🤖 AI 能幫你做什麼？</h1>
+  <p class="lead">大約 5 分鐘。不用懂 AI，照平常工作的實際情況勾選就好。填完會馬上看到「建議先做的 5 件事」。</p>
+  <div class="notice">👉 <b>不用每一題都選。</b>只勾跟你有關的就好，沒遇過的題目直接跳過。<br>同一題可以複選；選項裡沒有的，寫在「其他」。</div>
+
+  <div class="card">
+    <label class="f" for="respondent">你的名字 *</label><input type="text" id="respondent" maxlength="60" placeholder="例如：王小明">
+  </div>
+
+  <form id="form"></form>
+
+  <button class="btn btn-primary" id="submitBtn">看建議結果</button>
+  <div class="err" id="err" hidden></div>
+</section>
+
+<!-- ── 結果 ── -->
+<section id="resultView" hidden>
+  <div class="card result">
+    <h2>📋 建議先做這 5 件事</h2>
+    <p class="lead" style="margin:0">依你勾選的情境計算。「太晚才知道」「要自己拼資料」「一直重複做」這三題代表真的痛，分數加倍。</p>
+    <div id="ranks"></div>
+    <div class="save-msg" id="saveMsg"></div>
+    <div class="actions">
+      <button class="btn btn-ghost" id="copyBtn">📋 複製結果</button>
+      <button class="btn btn-ghost" id="backBtn">← 回去修改</button>
+    </div>
+  </div>
+</section>
+
+<!-- ── 後台：所有填答（?admin=1，需登入） ── -->
+<section id="adminView" hidden>
+  <h1>📊 AI 需求問卷結果</h1>
+  <p class="lead" id="adminMsg">讀取中…</p>
+  <div id="adminBody"></div>
+</section>
+
+<div class="ver">AI 需求問卷 v1.0</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SB_URL = 'https://tokhhoyzztaynppcatci.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRva2hob3l6enRheW5wcGNhdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMDAyODMsImV4cCI6MjA5MDg3NjI4M30.PQB4lJGF3OMatv5wIedCu3zIWq0urrFbniBRYTbNtUU';
+const ADMIN_EMAIL = 'esuse.adobe@gmail.com';
+const TABLE = 'ai_needs_survey';
+const sb = window.supabase.createClient(SB_URL, SB_KEY);
+
+// 功能清單：name 給老闆看的名稱、d 這能幫你做什麼、lv 難度
+const FEATURES = {
+  week:       { name:'每週一整備本週工作', d:'週一早上自動整理：本週會議、到期事項、待回的信，一封信看完一週重點。', lv:'easy' },
+  daily:      { name:'跨工具每日簡報',     d:'每天早上把信箱、訊息、任務、營收數字整合成一份待辦簡報。', lv:'easy' },
+  status:     { name:'自動專案進度報告',   d:'每週自動整理各同事、各專案：完成了什麼、卡在哪、需要你決定什麼。', lv:'mid' },
+  mailtrack:  { name:'信件轉活動追蹤表',   d:'自動從信件抓出活動日期、報名截止、廠商期限，整理成一張追蹤表，到期前提醒。', lv:'mid' },
+  vendor:     { name:'批次處理廠商資料',   d:'丟一批廠商文件（報價、型錄、合約），自動建檔進廠商表，並產出報價或合約草稿。', lv:'mid' },
+  newsletter: { name:'公司內部電子報',     d:'定期彙整公司動態、新品、各部門成果，產出一份給全公司看的電子報。', lv:'mid' },
+  browser:    { name:'後台數字＋報表整合分析', d:'讀取各平台後台的圖表數字，加上手上的 Excel，整理成一份分析報告。', lv:'mid' },
+  compare:    { name:'多選項比較分析',     d:'要選平台、廠商、方案時，整理成比較表：優缺點、成本、風險、建議。', lv:'easy' },
+  market:     { name:'市場規模評估',       d:'評估新品、新通路、新事業值不值得做：市場多大、競爭者、預估營收。', lv:'easy' },
+  routine:    { name:'重複作業自動化',     d:'每天、每週固定在做的登打、搬資料、整理報表、對帳，改成自動跑或一鍵完成。', lv:'mid' },
+  flow:       { name:'流程圖',             d:'把口頭講不清楚的流程畫成流程圖，新人和跨部門交接都看得懂。', lv:'easy' },
+};
+const LV_TEXT = { easy:['較快做好','b-easy'], mid:['需要串接資料','b-mid'] };
+
+// 題目：w = 每勾一個選項的分數；f = 對應功能
+const QUESTIONS = [
+  { id:'q1', title:'每週一早上，你最想先知道什麼？', w:1, opts:[
+    ['這週有哪些會議、行程', ['week']],
+    ['這週有哪些事到期、要交', ['week']],
+    ['各部門、各同事的進度', ['status']],
+    ['上週營收、訂單、廣告數字', ['daily','browser']],
+    ['有哪些信或訊息在等我回', ['daily']],
+  ]},
+  { id:'q2', title:'過去一個月，有沒有「太晚才知道」的事？', hint:'這題代表真的痛，分數加倍', w:2, opts:[
+    ['平台活動、報名截止日', ['mailtrack']],
+    ['廠商來信、報價、合約快到期', ['mailtrack','vendor']],
+    ['同事卡住了，但沒講', ['status']],
+    ['數字異常（營收掉、廣告花太多、庫存不對）', ['browser','daily']],
+    ['開會前沒準備到', ['week']],
+    ['沒有', []],
+  ]},
+  { id:'q3', title:'有哪些資訊，你要自己到好幾個地方拼起來？', hint:'這題也加倍', w:2, opts:[
+    ['信箱＋LINE＋任務清單，才知道今天要做什麼', ['daily']],
+    ['各平台後台圖表＋Excel 報表', ['browser']],
+    ['一個一個問同事進度', ['status']],
+    ['廠商的報價、型錄、合約散在各處', ['vendor']],
+    ['沒有', []],
+  ]},
+  { id:'q8', title:'有沒有每天、每週一直在重複做的事？', hint:'這題也加倍', w:2, opts:[
+    ['把資料從一個地方複製到另一個地方（登打、搬資料）', ['routine']],
+    ['固定整理報表、數字', ['routine','browser']],
+    ['對帳、核對單據或發票', ['routine']],
+    ['回覆內容差不多的信或訊息', ['routine','daily']],
+    ['做格式差不多的文件、報價、簡報', ['routine','vendor']],
+    ['沒有', []],
+  ]},
+  { id:'q4', title:'最近或接下來，有沒有要比較、評估的事？', w:1, opts:[
+    ['比較平台、廠商、方案，要選一個', ['compare']],
+    ['評估新品、新通路、新事業值不值得做', ['market']],
+    ['採購或投資決策', ['compare','market']],
+    ['沒有', []],
+  ]},
+  { id:'q5', title:'有沒有一次要處理「一大批」資料的時候？', w:1, opts:[
+    ['一批廠商要建檔、比價、做合約', ['vendor']],
+    ['一堆報表要彙整成一份', ['browser']],
+    ['沒有', []],
+  ]},
+  { id:'q6', title:'有沒有想讓全公司知道，但沒人整理的事？', w:1, opts:[
+    ['公司動態、公告、新品', ['newsletter']],
+    ['各部門的成果', ['newsletter','status']],
+    ['沒有', []],
+  ]},
+  { id:'q7', title:'有沒有流程常常講不清楚、新人學不會？', w:1, opts:[
+    ['有，部門內的作業流程', ['flow']],
+    ['有，跨部門交接的流程', ['flow']],
+    ['沒有', []],
+  ]},
+];
+// 不計分：用來決定怎麼交付、能不能串接
+const INFO_QUESTIONS = [
+  { id:'freq', title:'這類整理，多久收到一次最剛好？', single:true, opts:['每天','每週','每月','需要時再叫出來'] },
+  { id:'channel', title:'你希望用什麼收到？', opts:['Email','LINE','Slack','打開網頁看'] },
+  { id:'tools', title:'公司平常用哪些工具？', hint:'決定 AI 能串接哪些資料', opts:['Gmail／Google 雲端','Outlook／Microsoft 365','LINE 群組','Slack','Asana／Trello 等任務工具','Excel／Google 試算表','ERP（如 Ragic）'] },
+];
+const OPEN_QUESTIONS = [
+  { id:'first', title:'如果有一個助理，你第一件想交給他的事是什麼？' },
+  { id:'repeat', title:'哪件重複的事最花你時間？多久做一次、每次大概做多久？' },
+];
+
+// ── 產生表單 ──
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const otherOpt = (qid, type) => `<label class="opt other"><input type="${type}" name="${qid}" value="other">其他：<input type="text" class="other-text" data-q="${qid}" maxlength="200" placeholder="自己填"></label>`;
+// 打字時自動勾選「其他」
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (!t.classList.contains('other-text')) return;
+  const box = document.querySelector(`input[name="${t.dataset.q}"][value="other"]`);
+  if (t.value.trim() && !box.checked) box.click();
+});
+function otherAnswer(qid) {
+  if (!document.querySelector(`input[name="${qid}"][value="other"]`).checked) return [];
+  const v = document.querySelector(`input.other-text[data-q="${qid}"]`).value.trim();
+  return v ? ['其他：' + v] : [];
+}
+function renderForm() {
+  let n = 0, html = '';
+  for (const q of QUESTIONS) {
+    n++;
+    html += `<div class="card"><div class="q-no">Q${n}</div><div class="q-title">${esc(q.title)}</div><p class="q-hint">${esc(q.hint ? q.hint + '・' : '')}可複選，沒有就跳過</p><div class="opts">` +
+      q.opts.map(([label], i) => `<label class="opt"><input type="checkbox" name="${q.id}" value="${i}">${esc(label)}</label>`).join('') +
+      otherOpt(q.id, 'checkbox') + `</div></div>`;
+  }
+  for (const q of INFO_QUESTIONS) {
+    n++;
+    const type = q.single ? 'radio' : 'checkbox';
+    html += `<div class="card"><div class="q-no">Q${n}</div><div class="q-title">${esc(q.title)}</div><p class="q-hint">${esc((q.hint ? q.hint + '・' : '') + (q.single ? '單選' : '可複選'))}，沒有就跳過</p><div class="opts">` +
+      q.opts.map(label => `<label class="opt"><input type="${type}" name="${q.id}" value="${esc(label)}">${esc(label)}</label>`).join('') +
+      otherOpt(q.id, type) + `</div></div>`;
+  }
+  for (const q of OPEN_QUESTIONS) {
+    n++;
+    html += `<div class="card"><div class="q-no">Q${n}</div><div class="q-title">${esc(q.title)}</div><p class="q-hint">選填，有想到再寫，越具體越好</p><textarea name="${q.id}" maxlength="1000"></textarea></div>`;
+  }
+  document.getElementById('form').innerHTML = html;
+}
+
+// 「沒有」與其他選項互斥
+document.addEventListener('change', e => {
+  const el = e.target;
+  if (el.type !== 'checkbox') return;
+  const q = QUESTIONS.find(x => x.id === el.name);
+  if (!q || !el.checked) return;
+  const noneIdx = q.opts.findIndex(o => o[1].length === 0);
+  if (noneIdx < 0) return;
+  document.querySelectorAll(`input[name="${q.id}"]`).forEach(box => {
+    if (box === el) return;
+    if (el.value === String(noneIdx) || box.value === String(noneIdx)) box.checked = false;
+  });
+});
+
+// ── 計分 ──
+function collect() {
+  const answers = {}, scores = {}, reasons = {};
+  for (const k in FEATURES) { scores[k] = 0; reasons[k] = []; }
+  for (const q of QUESTIONS) {
+    const picked = [...document.querySelectorAll(`input[name="${q.id}"]:checked`)].filter(b => b.value !== 'other').map(b => q.opts[Number(b.value)]);
+    answers[q.id] = picked.map(p => p[0]).concat(otherAnswer(q.id));
+    for (const [label, fs] of picked) for (const f of fs) { scores[f] += q.w; reasons[f].push(label); }
+  }
+  for (const q of INFO_QUESTIONS) answers[q.id] = [...document.querySelectorAll(`input[name="${q.id}"]:checked`)].filter(b => b.value !== 'other').map(b => b.value).concat(otherAnswer(q.id));
+  for (const q of OPEN_QUESTIONS) answers[q.id] = document.querySelector(`textarea[name="${q.id}"]`).value.trim();
+  const order = Object.keys(FEATURES);
+  const top = order.filter(k => scores[k] > 0).sort((a, b) => scores[b] - scores[a] || order.indexOf(a) - order.indexOf(b)).slice(0, 5);
+  return { answers, scores, reasons, top };
+}
+
+let lastResult = null;
+function renderResult(r) {
+  const box = document.getElementById('ranks');
+  if (!r.top.length) {
+    box.innerHTML = `<div class="rank"><div class="d">目前勾選的情境沒有明顯需要 AI 整理的地方。可以參考最後兩題的回答，再跟 Jennifer 聊聊。</div></div>`;
+    return;
+  }
+  box.innerHTML = r.top.map((k, i) => {
+    const f = FEATURES[k], [lvText, lvCls] = LV_TEXT[f.lv];
+    return `<div class="rank${i === 0 ? ' first' : ''}">
+      <div class="t">${i + 1}. ${esc(f.name)}<span class="badge ${lvCls}">${lvText}</span></div>
+      <div class="d">${esc(f.d)}</div>
+      <div class="why">因為你勾了：${r.reasons[k].map(esc).join('、')}（${r.scores[k]} 分）</div>
+    </div>`;
+  }).join('');
+}
+
+function resultText(r, respondent) {
+  const lines = [`【AI 需求問卷】${respondent}`, '', '建議先做：'];
+  r.top.forEach((k, i) => lines.push(`${i + 1}. ${FEATURES[k].name}（${r.scores[k]} 分）`));
+  if (!r.top.length) lines.push('（沒有明顯需求）');
+  lines.push('', '我的回答：');
+  QUESTIONS.concat(INFO_QUESTIONS).forEach(q => { if (r.answers[q.id]?.length) lines.push(`・${q.title}：${r.answers[q.id].join('、')}`); });
+  OPEN_QUESTIONS.forEach(q => { if (r.answers[q.id]) lines.push(`・${q.title}：${r.answers[q.id]}`); });
+  return lines.join('\n');
+}
+
+document.getElementById('submitBtn').addEventListener('click', async () => {
+  const respondent = document.getElementById('respondent').value.trim();
+  const err = document.getElementById('err');
+  if (!respondent) { err.textContent = '請先填你的名字（最上面）'; err.hidden = false; document.getElementById('respondent').focus(); return; }
+  err.hidden = true;
+  const r = collect();
+  lastResult = { ...r, respondent };
+  renderResult(r);
+  document.getElementById('surveyView').hidden = true;
+  document.getElementById('resultView').hidden = false;
+  window.scrollTo(0, 0);
+
+  const msg = document.getElementById('saveMsg');
+  msg.style.color = 'var(--g500)'; msg.textContent = '正在送出結果…';
+  const { error } = await sb.from(TABLE).insert({ respondent, answers: r.answers, scores: r.scores, top_picks: r.top });
+  if (error) { msg.style.color = 'var(--danger)'; msg.textContent = '⚠️ 結果沒有送出成功，請按「複製結果」貼到 LINE 給 Jennifer。'; console.error(error); }
+  else { msg.style.color = 'var(--ok)'; msg.textContent = '✅ 已送出給 Jennifer，謝謝！'; }
+});
+
+document.getElementById('copyBtn').addEventListener('click', async () => {
+  if (!lastResult) return;
+  const text = resultText(lastResult, lastResult.respondent);
+  try { await navigator.clipboard.writeText(text); alert('已複製，可以直接貼到 LINE'); }
+  catch { prompt('請長按全選複製：', text); }
+});
+// 回去修改：重送會變成另一筆，後台以最新一筆為準
+document.getElementById('backBtn').addEventListener('click', () => {
+  document.getElementById('resultView').hidden = true;
+  document.getElementById('surveyView').hidden = false;
+});
+
+// ── 後台 ──
+async function renderAdmin() {
+  document.getElementById('surveyView').hidden = true;
+  document.getElementById('adminView').hidden = false;
+  const msg = document.getElementById('adminMsg');
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) {
+    const base = location.pathname.replace(/\/[^/]*$/, '');
+    msg.innerHTML = `需要登入才能看結果。<a href="${base}/login.html?next=${encodeURIComponent(location.href)}">前往登入</a>`;
+    return;
+  }
+  if (session.user.email !== ADMIN_EMAIL) { msg.textContent = '這個帳號沒有權限查看結果。'; return; }
+  const { data, error } = await sb.from(TABLE).select('*').order('created_at', { ascending: false });
+  if (error) { msg.textContent = '讀取失敗：' + error.message + '（資料表是否已建立？）'; return; }
+  msg.textContent = `共 ${data.length} 份填答。同一人重填會有多筆，以最新的為準。`;
+  if (!data.length) return;
+
+  // 每人分數（同一人只取最新一筆；data 已依時間新到舊排序）
+  const latest = {};
+  for (const row of data) latest[row.respondent] ??= row;
+  const people = Object.keys(latest);
+  const total = k => people.reduce((t, p) => t + (latest[p].scores?.[k] || 0), 0);
+  const keys = Object.keys(FEATURES).sort((a, b) => total(b) - total(a));
+  let html = `<div class="card"><div class="q-title">每人分數（取最新一筆）</div><div class="tw"><table><thead><tr><th>功能</th>${people.map(p => `<th>${esc(p)}</th>`).join('')}${people.length > 1 ? '<th>合計</th>' : ''}</tr></thead><tbody>` +
+    keys.map(k => `<tr><td>${esc(FEATURES[k].name)}</td>${people.map(p => `<td class="num">${latest[p].scores?.[k] || 0}</td>`).join('')}${people.length > 1 ? `<td class="num">${total(k)}</td>` : ''}</tr>`).join('') +
+    `</tbody></table></div></div>`;
+
+  html += `<div class="card"><div class="q-title">每一份填答</div><div class="tw"><table><thead><tr><th>時間</th><th>填寫人</th><th>前五名</th><th>內容</th></tr></thead><tbody>` +
+    data.map(row => {
+      const t = new Date(row.created_at).toLocaleString('zh-TW', { hour12:false });
+      const r = { answers: row.answers || {}, scores: row.scores || {}, top: row.top_picks || [] };
+      return `<tr><td>${esc(t)}</td><td>${esc(row.respondent)}</td>
+        <td>${r.top.map((k, i) => `${i + 1}. ${esc(FEATURES[k]?.name || k)}`).join('<br>') || '—'}</td>
+        <td><details><summary>展開</summary><pre>${esc(resultText(r, row.respondent))}</pre></details></td></tr>`;
+    }).join('') + `</tbody></table></div></div>`;
+  document.getElementById('adminBody').innerHTML = html;
+}
+
+// ── 啟動 ──
+const params = new URLSearchParams(location.search);
+if (params.has('admin')) renderAdmin();
+else {
+  renderForm();
+}
+</script>
+</body>
+</html>
