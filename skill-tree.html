@@ -336,7 +336,7 @@
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
 
-  <div class="sidebar-footer">v1.15 · Feebit © 2026</div>
+  <div class="sidebar-footer">v1.16 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -346,7 +346,7 @@
       <button class="btn-hamburger" onclick="openSidebar()">☰</button>
       <span class="topbar-title">技能樹</span>
       <span class="topbar-badge">工具總覽</span>
-      <span style="font-size:11px;color:var(--gray-400);margin-left:4px">v1.15</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:4px">v1.16</span>
     </div>
   </div>
   <div class="page">
@@ -354,7 +354,7 @@
     <div class="st-search-bar">
       <input class="st-search-input" id="st-search" type="text" placeholder="🔍  搜尋工具名稱或說明…" oninput="render()">
       <div class="st-filter-chips" id="st-chips"></div>
-      <div class="st-legend"><span><span class="lg-swatch"></span>橘底卡片＝交接工具（前員工建立，帳號不在你名下）</span><span class="skill-card-where where-cloud">☁️ 雲端主機</span>在雲端上跑，不用開電腦<span class="skill-card-where where-pc">🖥️ Feebit 主機</span>公司那台電腦要開機才會跑<span class="skill-card-off">⏸️ 停用</span>目前沒有在跑<span class="skill-card-manager">👤 Milo 管理</span>這個指令由該 AI 員工統一調度</div>
+      <div class="st-legend"><span><span class="lg-swatch"></span>橘底卡片＝交接工具（前員工建立，帳號不在你名下）</span><span class="skill-card-where where-cloud">☁️ 雲端主機</span>在雲端上跑，不用開電腦<span class="skill-card-where where-pc">🖥️ Feebit 主機</span>公司那台電腦要開機才會跑<span class="skill-card-off">⏸️ 停用</span>目前沒有在跑<span class="skill-card-manager">👤 AI 員工管理</span>指令由對應的 AI 員工統一調度</div>
     </div>
     <div id="st-content"></div>
     <div class="st-empty" id="st-empty" style="display:none">
@@ -384,6 +384,30 @@
 <script>
 const SKILLS = [
   // ── AI 員工（有職稱、管理底下 skill；放最上面） ──
+  { icon:'☕', name:'Nora', title:'AI 行銷團隊營運長', cat:'AI 員工', ver:'skill', staff:true,
+    desc:'整個 AI 行銷團隊的單一入口，負責拆解目標、指派團隊、追蹤進度與彙整策略',
+    members:['/maya-social','/leon-design','/iris-seo','/jack-ads'],
+    duties:['收件需求並拆解為可執行任務','指派 Maya、Leon、Iris、Jack 跨角色協作','追蹤行銷進度與截止日期','彙整品牌、內容、SEO 與廣告資訊','依實際數據給優先順序與下一步'],
+    cmd:'/hello-nora' },
+  { icon:'✍️', name:'Maya', title:'社群小編', cat:'AI 員工', ver:'skill', staff:true,
+    desc:'負責 FB、IG、Threads、小紅書、電子報與 EDM，把行銷目標寫成可直接發布的內容',
+    members:['/post','/sales'],
+    duties:['社群貼文與 Hook','內容行事曆與發布排程','短影片與 Reels 腳本','電子報、EDM 與舊客喚醒','依品牌語氣改寫內容'],
+    cmd:'/maya-social' },
+  { icon:'🎨', name:'Leon', title:'設計總監', cat:'AI 員工', ver:'skill', staff:true,
+    desc:'負責視覺策略與設計交付，從廣告素材 brief 到 LP、SP 與 IG 九宮格',
+    duties:['廣告素材 brief 與生圖指令','Landing Page 與 Sales Page','IG 九宮格視覺方向','套用品牌色、字體與圖像風格','整理設計稿的完整文案內容'],
+    cmd:'/leon-design' },
+  { icon:'🔍', name:'Iris', title:'內容 SEO 策略師', cat:'AI 員工', ver:'skill', staff:true,
+    desc:'負責關鍵字、競品、SEO 文章與 AI 搜尋收錄，把搜尋需求轉成官網流量',
+    members:['/shopline-product-seo-update'],
+    duties:['關鍵字研究與內容地圖','競品頁面與搜尋結果拆解','SEO 文章與社群延伸版','GEO 與 AI 搜尋引用優化','官網商品頁 FAQ 與搜尋內容'],
+    cmd:'/iris-seo' },
+  { icon:'📊', name:'Jack', title:'廣告投放手', cat:'AI 員工', ver:'skill', staff:true,
+    desc:'負責 Meta 廣告策略、文案、預算、成效診斷與 CAPI 追蹤，用數據決定怎麼投',
+    members:['/ad'],
+    duties:['廣告 Hook 與完整文案','受眾、素材與測試結構','預算分配與投放節奏','ROAS、CTR、CPA 與花費診斷','Meta Pixel 與 CAPI 追蹤建議'],
+    cmd:'/jack-ads' },
   { icon:'🎩', name:'Milo', title:'完工上線總管', cat:'AI 員工', ver:'skill', staff:true,
     desc:'東西做完叫 Milo，判斷要跑哪些收尾指令、排好順序，對外寫入一次放行後依序執行並回報',
     members:['/project-security-bootstrap','/github-tool','/github-review','/tool-save','/skill-tree-sync'],
@@ -469,7 +493,7 @@ const SKILLS = [
   // ── 系統 ──
   { icon:'🏠', name:'首頁',     cat:'系統', ver:'v4.4', desc:'飛比特營運工具箱入口，所有工具快速導覽', url:'index.html' },
   { icon:'🔧', name:'使用工具', cat:'系統', ver:'v1.1', desc:'外部平台與後台連結總覽，點擊前往各系統', url:'tools.html' },
-  { icon:'🌳', name:'技能樹',   cat:'系統', ver:'v1.15', desc:'飛比特所有工具與技能可視化總覽，含版本與說明', url:'skill-tree.html' },
+  { icon:'🌳', name:'技能樹',   cat:'系統', ver:'v1.16', desc:'飛比特所有工具與技能可視化總覽，含版本與說明', url:'skill-tree.html' },
   { icon:'💳', name:'訂閱服務管理', cat:'系統', ver:'v2.1', desc:'付費工具/平台方案、價格、結帳日、帳號、後台、付款統編＋各公司每月/每年分攤，Supabase 共用', url:'subscriptions.html' },
   { icon:'🤖', name:'AI 需求問卷', cat:'系統', ver:'v2.1', desc:'勾選工作情境自動算出最該先導入的 5 個 AI 工具，填答存 Supabase；卡片直接進後台：逐人顯示自填需求、前 5 名原因／做法／追問，一鍵複製問卷連結', url:'ai-needs-survey.html?admin=1' },
   { icon:'🛡️', name:'Git 安全防護', cat:'系統', ver:'v1.0', desc:'.gitignore 禁止上傳清單：擋下 .env、金鑰、憑證等機密檔，避免推上公開 repo', url:null, info:'repo 根目錄 .gitignore · 由 /project-security-bootstrap 建立 · 2026-10-03 上線', host:'GitHub repo jennifer-shao-ai/feebit' },
@@ -522,7 +546,7 @@ let activeFilter = '全部';
 // 指令 → 管理它的 AI 員工
 const MANAGER = {};
 SKILLS.filter(s => s.staff).forEach(m => (m.members || []).forEach(c => { MANAGER[c] = m; }));
-function managerOf(s) { return s.cmd && !s.staff ? MANAGER[s.cmd] : null; }
+function managerOf(s) { return s.cmd ? MANAGER[s.cmd] || null : null; }
 
 function ck(cat) { return cat.replace(/\s/g, '-'); }
 
@@ -609,7 +633,7 @@ function render() {
         ${s.title ? `<div class="staff-title">職稱：${s.title}</div>` : ''}
         <span class="skill-card-tag tag-${key}">${s.cat}</span>
         <div class="skill-card-desc">${s.desc}</div>
-        ${s.members ? `<div class="staff-label">管理的指令</div><div class="staff-members">${s.members.map(c => `<span class="staff-member">${c}</span>`).join('')}</div>` : ''}
+        ${s.members && s.members.length ? `<div class="staff-label">管理的指令／成員</div><div class="staff-members">${s.members.map(c => `<span class="staff-member">${c}</span>`).join('')}</div>` : ''}
         ${s.duties ? `<div class="staff-label">職責</div><ul class="staff-duties">${s.duties.map(d => `<li>${d}</li>`).join('')}</ul>` : ''}
         ${managerOf(s) ? `<span class="skill-card-manager">👤 ${managerOf(s).name} 管理</span>` : ''}
         ${s.off ? `<span class="skill-card-off">⏸️ 停用</span>` : ''}
@@ -636,7 +660,7 @@ function openModal(idx) {
   document.getElementById('modal-cmd').textContent = s.cmd;
   const staffEl = document.getElementById('modal-staff');
   const mgr = managerOf(s);
-  if (s.staff) staffEl.innerHTML = `<b>職稱：</b>${s.title}<br><b>管理的指令：</b>${s.members.join('、')}<br><b>職責：</b>${s.duties.join('；')}`;
+  if (s.staff) staffEl.innerHTML = `<b>職稱：</b>${s.title}${s.members && s.members.length ? `<br><b>管理的指令／成員：</b>${s.members.join('、')}` : ''}<br><b>職責：</b>${s.duties.join('；')}`;
   else if (mgr) staffEl.innerHTML = `👤 由 <b>${mgr.name}</b>（${mgr.title}）管理調度`;
   else staffEl.innerHTML = '';
   staffEl.style.display = staffEl.innerHTML ? 'block' : 'none';
