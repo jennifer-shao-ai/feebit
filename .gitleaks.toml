@@ -1,0 +1,12 @@
+title = "Feebit gitleaks 設定"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "設計上就公開的用戶端識別碼：Supabase anon key 由資料表 RLS 保護、Firebase Web apiKey 由 Realtime Database Rules + Authorized Domains 保護，兩者官方文件都明說不是機密。GitHub Pages 是純靜態站，原始碼本來就公開，藏 key 沒有實質意義；真正的安全防線在後端規則，不是這串字串本身。"
+regexes = [
+  '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRva2hob3l6enRheW5wcGNhdGNpIiwicm9sZSI6ImFub24i[A-Za-z0-9_.\-]+''',
+  '''AIzaSyDeJOndThLbBxeVwZ6tAPTpbg5gmmhPRpg''',
+  '''AIzaSyAZCkywvEHvBj6nTps9jLoDmNIpH8heOTg''',  # trip-planner.html Firebase（jennifer-trips），2026-10-25 實測匿名讀取 401
+]
