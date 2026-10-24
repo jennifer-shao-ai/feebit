@@ -17,6 +17,8 @@
 .upload-zone .uz-hint{font-size:11px;color:var(--gray-400);margin-top:4px}
 
 .po-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:4px}
+.po-vendor-group .ts-wrapper{max-width:none}
+@media (max-width:700px){.po-grid{grid-template-columns:1fr}}
 .form-group{display:flex;flex-direction:column;gap:4px}
 .form-group label{font-size:11px;font-weight:600;color:var(--gray-600)}
 .form-group input,.form-group select{padding:7px 10px;border:1px solid var(--gray-200);border-radius:6px;font-size:13px;font-family:inherit}
@@ -26,6 +28,10 @@
 .result-table th{background:var(--gray-100);padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--gray-600);border-bottom:1px solid var(--gray-200);white-space:nowrap}
 .result-table td{padding:7px 10px;border-bottom:1px solid var(--gray-100);vertical-align:middle}
 .result-table tr:hover td{background:var(--gray-50)}
+.result-table th{position:relative}
+.col-resizer{position:absolute;top:0;right:-3px;width:7px;height:100%;cursor:col-resize;z-index:1;touch-action:none}
+.col-resizer:hover,.col-resizer.active{background:var(--primary-light)}
+.result-table .ts-wrapper{max-width:none;width:100%}
 .row-matched td{background:#f0fdf4}
 .row-unmatched td{background:#fff7ed}
 .match-badge{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600;white-space:nowrap}
@@ -189,7 +195,7 @@
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
 
-  <div class="sidebar-footer">v3.1 · Feebit © 2026</div>
+  <div class="sidebar-footer">v4.1 · Feebit © 2026</div>
 </div>
 
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
@@ -200,7 +206,7 @@
     <div style="display:flex;align-items:center;gap:10px">
       <button class="btn-hamburger" onclick="openSidebar()">☰</button>
       <span class="topbar-title">採購單轉換</span>
-      <span class="topbar-badge">v3.1</span>
+      <span class="topbar-badge">v4.1</span>
     </div>
     <button class="btn-share" onclick="syncProducts()" title="強制重新載入 Ragic 商品清單">↻ 更新商品庫</button>
   </div>
@@ -237,13 +243,21 @@
       <div class="card" id="po-info-card" style="display:none">
         <div class="card-title">採購單基本資訊</div>
         <div class="po-grid">
-          <div class="form-group">
-            <label>廠商編號</label>
-            <input type="text" id="po-vendor-code" placeholder="例：KR004">
+          <div class="form-group po-vendor-group">
+            <label>廠商（可搜尋編號或名稱，找不到可新增）</label>
+            <select id="po-vendor-sel"></select>
+            <input type="hidden" id="po-vendor-code">
+            <input type="hidden" id="po-vendor-name">
           </div>
           <div class="form-group">
-            <label>廠商名稱</label>
-            <input type="text" id="po-vendor-name" placeholder="例：Style Korean">
+            <label>幣別</label>
+            <select id="po-currency" onchange="onCurrencyChange()">
+              <option>台幣</option><option>美金</option><option>人民幣</option><option>韓元</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>匯率（1 外幣 = ? 台幣）</label>
+            <input type="number" id="po-rate" step="any" placeholder="例：32.5" disabled>
           </div>
           <div class="form-group">
             <label>採購日期</label>
@@ -271,10 +285,10 @@
           <span id="match-summary" style="font-size:12px;color:var(--gray-500);font-weight:400"></span>
         </div>
         <div style="overflow-x:auto">
-          <table class="result-table">
+          <table class="result-table" id="result-table">
             <thead>
               <tr>
-                <th>廠商品名</th>
+                <th style="width:240px" title="拖曳欄位右邊框可調整寬度">廠商品名</th>
                 <th>比對</th>
                 <th>對應商品（可修改）</th>
                 <th>商品代號</th>
@@ -361,6 +375,23 @@
   </div>
 </div>
 
+<!-- 新增廠商 Modal -->
+<div id="nv-modal-bg" class="np-modal-bg">
+  <div class="np-modal">
+    <h3>新增廠商到 Ragic（供貨廠商）</h3>
+    <div class="np-row"><label>廠商編號 *</label><input type="text" id="nv-code" placeholder="例：V00035"></div>
+    <div class="np-row"><label>簡稱 *（採購單上顯示的廠商名稱）</label><input type="text" id="nv-short" placeholder="例：MILAB"></div>
+    <div class="np-row"><label>公司名稱</label><input type="text" id="nv-company" placeholder="例：MILAB Co., Ltd."></div>
+    <div class="np-row"><label>國家</label><input type="text" id="nv-country" list="nv-country-list" placeholder="例：韓國">
+      <datalist id="nv-country-list"><option>韓國</option><option>台灣</option><option>中國</option><option>日本</option></datalist></div>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button class="btn btn-primary" onclick="submitNewVendor()">建立並選取</button>
+      <button class="btn btn-outline" onclick="closeNvModal()">取消</button>
+    </div>
+    <div id="nv-status" style="margin-top:10px;font-size:12px;color:var(--danger)"></div>
+  </div>
+</div>
+
 <!-- Loading -->
 <div id="loading-overlay">
   <div class="spinner"></div>
@@ -380,19 +411,39 @@ function ragicAuth(key) {
 }
 const PRODUCT_PATH = '/product/16';
 const PO_PATH      = '/ragicpurchasing/20003';
+const VENDOR_PATH  = '/ragicpurchasing/20001';
 const PO_SUBTABLE  = '_subtable_3001286';
+// Ragic 寫入一律用欄位 ID（中文欄位名稱寫不進去），ID 於 2026-10-25 從既有資料逐欄比對取得
+const F_PO = {
+  vendorCode: '3001263', vendorName: '3001265', date: '3001259', arrival: '3001274',
+  person: '3001260', note: '3001284', currency: '1002334', rate: '1002410'
+};
+const F_PO_ITEM = {
+  code: '3001276', barcode: '3001868', name: '3001277',
+  twdPrice: '3001278', qty: '3001279', fxPrice: '1002333'
+};
+const F_PRODUCT = { code: '1000309', barcode: '1000333', name: '1000310', vendor: '1000317' };
+const F_VENDOR  = { code: '3001177', shortName: '3001178', company: '3001180', country: '1000958' };
+// Ragic 寫入時順便跑預設值、公式、連結帶入（採購單號、台幣單價、小計等由 Ragic 自己算）
+const RAGIC_WRITE_QS = '?api&doDefaultValue=true&doFormula=true&doLinkLoad=true';
+function ragicOk(d) { return d && String(d.status).toUpperCase() === 'SUCCESS'; }
+function ragicErr(d) { return (d && (d.msg || d.error || d.message)) || JSON.stringify(d); }
 
 const LS_RAGIC    = 'fb_po_ragic_key';
 const LS_CLAUDE   = 'fb_po_claude_key';
 const LS_PERSON   = 'fb_po_person';
 const LS_PRODUCTS = 'fb_po_products';
 const LS_PROD_TS  = 'fb_po_products_ts';
+const LS_VENDORS  = 'fb_po_vendors';
+const LS_VEND_TS  = 'fb_po_vendors_ts';
 const LS_MAPPING  = 'fb_po_mapping';
 const CACHE_TTL   = 24 * 60 * 60 * 1000;
 
 let selectedFile = null;
 let products = [];
 let tsInstances = {};
+let vendors = [];
+let vendorTs = null;
 let newProductRowIdx = -1;
 
 // ── UI ──
@@ -445,7 +496,12 @@ function initUI() {
   if (ck) document.getElementById('s-claude-key').value = ck;
   document.getElementById('s-person').value = p;
   document.getElementById('po-person').value = p;
-  document.getElementById('po-date').value = new Date().toISOString().slice(0,10);
+  const now = new Date();
+  document.getElementById('po-date').value = new Date(now - now.getTimezoneOffset() * 60000).toISOString().slice(0,10);
+  initVendorSelect();
+  try { vendors = JSON.parse(localStorage.getItem(LS_VENDORS) || '[]'); } catch { vendors = []; }
+  refreshVendorOptions();
+  initColumnResize();
 }
 
 // ── 商品清單 ──
@@ -484,8 +540,144 @@ async function syncProducts() {
     localStorage.removeItem(LS_PROD_TS);
     products = await fetchProducts();
     hideLoading();
-    toast(`商品庫已更新，共 ${products.length} 筆`, 'success');
+    await loadVendors(true);
+    toast(`商品庫已更新，共 ${products.length} 筆；廠商 ${vendors.length} 家`, 'success');
   } catch(e) { hideLoading(); toast(e.message, 'error'); }
+}
+
+// ── 廠商清單（Ragic 供貨廠商） ──
+async function loadVendors(force) {
+  const ts = parseInt(localStorage.getItem(LS_VEND_TS) || '0');
+  const cached = localStorage.getItem(LS_VENDORS);
+  if (!force && cached && Date.now() - ts < CACHE_TTL) { vendors = JSON.parse(cached); refreshVendorOptions(); return; }
+  const key = get(LS_RAGIC);
+  if (!key) return;
+  try {
+    const res = await fetch(`${RAGIC_BASE}${VENDOR_PATH}?api&limit=9999`, { headers: ragicAuth(key) });
+    const data = await res.json();
+    if (data.status === 'ERROR') throw new Error(data.msg);
+    vendors = Object.values(data)
+      .filter(r => r && typeof r === 'object' && r['廠商編號'])
+      .map(r => ({ code: r['廠商編號'], short: r['簡稱'] || '', company: r['公司名稱'] || '' }));
+    localStorage.setItem(LS_VENDORS, JSON.stringify(vendors));
+    localStorage.setItem(LS_VEND_TS, Date.now().toString());
+    refreshVendorOptions();
+  } catch(e) {
+    toast('讀不到 Ragic 廠商清單（金鑰可能沒有「供貨廠商」權限）：' + e.message, 'error');
+  }
+}
+
+function vendorOpt(v) {
+  return { value: v.code, text: [v.code, v.short, v.company && v.company !== v.short ? v.company : ''].filter(Boolean).join('　') };
+}
+
+function initVendorSelect() {
+  vendorTs = new TomSelect('#po-vendor-sel', {
+    options: [{ value: '__new__', text: '＋ 新增廠商到 Ragic' }],
+    maxOptions: null,
+    placeholder: '搜尋廠商編號或名稱...',
+    onChange(value) {
+      if (value === '__new__') { vendorTs.setValue('', true); openNvModal(); return; }
+      const v = vendors.find(x => x.code === value);
+      document.getElementById('po-vendor-code').value = v?.code || '';
+      document.getElementById('po-vendor-name').value = v?.short || v?.company || '';
+    }
+  });
+}
+
+function refreshVendorOptions() {
+  if (!vendorTs) return;
+  const keep = vendorTs.getValue();
+  vendorTs.clearOptions(o => o.value === '__new__');
+  vendors.forEach(v => vendorTs.addOption(vendorOpt(v)));
+  if (keep) vendorTs.setValue(keep, true);
+}
+
+function nextVendorCode() {
+  const nums = vendors.map(v => /^V(\d+)$/.exec(v.code)).filter(Boolean).map(m => parseInt(m[1]));
+  return nums.length ? 'V' + String(Math.max(...nums) + 1).padStart(5, '0') : '';
+}
+
+function openNvModal() {
+  document.getElementById('nv-code').value = nextVendorCode();
+  ['nv-short','nv-company','nv-country'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('nv-status').textContent = '';
+  document.getElementById('nv-modal-bg').classList.add('show');
+  document.getElementById('nv-short').focus();
+}
+function closeNvModal() { document.getElementById('nv-modal-bg').classList.remove('show'); }
+
+async function submitNewVendor() {
+  const code    = document.getElementById('nv-code').value.trim();
+  const short   = document.getElementById('nv-short').value.trim();
+  const company = document.getElementById('nv-company').value.trim();
+  const country = document.getElementById('nv-country').value.trim();
+  const status  = document.getElementById('nv-status');
+  if (!code || !short) { status.textContent = '廠商編號和簡稱為必填'; return; }
+  if (vendors.some(v => v.code === code)) { status.textContent = `廠商編號 ${code} 已經存在`; return; }
+  const ragicKey = get(LS_RAGIC);
+  if (!ragicKey) { status.textContent = '請先設定 Ragic API Token'; return; }
+  status.textContent = '建立中...';
+  status.style.color = 'var(--gray-500)';
+  try {
+    const res = await fetch(`${RAGIC_BASE}${VENDOR_PATH}${RAGIC_WRITE_QS}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...ragicAuth(ragicKey) },
+      body: JSON.stringify({ [F_VENDOR.code]: code, [F_VENDOR.shortName]: short, [F_VENDOR.company]: company, [F_VENDOR.country]: country })
+    });
+    const d = await res.json().catch(() => ({ msg: `HTTP ${res.status}` }));
+    if (!res.ok || !ragicOk(d)) throw new Error(ragicErr(d));
+    const v = { code, short, company };
+    vendors.push(v);
+    localStorage.setItem(LS_VENDORS, JSON.stringify(vendors));
+    vendorTs.addOption(vendorOpt(v));
+    vendorTs.setValue(code);
+    closeNvModal();
+    toast(`廠商「${short}」已新增到 Ragic`, 'success');
+  } catch(e) {
+    status.textContent = '建立失敗：' + e.message;
+    status.style.color = 'var(--danger)';
+  }
+}
+
+// 商品明細欄寬：拖曳表頭右邊框調整，寬度記在這台瀏覽器
+const LS_COLW = 'fb_po_colw';
+function initColumnResize() {
+  const ths = document.querySelectorAll('#result-table thead th');
+  let saved = [];
+  try { saved = JSON.parse(localStorage.getItem(LS_COLW) || '[]'); } catch {}
+  ths.forEach((th, i) => {
+    if (saved[i]) th.style.width = th.style.minWidth = saved[i] + 'px';
+    const h = document.createElement('span');
+    h.className = 'col-resizer';
+    h.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      const startX = e.clientX, startW = th.offsetWidth;
+      h.classList.add('active');
+      h.setPointerCapture(e.pointerId);
+      const move = ev => { const w = Math.max(50, startW + ev.clientX - startX); th.style.width = th.style.minWidth = w + 'px'; };
+      const up = () => {
+        h.classList.remove('active');
+        h.removeEventListener('pointermove', move);
+        h.removeEventListener('pointerup', up);
+        try { localStorage.setItem(LS_COLW, JSON.stringify([...ths].map(t => parseInt(t.style.width) || 0))); } catch {}
+      };
+      h.addEventListener('pointermove', move);
+      h.addEventListener('pointerup', up);
+    });
+    h.addEventListener('dblclick', () => {
+      th.style.width = th.style.minWidth = '';
+      try { localStorage.setItem(LS_COLW, JSON.stringify([...ths].map(t => parseInt(t.style.width) || 0))); } catch {}
+    });
+    th.appendChild(h);
+  });
+}
+
+function onCurrencyChange() {
+  const isTwd = document.getElementById('po-currency').value === '台幣';
+  const rate = document.getElementById('po-rate');
+  rate.disabled = isTwd;
+  if (isTwd) rate.value = '';
 }
 
 // ── 對應表 ──
@@ -669,6 +861,7 @@ async function parseInvoice() {
   try {
     showLoading('載入商品清單...');
     products = await getProducts();
+    await loadVendors();
     let items;
     if (selectedFile) {
       const kind = fileKind(selectedFile);
@@ -718,7 +911,7 @@ function renderResults(items) {
     const badgeCls = m?.matchType === 'memory' ? 'badge-memory' : m ? 'badge-auto' : 'badge-none';
     const badgeTxt = m?.matchType === 'memory' ? '已記憶' : m ? '自動' : '待對應';
     html += `<tr class="${rowCls}" data-idx="${idx}" data-vname="${esc(item.vendorName)}">
-      <td style="max-width:180px;word-break:break-all;font-size:12px">${esc(item.vendorName)}</td>
+      <td style="word-break:break-word;font-size:12px">${esc(item.vendorName)}</td>
       <td><span class="match-badge ${badgeCls}" id="badge-${idx}">${badgeTxt}</span></td>
       <td><select id="sel-${idx}" data-preselect="${esc(m?.code||'')}"></select></td>
       <td class="c-code">${esc(m?.code||'')}</td>
@@ -784,6 +977,7 @@ function onSelectByCode(code, idx) {
 function openNpModal(idx) {
   newProductRowIdx = idx;
   ['np-code','np-barcode','np-name','np-vendor'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('np-vendor').value = document.getElementById('po-vendor-code').value;
   document.getElementById('np-status').textContent = '';
   document.getElementById('np-modal-bg').classList.add('show');
   document.getElementById('np-name').focus();
@@ -808,14 +1002,13 @@ async function submitNewProduct() {
   status.textContent = '建立中...';
   status.style.color = 'var(--gray-500)';
   try {
-    const url = `${RAGIC_BASE}${PRODUCT_PATH}?api`;
-    const res = await fetch(url, {
+    const res = await fetch(`${RAGIC_BASE}${PRODUCT_PATH}${RAGIC_WRITE_QS}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...ragicAuth(ragicKey) },
-      body: JSON.stringify({ '產品代號': code, 'EAN13碼': barcode, '產品名稱': name, '廠商代號': vendor })
+      body: JSON.stringify({ [F_PRODUCT.code]: code, [F_PRODUCT.barcode]: barcode, [F_PRODUCT.name]: name, [F_PRODUCT.vendor]: vendor })
     });
-    const d = await res.json();
-    if (!res.ok) throw new Error(d.error || d.message || `HTTP ${res.status}`);
+    const d = await res.json().catch(() => ({ msg: `HTTP ${res.status}` }));
+    if (!res.ok || !ragicOk(d)) throw new Error(ragicErr(d));
 
     // 加入本地商品清單
     const newProduct = { code, barcode, name, vendor };
@@ -889,7 +1082,7 @@ function copyTabFormat() {
 }
 
 // ── 儲存手動對應 ──
-function saveManualMappings() {
+function saveManualMappings(silent) {
   let saved = 0;
   collectItems().forEach(it => {
     if (it.isManual && it.code) {
@@ -905,49 +1098,65 @@ function saveManualMappings() {
       });
     }
   });
-  toast(saved > 0 ? `已儲存 ${saved} 筆對應，下次自動套用` : '沒有新的手動對應', saved > 0 ? 'success' : '');
+  if (!silent) toast(saved > 0 ? `已儲存 ${saved} 筆對應，下次自動套用` : '沒有新的手動對應', saved > 0 ? 'success' : '');
+  return saved;
 }
 
 // ── 建採購單到 Ragic ──
 async function createPurchaseOrder() {
   const ragicKey = get(LS_RAGIC);
   if (!ragicKey) { toast('請先設定 Ragic API Token', 'error'); return; }
-  const items = collectItems().filter(it => it.code);
+  const all = collectItems(), items = all.filter(it => it.code);
   if (!items.length) { toast('沒有已比對的商品', 'error'); return; }
-  const body = {
-    '廠商編號':   document.getElementById('po-vendor-code').value.trim(),
-    '廠商名稱':   document.getElementById('po-vendor-name').value.trim(),
-    '採購日期':   (document.getElementById('po-date').value || '').replace(/-/g,'/'),
-    '預計到貨日': (document.getElementById('po-arrival').value || '').replace(/-/g,'/'),
-    '採購人員':   document.getElementById('po-person').value.trim() || get(LS_PERSON,'Jennifer Shao'),
-    '備註':       document.getElementById('po-note').value.trim(),
-    [PO_SUBTABLE]: items.map(it => ({
-      '商品代號': it.code,
-      '國際條碼': it.barcode,
-      '商品名稱': it.name,
-      '單價(未稅)': it.price,
-      '數量': it.qty,
-      '金額': it.amount
-    }))
-  };
+  if (items.length < all.length && !confirm(`還有 ${all.length - items.length} 筆沒對應商品，這些不會寫進採購單。確定要建單嗎？`)) return;
+  const vendorCode = document.getElementById('po-vendor-code').value.trim();
+  if (!vendorCode) { toast('請先選擇廠商', 'error'); return; }
+  const currency = document.getElementById('po-currency').value;
+  const isTwd = currency === '台幣';
+  const rate = isTwd ? 1 : parseFloat(document.getElementById('po-rate').value);
+  if (!isTwd && !(rate > 0)) { toast(`幣別是${currency}，請填匯率`, 'error'); return; }
+  const body = buildPoBody(items, vendorCode, currency, rate);
   try {
     showLoading('建立採購單...');
-    const url = `${RAGIC_BASE}${PO_PATH}?api`;
-    const res = await fetch(url, {
+    const res = await fetch(`${RAGIC_BASE}${PO_PATH}${RAGIC_WRITE_QS}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...ragicAuth(ragicKey) },
       body: JSON.stringify(body)
     });
-    const d = await res.json();
+    const d = await res.json().catch(() => ({ msg: `HTTP ${res.status}` }));
     hideLoading();
-    if (res.ok && (d.status === 'success' || d._ragicId || d.id)) {
-      const id = d._ragicId || d.id || '';
-      toast(`採購單已建立${id ? ' ID: '+id : ''}`, 'success');
-      saveManualMappings();
+    if (res.ok && ragicOk(d)) {
+      const poNo = d.data?.['採購單號'] || d.data?.['1002303'] || '';
+      const saved = saveManualMappings(true);
+      toast(`採購單已建立${poNo ? '：' + poNo : (d.ragicId ? '（第 ' + d.ragicId + ' 筆）' : '')}${saved ? `，並記住 ${saved} 筆對應` : ''}`, 'success');
     } else {
-      toast('建單失敗：' + (d.error || d.message || JSON.stringify(d)), 'error');
+      toast('建單失敗：' + ragicErr(d), 'error');
+      console.error('Ragic 建單回應', d, '送出內容', body);
     }
   } catch(e) { hideLoading(); toast('建單失敗：' + e.message, 'error'); }
+}
+
+// 子表格要用物件、每列用負數當暫時列號；外幣單價寫「原幣金額」，台幣單價由 Ragic 公式換算
+function buildPoBody(items, vendorCode, currency, rate) {
+  const isTwd = currency === '台幣';
+  const rows = {};
+  items.forEach((it, i) => {
+    const r = { [F_PO_ITEM.code]: it.code, [F_PO_ITEM.barcode]: it.barcode, [F_PO_ITEM.name]: it.name, [F_PO_ITEM.qty]: it.qty };
+    r[isTwd ? F_PO_ITEM.twdPrice : F_PO_ITEM.fxPrice] = it.price;
+    rows[-(i + 1)] = r;
+  });
+  const body = {
+    [F_PO.vendorCode]: vendorCode,
+    [F_PO.vendorName]: document.getElementById('po-vendor-name').value.trim(),
+    [F_PO.date]:       (document.getElementById('po-date').value || '').replace(/-/g,'/'),
+    [F_PO.arrival]:    (document.getElementById('po-arrival').value || '').replace(/-/g,'/'),
+    [F_PO.person]:     document.getElementById('po-person').value.trim() || get(LS_PERSON,'Jennifer Shao'),
+    [F_PO.note]:       document.getElementById('po-note').value.trim(),
+    [F_PO.currency]:   currency,
+    [F_PO.rate]:       rate,
+    [PO_SUBTABLE]:     rows
+  };
+  return body;
 }
 
 // ── Init ──
