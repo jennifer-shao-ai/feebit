@@ -189,7 +189,7 @@
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
 
-  <div class="sidebar-footer">v2.1 · Feebit © 2026</div>
+  <div class="sidebar-footer">v3.1 · Feebit © 2026</div>
 </div>
 
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
@@ -200,7 +200,7 @@
     <div style="display:flex;align-items:center;gap:10px">
       <button class="btn-hamburger" onclick="openSidebar()">☰</button>
       <span class="topbar-title">採購單轉換</span>
-      <span class="topbar-badge">v2.1</span>
+      <span class="topbar-badge">v3.1</span>
     </div>
     <button class="btn-share" onclick="syncProducts()" title="強制重新載入 Ragic 商品清單">↻ 更新商品庫</button>
   </div>
@@ -222,8 +222,8 @@
              onclick="document.getElementById('file-input').click()">
           <div class="uz-icon">📄</div>
           <p><strong>拖曳檔案到此處</strong>，或點擊選擇</p>
-          <p class="uz-hint">支援：JPG / PNG 圖片、Excel（.xlsx .xls）</p>
-          <input type="file" id="file-input" accept=".jpg,.jpeg,.png,.xlsx,.xls" style="display:none" onchange="handleFileSelect(event)">
+          <p class="uz-hint">支援：JPG / PNG 圖片、Excel（.xlsx .xls）、Word（.docx）、PDF</p>
+          <input type="file" id="file-input" accept=".jpg,.jpeg,.png,.xlsx,.xls,.docx,.pdf" style="display:none" onchange="handleFileSelect(event)">
         </div>
         <div class="divider">— 或貼上文字 —</div>
         <textarea id="text-input" class="text-input-area" placeholder="貼上 invoice 文字內容（品名清單、CSV 或表格文字均可）&#10;&#10;例：Heimish Cleansing Balm 120ml  ×80  @277"></textarea>
@@ -370,6 +370,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 <script>
 // ── 常數 ──
 const RAGIC_BASE   = 'https://ap13.ragic.com/feebit50968407';
@@ -540,8 +541,24 @@ function handleDrop(e) {
   document.getElementById('upload-zone').classList.remove('drag-over');
   const f = e.dataTransfer.files[0]; if (f) setFile(f);
 }
-function handleFileSelect(e) { const f = e.target.files[0]; if (f) setFile(f); }
+function handleFileSelect(e) { const f = e.target.files[0]; e.target.value = ''; if (f) setFile(f); }
+
+const FILE_KINDS = { jpg:'image', jpeg:'image', png:'image', xlsx:'excel', xls:'excel', docx:'word', pdf:'pdf' };
+const SUPPORTED_HINT = 'JPG / PNG 圖片、Excel（.xlsx .xls）、Word（.docx）、PDF';
+function fileKind(f) { return FILE_KINDS[f.name.split('.').pop().toLowerCase()] || null; }
+function unsupportedMsg(f) {
+  const ext = f.name.includes('.') ? f.name.split('.').pop().toLowerCase() : '';
+  if (ext === 'doc') return '不支援舊版 Word（.doc），請用 Word 另存為 .docx 再上傳';
+  if (ext === 'heic') return '不支援 HEIC 照片，請轉成 JPG 或 PNG 再上傳';
+  return `不支援「${ext ? '.' + ext : '無副檔名'}」檔案。支援格式：${SUPPORTED_HINT}`;
+}
 function setFile(f) {
+  if (!fileKind(f)) {
+    selectedFile = null;
+    document.getElementById('file-label').textContent = '';
+    toast(unsupportedMsg(f), 'error');
+    return;
+  }
   selectedFile = f;
   document.getElementById('file-label').textContent = `已選擇：${f.name}`;
 }
@@ -552,11 +569,12 @@ const PARSE_PROMPT = `你是專業進出口發票解析助手。分析廠商 inv
 [{"vendorName":"原始品名保留原文","qty":數量,"unitPrice":單價,"amount":金額}]
 規則：qty/unitPrice/amount 為純數字；金額空白用 qty×unitPrice；只取商品列，排除標題/小計/稅額/運費。`;
 
-async function callClaude(content, isImage, mediaType) {
+// blockType：'image'（圖片）、'document'（PDF）或省略（純文字）
+async function callClaude(content, blockType, mediaType) {
   const key = get(LS_CLAUDE);
   if (!key) throw new Error('請先在「設定」填入 Anthropic API Key');
-  const msgContent = isImage
-    ? [{ type:'image', source:{ type:'base64', media_type:mediaType, data:content } }, { type:'text', text:PARSE_PROMPT }]
+  const msgContent = blockType
+    ? [{ type:blockType, source:{ type:'base64', media_type:mediaType, data:content } }, { type:'text', text:PARSE_PROMPT }]
     : PARSE_PROMPT + '\n\n' + content;
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -584,11 +602,49 @@ async function parseImage(file) {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = async e => {
-      try { resolve(await callClaude(e.target.result.split(',')[1], true, file.type || 'image/jpeg')); }
+      try { resolve(await callClaude(e.target.result.split(',')[1], 'image', file.type || 'image/jpeg')); }
       catch(err) { reject(err); }
     };
     r.readAsDataURL(file);
   });
+}
+
+// PDF 直接交給 Claude 讀（含掃描檔），不先在瀏覽器轉文字
+async function parsePdf(file) {
+  if (file.size > 30 * 1024 * 1024) throw new Error('PDF 超過 30MB，請壓縮或只留品項頁再上傳');
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = async e => {
+      try { resolve(await callClaude(e.target.result.split(',')[1], 'document', 'application/pdf')); }
+      catch(err) { reject(err); }
+    };
+    r.readAsDataURL(file);
+  });
+}
+
+// Word 轉 HTML 後再轉成文字，表格每列用 Tab 分隔，保留欄位對應
+async function parseWord(file) {
+  if (typeof mammoth === 'undefined') throw new Error('Word 解析元件載入失敗，請重新整理頁面再試');
+  const buf = await file.arrayBuffer();
+  let html;
+  try { html = (await mammoth.convertToHtml({ arrayBuffer: buf })).value; }
+  catch(err) { throw new Error('Word 檔讀取失敗，檔案可能損毀或有密碼保護'); }
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const lines = [];
+  doc.body.querySelectorAll(':scope > *').forEach(el => {
+    if (el.tagName === 'TABLE') {
+      el.querySelectorAll('tr').forEach(tr => {
+        lines.push([...tr.children].map(td => td.textContent.replace(/\s+/g, ' ').trim()).join('\t'));
+      });
+      lines.push('');
+    } else {
+      const t = el.textContent.trim();
+      if (t) lines.push(t);
+    }
+  });
+  const text = lines.join('\n').trim();
+  if (!text) throw new Error('Word 檔裡讀不到文字（可能整份是圖片），請改用截圖上傳');
+  return callClaude(text);
 }
 
 async function parseExcel(file) {
@@ -598,7 +654,7 @@ async function parseExcel(file) {
       try {
         const wb = XLSX.read(e.target.result, { type:'array' });
         const csv = XLSX.utils.sheet_to_csv(wb.Sheets[wb.SheetNames[0]]);
-        resolve(await callClaude(csv, false));
+        resolve(await callClaude(csv));
       } catch(err) { reject(err); }
     };
     r.readAsArrayBuffer(file);
@@ -615,17 +671,25 @@ async function parseInvoice() {
     products = await getProducts();
     let items;
     if (selectedFile) {
-      const ext = selectedFile.name.split('.').pop().toLowerCase();
-      if (['jpg','jpeg','png'].includes(ext)) {
+      const kind = fileKind(selectedFile);
+      if (kind === 'image') {
         showLoading('AI 辨識圖片中...');
         items = await parseImage(selectedFile);
-      } else {
+      } else if (kind === 'excel') {
         showLoading('解析 Excel...');
         items = await parseExcel(selectedFile);
+      } else if (kind === 'word') {
+        showLoading('解析 Word...');
+        items = await parseWord(selectedFile);
+      } else if (kind === 'pdf') {
+        showLoading('AI 讀取 PDF 中...');
+        items = await parsePdf(selectedFile);
+      } else {
+        throw new Error(unsupportedMsg(selectedFile));
       }
     } else {
       showLoading('AI 解析文字中...');
-      items = await callClaude(textInput, false);
+      items = await callClaude(textInput);
     }
     hideLoading();
     if (!items?.length) { toast('解析不到商品項目，請確認 invoice 格式', 'error'); return; }
