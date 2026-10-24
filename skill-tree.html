@@ -494,7 +494,7 @@ const SKILLS = [
   { icon:'📄', name:'/anydoc', cat:'AI Skill', ver:'skill', desc:'本機把 Word／Excel／PDF 等文件轉成 Markdown 給 AI 讀', cmd:'/anydoc' },
   // ── 自動化 ──
   { icon:'🟢', name:'供應商建檔 LINE Bot',    cat:'自動化', ver:'Worker', desc:'展場掃名片 → Claude 辨識 → 自動建 Ragic 供應商記錄', url:null, info:'Cloudflare Worker · feebit-line-bot.esuse-adobe.workers.dev', host:'Cloudflare Worker' },
-  { icon:'🛍️', name:'淘寶訂單匯出外掛',      cat:'自動化', ver:'外掛',   desc:'Chrome 外掛一鍵抓取淘寶訂單，自動翻頁並送至 Apps Script', url:null, info:'Chrome Extension · ~/Desktop/淘寶訂單匯出/', host:'本機 Chrome（手動觸發）' },
+  { icon:'🛍️', name:'淘寶訂單匯出外掛',      cat:'自動化', ver:'v1.4',   desc:'Chrome 外掛一鍵抓取淘寶訂單，自動翻頁、自動抓貨運單號填 H 欄，送至 Apps Script', url:null, info:'Chrome Extension · ~/Documents/google chrome外掛安裝/淘寶訂單匯出/', host:'本機 Chrome（手動觸發）' },
   { icon:'📊', name:'淘寶訂單 Apps Script',   cat:'自動化', ver:'GAS',    desc:'接收 Chrome 外掛資料，自動建 Google Sheet（含商品縮圖）', url:null, info:'Google Apps Script · Deploy: AKfycbx0…', host:'Google Apps Script' },
   { icon:'⏰', name:'Supabase 保活排程',      cat:'自動化', ver:'排程',   desc:'每 6 天自動呼叫 Supabase API，避免 free tier 7 天暫停', url:null, info:'Cloud Routine · Trigger: trig_014e4GNd…', host:'Claude Cloud Routine' },
   { icon:'📋', name:'Feebit 每日待辦整理',    cat:'自動化', ver:'排程',   desc:'週一至五 08:30 整合 Asana/Gmail/Slack/Notion 產出待辦清單並建 Gmail 草稿，含信件連結、完整回覆草稿、星號/重要信件近兩週提醒', url:'schedule-notifications.html', info:'Cloud Routine · Trigger: trig_01KJRRNzuss…', host:'Claude Cloud Routine' },
