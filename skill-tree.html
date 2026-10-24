@@ -336,7 +336,7 @@
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
 
-  <div class="sidebar-footer">v1.17 · Feebit © 2026</div>
+  <div class="sidebar-footer">v1.18 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -413,6 +413,10 @@ const SKILLS = [
     members:['/project-security-bootstrap','/github-tool','/github-review','/tool-save','/skill-tree-sync'],
     duties:['判斷收尾要跑哪些指令並排順序','開派工單，推 GitHub／寫 Ragic 先等放行','登記 Ragic 自動化排程總表 info/16','檢查通知方式與是否真的跑過一次','彙總回報（四種狀態附證據）'],
     cmd:'/milo', link:'https://www.notion.so/3fdc0daeef57812bbc0cf2dbd3cc369f' },
+  { icon:'🛠️', name:'Tomi', title:'產品製作人', cat:'AI 員工', ver:'skill', staff:true,
+    desc:'把會的能力做成賣得掉的數位產品，從訪談挖能力、選課程或數位商品，動手做到上架收得到錢',
+    duties:['訪談挖出別人願意付錢的能力','評估做成課程還是數位商品（二選一）','開案：轉變承諾、定價、驗證門檻、8 週里程碑','動手寫課綱、腳本、電子書、Notion 模板與預售文案','追進度到上架並走完一次付款'],
+    cmd:'/hello-tomi' },
   // ── 財務帳務 ──
   { icon:'💾', name:'商品成本資料庫',   cat:'財務帳務', ver:'v1.0', desc:'品牌／條碼查詢成本、多供應商比價、成本歷史、匯率模擬器', url:'cost-database.html' },
   { icon:'📗', name:'分錄帳轉換',       cat:'財務帳務', ver:'v1.0', desc:'帳務轉換產出的分類明細，依四階科目自動產生月度分錄帳', url:'journal-voucher.html' },
@@ -496,7 +500,7 @@ const SKILLS = [
   // ── 系統 ──
   { icon:'🏠', name:'首頁',     cat:'系統', ver:'v4.4', desc:'飛比特營運工具箱入口，所有工具快速導覽', url:'index.html' },
   { icon:'🔧', name:'使用工具', cat:'系統', ver:'v1.1', desc:'外部平台與後台連結總覽，點擊前往各系統', url:'tools.html' },
-  { icon:'🌳', name:'技能樹',   cat:'系統', ver:'v1.17', desc:'飛比特所有工具與技能可視化總覽，含版本與說明', url:'skill-tree.html' },
+  { icon:'🌳', name:'技能樹',   cat:'系統', ver:'v1.18', desc:'飛比特所有工具與技能可視化總覽，含版本與說明', url:'skill-tree.html' },
   { icon:'💳', name:'訂閱服務管理', cat:'系統', ver:'v2.1', desc:'付費工具/平台方案、價格、結帳日、帳號、後台、付款統編＋各公司每月/每年分攤，Supabase 共用', url:'subscriptions.html' },
   { icon:'🤖', name:'AI 需求問卷', cat:'系統', ver:'v2.1', desc:'勾選工作情境自動算出最該先導入的 5 個 AI 工具，填答存 Supabase；卡片直接進後台：逐人顯示自填需求、前 5 名原因／做法／追問，一鍵複製問卷連結', url:'ai-needs-survey.html?admin=1' },
   { icon:'🛡️', name:'Git 安全防護', cat:'系統', ver:'v1.0', desc:'.gitignore 禁止上傳清單：擋下 .env、金鑰、憑證等機密檔，避免推上公開 repo', url:null, info:'repo 根目錄 .gitignore · 由 /project-security-bootstrap 建立 · 2026-10-03 上線', host:'GitHub repo jennifer-shao-ai/feebit' },
