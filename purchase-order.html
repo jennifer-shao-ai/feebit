@@ -195,7 +195,7 @@
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
 
-  <div class="sidebar-footer">v4.1 · Feebit © 2026</div>
+  <div class="sidebar-footer">v4.2 · Feebit © 2026</div>
 </div>
 
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
@@ -206,7 +206,7 @@
     <div style="display:flex;align-items:center;gap:10px">
       <button class="btn-hamburger" onclick="openSidebar()">☰</button>
       <span class="topbar-title">採購單轉換</span>
-      <span class="topbar-badge">v4.1</span>
+      <span class="topbar-badge">v4.2</span>
     </div>
     <button class="btn-share" onclick="syncProducts()" title="強制重新載入 Ragic 商品清單">↻ 更新商品庫</button>
   </div>
@@ -1106,9 +1106,9 @@ function saveManualMappings(silent) {
 async function createPurchaseOrder() {
   const ragicKey = get(LS_RAGIC);
   if (!ragicKey) { toast('請先設定 Ragic API Token', 'error'); return; }
-  const all = collectItems(), items = all.filter(it => it.code);
-  if (!items.length) { toast('沒有已比對的商品', 'error'); return; }
-  if (items.length < all.length && !confirm(`還有 ${all.length - items.length} 筆沒對應商品，這些不會寫進採購單。確定要建單嗎？`)) return;
+  // 沒對應到商品的品項也要入單：商品名稱用廠商原始品名，代號、條碼留空
+  const items = collectItems().map(it => it.code ? it : { ...it, barcode: '', name: it.vendorName });
+  if (!items.length) { toast('沒有可建單的品項', 'error'); return; }
   const vendorCode = document.getElementById('po-vendor-code').value.trim();
   if (!vendorCode) { toast('請先選擇廠商', 'error'); return; }
   const currency = document.getElementById('po-currency').value;
