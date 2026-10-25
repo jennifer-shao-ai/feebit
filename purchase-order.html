@@ -195,7 +195,7 @@
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
 
-  <div class="sidebar-footer">v4.2 · Feebit © 2026</div>
+  <div class="sidebar-footer">v4.3 · Feebit © 2026</div>
 </div>
 
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
@@ -206,7 +206,7 @@
     <div style="display:flex;align-items:center;gap:10px">
       <button class="btn-hamburger" onclick="openSidebar()">☰</button>
       <span class="topbar-title">採購單轉換</span>
-      <span class="topbar-badge">v4.2</span>
+      <span class="topbar-badge">v4.3</span>
     </div>
     <button class="btn-share" onclick="syncProducts()" title="強制重新載入 Ragic 商品清單">↻ 更新商品庫</button>
   </div>
@@ -1136,14 +1136,13 @@ async function createPurchaseOrder() {
   } catch(e) { hideLoading(); toast('建單失敗：' + e.message, 'error'); }
 }
 
-// 子表格要用物件、每列用負數當暫時列號；外幣單價寫「原幣金額」，台幣單價由 Ragic 公式換算
+// 子表格要用物件、每列用負數當暫時列號；單價一律寫「原幣金額」（台幣時匯率 1），
+// 「台幣單價」是 Ragic 公式（原幣×匯率×1.16），直接寫會在存檔重算時被蓋成 0
 function buildPoBody(items, vendorCode, currency, rate) {
-  const isTwd = currency === '台幣';
   const rows = {};
   items.forEach((it, i) => {
-    const r = { [F_PO_ITEM.code]: it.code, [F_PO_ITEM.barcode]: it.barcode, [F_PO_ITEM.name]: it.name, [F_PO_ITEM.qty]: it.qty };
-    r[isTwd ? F_PO_ITEM.twdPrice : F_PO_ITEM.fxPrice] = it.price;
-    rows[-(i + 1)] = r;
+    rows[-(i + 1)] = { [F_PO_ITEM.code]: it.code, [F_PO_ITEM.barcode]: it.barcode, [F_PO_ITEM.name]: it.name,
+                       [F_PO_ITEM.qty]: it.qty, [F_PO_ITEM.fxPrice]: it.price };
   });
   const body = {
     [F_PO.vendorCode]: vendorCode,
