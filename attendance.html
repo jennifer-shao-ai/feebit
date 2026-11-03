@@ -194,7 +194,7 @@ select.inline-sel:focus{border-color:var(--primary);}
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
 
-  <div class="sidebar-footer">v3.3 · Feebit © 2026</div>
+  <div class="sidebar-footer">v3.4 · Feebit © 2026</div>
 </div>
 
 <div id="main">
@@ -203,7 +203,7 @@ select.inline-sel:focus{border-color:var(--primary);}
       <button class="btn-hamburger" style="display:none;" onclick="openSidebar()">☰</button>
       <span class="topbar-title">考勤查驗</span>
       <span class="topbar-badge">人事工具</span>
-      <span style="font-size:11px;color:var(--gray-400);margin-left:4px;">v3.3</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:4px;">v3.4</span>
     </div>
   </div>
 
@@ -1778,9 +1778,8 @@ async function syncFromRagic(){
     const STATUS_FIELDS=['在職狀態','*在職狀態','員工狀態','狀態','在職'];
     const ACTIVE_VALS=['在職','在職中','active','Active','Y','是','1'];
     const fStatus=STATUS_FIELDS.find(f=>records.some(r=>r[f]!=null&&String(r[f]).trim()!==''));
-    const active=fStatus
-      ?records.filter(r=>ACTIVE_VALS.includes(String(r[fStatus]||'').trim()))
-      :records; // 找不到狀態欄位就全部匯入
+    const isActiveRec=r=>!fStatus||ACTIVE_VALS.includes(String(r[fStatus]||'').trim()); // 找不到狀態欄位就全部當在職
+    const active=records.filter(isActiveRec);
     if(!active.length){
       const sample=records[0]||{};
       const availFields=Object.keys(sample).filter(k=>!k.startsWith('_')).join('、');
@@ -1788,19 +1787,29 @@ async function syncFromRagic(){
       btn.disabled=false; btn.textContent='🔄 立即同步'; return;
     }
 
-    let added=0, updated=0;
-    active.forEach(r=>{
+    // 離職員工也要同步（否則離職後就抓不到、打卡匯入會「找不到員工」），並帶入 Ragic 離職日期
+    let added=0, updated=0, resignedSet=0;
+    const resignNoDate=[];
+    records.forEach(r=>{
       const ragicId=String(r['工號']||r['_ragicId']);
       const name=String(r['姓名']||'').trim();
       if(!name) return;
       const type=mapEmpType(r['聘雇類別']||'');
+      const isActive=isActiveRec(r);
 
       // find existing by ragicId or name
       let existing=db.employees.find(e=>e.ragicId&&e.ragicId===ragicId)||db.employees.find(e=>e.name===name);
 
       const hireDateRaw=r['到職日期']||r['*到職日期']||r['到職日']||r['*到職日']||'';
       const hireDate=hireDateRaw?ragicDate(hireDateRaw):'';
+      // 欄位名稱相容：離職日期 / *離職日期 / 離職日 等，只要 Ragic 有填就帶入（不看在職狀態欄）
+      const resignKey=Object.keys(r).find(k=>/離職.*日/.test(k)&&String(r[k]||'').trim()!=='');
+      const resignDate=resignKey?ragicDate(String(r[resignKey]).trim()):'';
+      // 離職但 Ragic 沒填離職日期：工具裡沒有這個人就不新增（否則會一直顯示未打卡），列出來提醒手動補
+      if(!isActive&&!resignDate&&!existing?.resignDate){ resignNoDate.push(name); if(!existing) return; }
       if(existing){
+        // 離職日期只補空白，不覆蓋手動填過的
+        if(resignDate&&!existing.resignDate){ existing.resignDate=resignDate; resignedSet++; }
         // update name & type; keep manual settings (hours, grace, weekdays)
         existing.name=name;
         existing.type=type;
@@ -1818,7 +1827,7 @@ async function syncFromRagic(){
         updated++;
       } else {
         db.employees.push({
-          id:uid(), ragicId, name, type, hireDate,
+          id:uid(), ragicId, name, type, hireDate, resignDate,
           startTime:'08:30', endTime:'18:00',
           lateGrace:30, earlyGrace:0,
           lunchStart:'12:00', lunchEnd:'13:00',
@@ -1831,7 +1840,8 @@ async function syncFromRagic(){
 
     saveDB();
     renderEmployees();
-    msg.innerHTML=`<span style="color:var(--success);">✅ 同步完成：新增 ${added} 人，更新 ${updated} 人（共 ${active.length} 位在職員工）</span>`;
+    msg.innerHTML=`<span style="color:var(--success);">✅ 同步完成：新增 ${added} 人，更新 ${updated} 人，新帶入離職日期 ${resignedSet} 人（Ragic 在職 ${active.length} 位）</span>`
+      +(resignNoDate.length?`<div style="color:var(--warning);margin-top:4px;">⚠️ 以下已離職但 Ragic 沒填離職日期，請到 Ragic 補上或在員工設定手動填：${resignNoDate.map(esc).join('、')}</div>`:'');
   } catch(e){
     msg.innerHTML=`<span style="color:var(--danger);">❌ 同步失敗：${esc(e.message)}</span>`;
     console.error(e);
@@ -2108,13 +2118,14 @@ async function autoSyncIfFirstOfMonth(){
   const m=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0');
   const lastSync=localStorage.getItem(ATT_SYNC_KEY);
   if(lastSync===m) return; // 本月已同步過
-  const key=loadRagicConfig().key;
-  if(!key) return; // 未設定 API Key 就靜默跳過
-  console.log('[Feebit] 每月1號自動同步 Ragic 排班/請假/加班...');
+  const cfg=loadRagicConfig();
+  if(!cfg.key) return; // 未設定 API Key 就靜默跳過
+  console.log('[Feebit] 每月1號自動同步 Ragic 員工/排班/請假/加班...');
   // 設定當月為選中月份
   const sel=document.getElementById('import-month');
   if(sel) sel.value=m;
   try{
+    if(cfg.url) await syncFromRagic(); // 先同步員工（含新進/離職），排班請假才對得到人
     await syncSchFromRagic();
     await syncLeavesFromRagic();
     await syncOTFromRagic();
