@@ -194,7 +194,7 @@ select.inline-sel:focus{border-color:var(--primary);}
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
 
-  <div class="sidebar-footer">v3.4 · Feebit © 2026</div>
+  <div class="sidebar-footer">v3.5 · Feebit © 2026</div>
 </div>
 
 <div id="main">
@@ -203,7 +203,7 @@ select.inline-sel:focus{border-color:var(--primary);}
       <button class="btn-hamburger" style="display:none;" onclick="openSidebar()">☰</button>
       <span class="topbar-title">考勤查驗</span>
       <span class="topbar-badge">人事工具</span>
-      <span style="font-size:11px;color:var(--gray-400);margin-left:4px;">v3.4</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:4px;">v3.5</span>
     </div>
   </div>
 
@@ -580,6 +580,15 @@ function saveDB(){ localStorage.setItem(SK,JSON.stringify(db)); }
 const SHOW_RESIGNED_KEY='feebit_att_show_resigned';
 let showResigned = localStorage.getItem(SHOW_RESIGNED_KEY)==='1';
 function activeEmployees(){ return showResigned ? db.employees : db.employees.filter(e=>!e.resignDate); }
+// 依期間列員工（月份/年度下拉用）：離職日早於期間開始、或到職日晚於期間結束的不列；不受「顯示已離職員工」開關影響
+function empsInPeriod(from,to){ return db.employees.filter(e=>(!e.resignDate||e.resignDate>=from)&&(!e.hireDate||e.hireDate<=to)); }
+function empsInMonth(m){ return m?empsInPeriod(m+'-01',m+'-31'):activeEmployees(); }
+function fillEmpSel(sel,emps){
+  if(!sel) return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">全部</option>'+emps.map(e=>`<option value="${e.id}">${esc(e.name)}</option>`).join('');
+  sel.value=emps.some(e=>e.id===cur)?cur:'';
+}
 function toggleShowResigned(){
   showResigned = document.getElementById('show-resigned-toggle').checked;
   localStorage.setItem(SHOW_RESIGNED_KEY, showResigned?'1':'0');
@@ -788,11 +797,12 @@ function initImport(){
 
 function onImportMonthChange(){
   const m=document.getElementById('import-month').value;
+  refreshEmpDrops();
   renderPunchTable(m); renderSchTable(m); renderLvTable(m); renderOTTable(m); renderShTable(m);
 }
 
 function refreshEmpDrops(){
-  const opts=activeEmployees().map(e=>`<option value="${e.id}">${esc(e.name)}</option>`).join('');
+  const opts=empsInMonth(document.getElementById('import-month')?.value).map(e=>`<option value="${e.id}">${esc(e.name)}</option>`).join('');
   ['lv-emp','ot-emp','sh-emp'].forEach(id=>{ const s=document.getElementById(id); if(s) s.innerHTML=opts||'<option value="">（無員工）</option>'; });
 }
 
@@ -1357,15 +1367,14 @@ function initVerify(){
   const today=new Date();
   const cur=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0');
   genMonthOpts('vfy-month',cur);
-  const sel=document.getElementById('vfy-emp');
-  sel.innerHTML='<option value="">全部</option>'+activeEmployees().map(e=>`<option value="${e.id}">${esc(e.name)}</option>`).join('');
   renderVerify();
 }
 
 function renderVerify(){
   const month=document.getElementById('vfy-month').value;
+  fillEmpSel(document.getElementById('vfy-emp'),empsInMonth(month));
   const filterEmp=document.getElementById('vfy-emp').value;
-  const emps=filterEmp?db.employees.filter(e=>e.id===filterEmp):activeEmployees();
+  const emps=filterEmp?db.employees.filter(e=>e.id===filterEmp):empsInMonth(month);
 
   if(!emps.length){
     document.getElementById('vfy-stats').innerHTML='';
@@ -1550,8 +1559,6 @@ function initAnnual(){
   const today=new Date(), y=today.getFullYear();
   const sel=document.getElementById('ann-year');
   sel.innerHTML=[y-1,y,y+1].map(x=>`<option value="${x}"${x===y?' selected':''}>${x}</option>`).join('');
-  const empSel=document.getElementById('ann-emp');
-  empSel.innerHTML='<option value="">全部</option>'+activeEmployees().map(e=>`<option value="${e.id}">${esc(e.name)}</option>`).join('');
   (async()=>{
     if(!annCloudClient) await annInitCloud();
     renderAnnual();
@@ -1666,6 +1673,8 @@ function renderAnnualHTML(year, monthsCount, empStats){
 
 async function renderAnnual(){
   const year=document.getElementById('ann-year').value;
+  const yearEmps=empsInPeriod(year+'-01-01',year+'-12-31');
+  if(db.employees.length) fillEmpSel(document.getElementById('ann-emp'),yearEmps); // 雲端唯讀模式由 annPopulateEmpSelect 填
   const filterEmp=document.getElementById('ann-emp').value;
   const content=document.getElementById('ann-content');
   const syncBtn=document.getElementById('ann-sync-btn');
@@ -1676,7 +1685,7 @@ async function renderAnnual(){
   if(db.employees.length){
     if(syncBtn) syncBtn.style.display=annIsAdmin?'':'none';
     if(cloudNote) cloudNote.textContent='';
-    const emps=filterEmp?db.employees.filter(e=>e.id===filterEmp):activeEmployees();
+    const emps=filterEmp?db.employees.filter(e=>e.id===filterEmp):yearEmps;
     const built=buildAnnualStats(year, emps);
     if(!built){ content.innerHTML=`<div class="card"><div class="empty-state"><div class="ei">📊</div><div>${year} 年尚無考勤資料</div></div></div>`; return; }
     content.innerHTML=renderAnnualHTML(year, built.monthsCount, built.empStats);
@@ -1787,8 +1796,9 @@ async function syncFromRagic(){
       btn.disabled=false; btn.textContent='🔄 立即同步'; return;
     }
 
-    // 離職員工也要同步（否則離職後就抓不到、打卡匯入會「找不到員工」），並帶入 Ragic 離職日期
-    let added=0, updated=0, resignedSet=0;
+    // 名單裡已有的人：更新離職日期、正職/工讀等狀態；名單沒有的人：只新增 SYNC_NEW_HIRE_FROM 之後到職的，舊員工不補
+    const SYNC_NEW_HIRE_FROM='2026-05-01';
+    let added=0, updated=0, resignedSet=0, skippedOld=0;
     const resignNoDate=[];
     records.forEach(r=>{
       const ragicId=String(r['工號']||r['_ragicId']);
@@ -1805,6 +1815,8 @@ async function syncFromRagic(){
       // 欄位名稱相容：離職日期 / *離職日期 / 離職日 等，只要 Ragic 有填就帶入（不看在職狀態欄）
       const resignKey=Object.keys(r).find(k=>/離職.*日/.test(k)&&String(r[k]||'').trim()!=='');
       const resignDate=resignKey?ragicDate(String(r[resignKey]).trim()):'';
+      // 到職日早於門檻或沒填到職日的新名字不新增
+      if(!existing&&(!hireDate||hireDate<SYNC_NEW_HIRE_FROM)){ skippedOld++; return; }
       // 離職但 Ragic 沒填離職日期：工具裡沒有這個人就不新增（否則會一直顯示未打卡），列出來提醒手動補
       if(!isActive&&!resignDate&&!existing?.resignDate){ resignNoDate.push(name); if(!existing) return; }
       if(existing){
@@ -1840,7 +1852,7 @@ async function syncFromRagic(){
 
     saveDB();
     renderEmployees();
-    msg.innerHTML=`<span style="color:var(--success);">✅ 同步完成：新增 ${added} 人，更新 ${updated} 人，新帶入離職日期 ${resignedSet} 人（Ragic 在職 ${active.length} 位）</span>`
+    msg.innerHTML=`<span style="color:var(--success);">✅ 同步完成：新增 ${added} 人，更新 ${updated} 人，新帶入離職日期 ${resignedSet} 人，略過 ${SYNC_NEW_HIRE_FROM.slice(0,7).replace('-','/')} 前到職（或沒填到職日）且不在名單的 ${skippedOld} 人</span>`
       +(resignNoDate.length?`<div style="color:var(--warning);margin-top:4px;">⚠️ 以下已離職但 Ragic 沒填離職日期，請到 Ragic 補上或在員工設定手動填：${resignNoDate.map(esc).join('、')}</div>`:'');
   } catch(e){
     msg.innerHTML=`<span style="color:var(--danger);">❌ 同步失敗：${esc(e.message)}</span>`;
