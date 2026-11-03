@@ -194,7 +194,7 @@ select.inline-sel:focus{border-color:var(--primary);}
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
 
-  <div class="sidebar-footer">v3.5 · Feebit © 2026</div>
+  <div class="sidebar-footer">v3.6 · Feebit © 2026</div>
 </div>
 
 <div id="main">
@@ -203,7 +203,7 @@ select.inline-sel:focus{border-color:var(--primary);}
       <button class="btn-hamburger" style="display:none;" onclick="openSidebar()">☰</button>
       <span class="topbar-title">考勤查驗</span>
       <span class="topbar-badge">人事工具</span>
-      <span style="font-size:11px;color:var(--gray-400);margin-left:4px;">v3.5</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:4px;">v3.6</span>
     </div>
   </div>
 
@@ -1774,13 +1774,13 @@ async function syncFromRagic(){
     const data=await res.json();
     if(data.status==='ERROR'){
       msg.innerHTML=`<span style="color:var(--danger);">❌ Ragic 回傳錯誤：${esc(data.errMsg||data.error||JSON.stringify(data).slice(0,200))}</span>`;
-      btn.disabled=false; btn.textContent='🔄 立即同步'; return;
+      btn.disabled=false; btn.textContent='🔄 同步員工'; return;
     }
     const records=ragicRecords(data);
     if(!records.length){
       const rawKeys=Object.keys(data||{});
       msg.innerHTML=`<span style="color:var(--warning);">⚠️ Ragic 無資料（共 ${rawKeys.length} 個 key：${rawKeys.slice(0,5).join('、')}）</span>`;
-      btn.disabled=false; btn.textContent='🔄 立即同步'; return;
+      btn.disabled=false; btn.textContent='🔄 同步員工'; return;
     }
 
     // filter 在職狀態（相容不同欄位名稱與值）
@@ -1793,7 +1793,7 @@ async function syncFromRagic(){
       const sample=records[0]||{};
       const availFields=Object.keys(sample).filter(k=>!k.startsWith('_')).join('、');
       msg.innerHTML=`<span style="color:var(--warning);">⚠️ 沒有找到在職員工${fStatus?`（${fStatus} 的值不在白名單）`:'（找不到狀態欄位）'}，Ragic 可用欄位：${availFields||'無'}</span>`;
-      btn.disabled=false; btn.textContent='🔄 立即同步'; return;
+      btn.disabled=false; btn.textContent='🔄 同步員工'; return;
     }
 
     // 名單裡已有的人：更新離職日期、正職/工讀等狀態；名單沒有的人：只新增 SYNC_NEW_HIRE_FROM 之後到職的，舊員工不補
@@ -1858,7 +1858,7 @@ async function syncFromRagic(){
     msg.innerHTML=`<span style="color:var(--danger);">❌ 同步失敗：${esc(e.message)}</span>`;
     console.error(e);
   }
-  btn.disabled=false; btn.textContent='🔄 立即同步';
+  btn.disabled=false; btn.textContent='🔄 同步員工';
 }
 
 // ─ Ragic 共用：取 API Key ─
