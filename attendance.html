@@ -194,7 +194,7 @@ select.inline-sel:focus{border-color:var(--primary);}
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
 
-  <div class="sidebar-footer">v3.6 · Feebit © 2026</div>
+  <div class="sidebar-footer">v3.7 · Feebit © 2026</div>
 </div>
 
 <div id="main">
@@ -203,7 +203,7 @@ select.inline-sel:focus{border-color:var(--primary);}
       <button class="btn-hamburger" style="display:none;" onclick="openSidebar()">☰</button>
       <span class="topbar-title">考勤查驗</span>
       <span class="topbar-badge">人事工具</span>
-      <span style="font-size:11px;color:var(--gray-400);margin-left:4px;">v3.6</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:4px;">v3.7</span>
     </div>
   </div>
 
@@ -1199,10 +1199,11 @@ function analyzeEmployee(empId, month){
       const lv=empLeaves.find(l=>l.date===date);
       status=[lv?.type||'請假'];
       if(lv&&!NO_DEDUCT_LEAVES.includes(lv.type)) rowDeduct=-0.5;
-    } else if(!rec&&isExpected){
+    } else if(isExpected&&(!rec||(isPT&&!rec.clockIn&&!rec.clockOut))){
+      // 工讀有排班但上下班都沒打卡＝沒來，跟「打卡檔沒有這天」一樣算缺勤
       status=['缺勤']; rowClass='row-absent'; absentCount++; rowDeduct=-10;
     } else if(rec){
-      // 工讀生：有排班但沒有打卡時間不算出勤日
+      // 工讀生：沒排班（只有加班）且沒有打卡時間不算出勤日
       if(isPT&&!rec.clockIn&&!rec.clockOut){ return; }
       totalDays++;
       if(!rec.clockIn&&!rec.clockOut){ status=['未打卡']; rowClass='row-missing'; missingCount++; rowDeduct=-(missingCount>=3?2:1); }
