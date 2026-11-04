@@ -336,7 +336,7 @@
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
 
-  <div class="sidebar-footer">v1.22 · Feebit © 2026</div>
+  <div class="sidebar-footer">v1.23 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -492,6 +492,8 @@ const SKILLS = [
   { icon:'📊', name:'/weekly-review', cat:'AI Skill', ver:'skill', desc:'每週 AI 分身復盤：盤點這週、抓重複錯誤、記憶健檢，最多 3 件拍板', cmd:'/weekly-review' },
   { icon:'🔁', name:'/n8n-change', cat:'AI Skill', ver:'skill', desc:'n8n 流程改版上線：改前備份→實測→指紋比對→請你發布→上線核對', cmd:'/n8n-change' },
   { icon:'📄', name:'/anydoc', cat:'AI Skill', ver:'skill', desc:'本機把 Word／Excel／PDF 等文件轉成 Markdown 給 AI 讀', cmd:'/anydoc' },
+  { icon:'🎨', name:'/frontend-design', cat:'AI Skill', ver:'skill', desc:'做 HTML 工具時定配色、字型、版面，避開 AI 樣板感（Anthropic 官方）', cmd:'/frontend-design' },
+  { icon:'📈', name:'/seo-audit', cat:'AI Skill', ver:'skill', desc:'網站 SEO 健檢，列出問題、影響程度、修法與優先順序', cmd:'/seo-audit' },
   // ── 自動化 ──
   { icon:'🟢', name:'供應商建檔 LINE Bot',    cat:'自動化', ver:'Worker', desc:'展場掃名片 → Claude 辨識 → 自動建 Ragic 供應商記錄', url:null, info:'Cloudflare Worker · feebit-line-bot.esuse-adobe.workers.dev', host:'Cloudflare Worker' },
   { icon:'🛍️', name:'淘寶訂單匯出外掛',      cat:'自動化', ver:'v1.4',   desc:'Chrome 外掛一鍵抓取淘寶訂單，自動翻頁、自動抓貨運單號填 H 欄，送至 Apps Script', url:null, info:'Chrome Extension · ~/Documents/google chrome外掛安裝/淘寶訂單匯出/', host:'本機 Chrome（手動觸發）' },
@@ -513,7 +515,7 @@ const SKILLS = [
   // ── 系統 ──
   { icon:'🏠', name:'首頁',     cat:'系統', ver:'v4.4', desc:'飛比特營運工具箱入口，所有工具快速導覽', url:'index.html' },
   { icon:'🔧', name:'使用工具', cat:'系統', ver:'v1.1', desc:'外部平台與後台連結總覽，點擊前往各系統', url:'tools.html' },
-  { icon:'🌳', name:'技能樹',   cat:'系統', ver:'v1.22', desc:'飛比特所有工具與技能可視化總覽，含版本與說明', url:'skill-tree.html' },
+  { icon:'🌳', name:'技能樹',   cat:'系統', ver:'v1.23', desc:'飛比特所有工具與技能可視化總覽，含版本與說明', url:'skill-tree.html' },
   { icon:'💳', name:'訂閱服務管理', cat:'系統', ver:'v2.1', desc:'付費工具/平台方案、價格、結帳日、帳號、後台、付款統編＋各公司每月/每年分攤，Supabase 共用', url:'subscriptions.html' },
   { icon:'🤖', name:'AI 需求問卷', cat:'系統', ver:'v2.1', desc:'勾選工作情境自動算出最該先導入的 5 個 AI 工具，填答存 Supabase；卡片直接進後台：逐人顯示自填需求、前 5 名原因／做法／追問，一鍵複製問卷連結', url:'ai-needs-survey.html?admin=1' },
   { icon:'🛡️', name:'Git 安全防護', cat:'系統', ver:'v1.0', desc:'.gitignore 禁止上傳清單：擋下 .env、金鑰、憑證等機密檔，避免推上公開 repo', url:null, info:'repo 根目錄 .gitignore · 由 /project-security-bootstrap 建立 · 2026-10-03 上線', host:'GitHub repo jennifer-shao-ai/feebit' },
