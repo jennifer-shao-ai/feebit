@@ -1,0 +1,41 @@
+name: 品牌趨勢自動匯入（蝦皮，每月 1～10 日）
+
+on:
+  schedule:
+    # 台灣時間 20:00（UTC 12:00）。主機每月 1 日 16:00 上傳蝦皮報表到 Ragic，
+    # 1～10 日每天檢查一次，資料庫已經有的「賣場＋月份」會跳過，不會重複
+    - cron: '0 12 1-10 * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '試跑（只算不寫入）'
+        type: boolean
+        default: true
+      months_back:
+        description: '往回檢查幾個月'
+        default: '3'
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 安裝 Excel 解析套件
+        run: npm install --no-save --no-package-lock exceljs@4.4.0
+
+      - name: 讀 Ragic 蝦皮報表並寫入品牌趨勢
+        env:
+          RAGIC_TOKEN: ${{ secrets.RAGIC_TOKEN }}
+          BRAND_TREND_BOT_EMAIL: ${{ secrets.BRAND_TREND_BOT_EMAIL }}
+          BRAND_TREND_BOT_PASSWORD: ${{ secrets.BRAND_TREND_BOT_PASSWORD }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+          MONTHS_BACK: ${{ inputs.months_back || '3' }}
+        run: node scripts/brand-trend-import.js
