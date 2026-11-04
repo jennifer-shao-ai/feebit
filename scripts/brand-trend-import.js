@@ -60,7 +60,8 @@ async function parseExcel(buf) {
   if (buf[0] !== 0x50 || buf[1] !== 0x4b) throw new Error('下載到的不是 Excel 檔：' + buf.slice(0, 80).toString('utf8').replace(/\s+/g, ' '));
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buf);
-  const ws = wb.getWorksheet('最佳表現商品') || wb.getWorksheet('商品表現');
+  // 主機的蝦皮後台有時是英文介面，報表會變成英文工作表
+  const ws = wb.getWorksheet('最佳表現商品') || wb.getWorksheet('商品表現') || wb.getWorksheet('Top Performing Products');
   if (!ws) throw new Error('Excel 找不到「最佳表現商品」工作表，現有：' + wb.worksheets.map(w => w.name).join('、'));
   const val = c => (c && typeof c === 'object' && 'result' in c) ? c.result : c;
   const head = ws.getRow(1).values.map(v => String(val(v) ?? '').trim());
