@@ -65,7 +65,10 @@ async function parseExcel(buf) {
   if (!ws) throw new Error('Excel 找不到「最佳表現商品」工作表，現有：' + wb.worksheets.map(w => w.name).join('、'));
   const val = c => (c && typeof c === 'object' && 'result' in c) ? c.result : c;
   const head = ws.getRow(1).values.map(v => String(val(v) ?? '').trim());
-  const iName = head.indexOf('商品名稱'), iVar = head.indexOf('商品規格ID'), iSales = head.indexOf('銷售額(可出貨訂單) (TWD)');
+  const col = (...names) => names.map(n => head.indexOf(n)).find(i => i >= 0) ?? -1;
+  const iName = col('商品名稱', 'Product');
+  const iVar = col('商品規格ID', 'Variation ID');
+  const iSales = col('銷售額(可出貨訂單) (TWD)', 'Sales (Confirmed Order) (TWD)');
   if (iName < 0 || iVar < 0 || iSales < 0) throw new Error('Excel 欄位對不上：' + head.join(','));
   const items = [];
   ws.eachRow((row, n) => {
