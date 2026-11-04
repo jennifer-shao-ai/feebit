@@ -18,7 +18,7 @@ const MONTHS_BACK  = parseInt(process.env.MONTHS_BACK || '3');
 const LOCAL_DIR    = process.env.LOCAL_DIR || '';   // 本機測試用：直接讀資料夾裡的 Excel，不連 Ragic、不寫入
 
 const RAGIC_SHEET  = 'https://ap13.ragic.com/feebit50968407/data2/2?api&limit=1000';
-const RAGIC_FILE   = 'https://www.ragic.com/sims/file.jsp?a=feebit50968407&f=';
+const RAGIC_FILE   = 'https://ap13.ragic.com/sims/file.jsp?a=feebit50968407&f=';
 const SB_BASE      = 'https://tokhhoyzztaynppcatci.supabase.co';
 const SB_URL       = SB_BASE + '/rest/v1/brand_trend_records';
 const SB_ANON      = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRva2hob3l6enRheW5wcGNhdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMDAyODMsImV4cCI6MjA5MDg3NjI4M30.PQB4lJGF3OMatv5wIedCu3zIWq0urrFbniBRYTbNtUU';   // 公開的 anon key，跟 supabase-keepalive.yml 同一把
@@ -57,10 +57,11 @@ const RENAME = {
 };
 
 async function parseExcel(buf) {
+  if (buf[0] !== 0x50 || buf[1] !== 0x4b) throw new Error('下載到的不是 Excel 檔：' + buf.slice(0, 80).toString('utf8').replace(/\s+/g, ' '));
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buf);
   const ws = wb.getWorksheet('最佳表現商品') || wb.getWorksheet('商品表現');
-  if (!ws) throw new Error('Excel 找不到「最佳表現商品」工作表');
+  if (!ws) throw new Error('Excel 找不到「最佳表現商品」工作表，現有：' + wb.worksheets.map(w => w.name).join('、'));
   const val = c => (c && typeof c === 'object' && 'result' in c) ? c.result : c;
   const head = ws.getRow(1).values.map(v => String(val(v) ?? '').trim());
   const iName = head.indexOf('商品名稱'), iVar = head.indexOf('商品規格ID'), iSales = head.indexOf('銷售額(可出貨訂單) (TWD)');
