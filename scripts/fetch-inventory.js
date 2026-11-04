@@ -35,7 +35,7 @@ async function main() {
       ean:    (row['EAN13碼']  || '').trim(),
       qty,
       price:  (row['建議售價'] || '').trim(),
-      cost:   (row['成本單價'] || '').trim(),
+      // 成本單價不寫進快照：這個檔案在公開 repo，成本資料只走內網
       status: (row['販售狀態'] || '').trim()
     };
     count++;
