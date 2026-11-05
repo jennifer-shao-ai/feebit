@@ -336,7 +336,7 @@
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
 
-  <div class="sidebar-footer">v1.24 · Feebit © 2026</div>
+  <div class="sidebar-footer">v1.25 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -499,6 +499,7 @@ const SKILLS = [
   { icon:'🟢', name:'供應商建檔 LINE Bot',    cat:'自動化', ver:'Worker', desc:'展場掃名片 → Claude 辨識 → 自動建 Ragic 供應商記錄', url:null, info:'Cloudflare Worker · feebit-line-bot.esuse-adobe.workers.dev', host:'Cloudflare Worker' },
   { icon:'🛍️', name:'淘寶／1688訂單匯出外掛', cat:'自動化', ver:'v1.5',   desc:'Chrome 外掛一鍵抓取淘寶或 1688 訂單，自動翻頁，淘寶自動抓貨運單號，送至 Apps Script', url:null, info:'Chrome Extension · ~/Documents/google chrome外掛安裝/淘寶訂單匯出/', host:'本機 Chrome（手動觸發）' },
   { icon:'📊', name:'淘寶訂單 Apps Script',   cat:'自動化', ver:'GAS',    desc:'接收 Chrome 外掛資料，寫入固定 Sheet、每次新增分頁（含商品縮圖），K 欄標示淘寶／1688 來源', url:null, info:'Google Apps Script · Deploy: AKfycbx0…', host:'Google Apps Script' },
+  { icon:'🔁', name:'淘寶採購拋轉 Ragic', cat:'自動化', ver:'v3.3', desc:'Sheet 選單把淘寶訂單分頁拋成 Ragic 採購單，記住商品對應，帶原幣與匯率', url:null, info:'Google Apps Script · 綁定淘寶訂單 Sheet', host:'Google Apps Script' },
   { icon:'⏰', name:'Supabase 保活排程',      cat:'自動化', ver:'排程',   desc:'每 6 天自動呼叫 Supabase API，避免 free tier 7 天暫停', url:null, info:'Cloud Routine · Trigger: trig_014e4GNd…', host:'Claude Cloud Routine' },
   { icon:'📋', name:'Feebit 每日待辦整理',    cat:'自動化', ver:'排程',   desc:'週一至五 08:30 整合 Asana/Gmail/Slack/Notion 產出待辦清單並建 Gmail 草稿，含信件連結、完整回覆草稿、星號/重要信件近兩週提醒', url:'schedule-notifications.html', info:'Cloud Routine · Trigger: trig_01KJRRNzuss…', host:'Claude Cloud Routine' },
   { icon:'🧾', name:'蝦皮每月作業', cat:'自動化', ver:'排程', desc:'每日自動判斷日期：每月 11 日申請運費補助、12 日或順延工作日下載上月三賣場發票、15～20 日檢查與回填發票、22 日確認案件狀態；其他日期保持安靜', url:'shopee-subsidy.html', info:'ChatGPT 排程 · 每日判斷日期 · 正式發票回填前需人工確認', host:'ChatGPT Agent（OpenAI 雲端）' },
@@ -516,7 +517,7 @@ const SKILLS = [
   // ── 系統 ──
   { icon:'🏠', name:'首頁',     cat:'系統', ver:'v4.4', desc:'飛比特營運工具箱入口，所有工具快速導覽', url:'index.html' },
   { icon:'🔧', name:'使用工具', cat:'系統', ver:'v1.1', desc:'外部平台與後台連結總覽，點擊前往各系統', url:'tools.html' },
-  { icon:'🌳', name:'技能樹',   cat:'系統', ver:'v1.24', desc:'飛比特所有工具與技能可視化總覽，含版本與說明', url:'skill-tree.html' },
+  { icon:'🌳', name:'技能樹',   cat:'系統', ver:'v1.25', desc:'飛比特所有工具與技能可視化總覽，含版本與說明', url:'skill-tree.html' },
   { icon:'💳', name:'訂閱服務管理', cat:'系統', ver:'v2.1', desc:'付費工具/平台方案、價格、結帳日、帳號、後台、付款統編＋各公司每月/每年分攤，Supabase 共用', url:'subscriptions.html' },
   { icon:'🤖', name:'AI 需求問卷', cat:'系統', ver:'v2.1', desc:'勾選工作情境自動算出最該先導入的 5 個 AI 工具，填答存 Supabase；卡片直接進後台：逐人顯示自填需求、前 5 名原因／做法／追問，一鍵複製問卷連結', url:'ai-needs-survey.html?admin=1' },
   { icon:'🛡️', name:'Git 安全防護', cat:'系統', ver:'v1.0', desc:'.gitignore 禁止上傳清單：擋下 .env、金鑰、憑證等機密檔，避免推上公開 repo', url:null, info:'repo 根目錄 .gitignore · 由 /project-security-bootstrap 建立 · 2026-10-03 上線', host:'GitHub repo jennifer-shao-ai/feebit' },
@@ -528,7 +529,7 @@ const SKILLS = [
   { icon:"🧾", name:"n8n 標準化紀錄", cat:"自動化", ver:"n8n", desc:"共用子流程：各流程跑完把成功／失敗寫進 Ragic 自動化執行紀錄，失敗會觸發即時通知信", url:"https://n8n-production-e240.up.railway.app/workflow/S2gLarsItIdoZ9cL", ext:true, host:"n8n", handover:true, where:"cloud" },
   { icon:"🖼️", name:"LINE 圖文選單自動更新", cat:"自動化", ver:"n8n", desc:"雲端硬碟換圖或排程時間到，自動更新 LINE 官方帳號圖文選單（分本期／往期）", url:"https://n8n-production-e240.up.railway.app/workflow/N8Q5wd57QTzimwq3", ext:true, host:"n8n", handover:true, where:"cloud" },
   { icon:"✉️", name:"邀請加入與登入小流程", cat:"自動化", ver:"n8n", desc:"邀請加入發信（Admin）、Supplier Hub 登入、蝦皮登入收信 2 支，由其他流程或儀表板呼叫", url:"https://n8n-production-e240.up.railway.app/workflow/AhjZqm8n1oUBFLsn", ext:true, host:"n8n", handover:true, where:"cloud" },
-  { icon:"🧮", name:"AI／雲端服務發票轉 Ragic 請款", cat:"自動化", ver:"n8n", desc:"Claude、OpenAI、Zeabur 三家月費發票自動建 Ragic 請款單（各一支流程）", url:"https://n8n-production-e240.up.railway.app/workflow/pjnQoGWcmo1hvb2m", ext:true, host:"n8n", handover:true, where:"cloud" },
+  { icon:"🧮", name:"AI／雲端服務發票轉 Ragic 請款", cat:"自動化", ver:"n8n", desc:"Claude、OpenAI、Zeabur、Railway 四家月費收據自動建 Ragic 請款單（各一支流程）", url:"https://n8n-production-e240.up.railway.app/workflow/pjnQoGWcmo1hvb2m", ext:true, host:"n8n", handover:true, where:"cloud" },
   { icon:"🏬", name:"寶雅月初自動請款", cat:"自動化", ver:"n8n", desc:"每月 1 日 06:00 自動到寶雅供應商平台請款（另有 Python 版，注意可能重複請款）", url:"https://n8n-production-e240.up.railway.app/workflow/nLrjebgAzA0q4Glj", ext:true, host:"n8n", handover:true, where:"cloud" },
   { icon:"📈", name:"營業額與動銷率表單填入", cat:"自動化", ver:"n8n", desc:"LALA V 營業額表單填入、公式計算表（動銷率）填入，每月固定日期自動更新", url:"https://n8n-production-e240.up.railway.app/workflow/WmY26Hi0YnI1Qp44", ext:true, host:"n8n", handover:true, where:"cloud" },
   { icon:"💳", name:"SHOPLINE 交易明細上傳", cat:"自動化", ver:"n8n", desc:"定期抓 SHOPLINE 交易明細上傳 Ragic", url:"https://n8n-production-e240.up.railway.app/workflow/9Dw8Vd4C9mcc8fuF", ext:true, host:"n8n", handover:true, where:"cloud" },
