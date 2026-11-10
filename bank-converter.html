@@ -109,7 +109,7 @@
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
 
-  <div class="sidebar-footer">v3.0 · Feebit © 2026</div>
+  <div class="sidebar-footer">v3.1 · Feebit © 2026</div>
 </div>
 
 <!-- ── SIDEBAR OVERLAY ── -->
@@ -122,7 +122,7 @@
       <button class="btn-hamburger" onclick="openSidebar()">☰</button>
       <span class="topbar-title">帳務轉換</span>
       <span class="topbar-badge">財務工具</span>
-      <span style="font-size:11px;color:var(--gray-400);margin-left:4px">v3.0</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:4px">v3.1</span>
     </div>
     <button class="btn-share" onclick="copyShare(this)" title="複製分享連結">🔗 分享</button>
   </div>
@@ -771,6 +771,28 @@ async function ragicPrecheck() {
         existing[k] = (existing[k] || 0) + 1;
       }
     }
+    // 收款人：Ragic 慣用「姓名＋帳號末5碼」（例：Vivian12259），用末5碼對應既有收款人
+    riStatus('⏳ 讀取 Ragic 既有收款人…');
+    const payeeBy5 = {};
+    if (pending.some(t => t.payee)) {
+      const pj = await ragicFetch(`/${RAGIC.TX}?api&v=3&limit=3000&where=${encodeURIComponent(RAGIC.F.main + ',eq,薪資/外包')}`);
+      for (const r of Object.values(pj)) for (const p of (r && r['收款人']) || []) {
+        const m = /^(\D+?)(\d{5})$/.exec(p);
+        if (m) { (payeeBy5[m[2]] = payeeBy5[m[2]] || new Set()).add(p); }
+      }
+    }
+    for (const t of pending) {
+      t.ragicPayee = '';
+      if (!t.payee) continue;
+      const d5 = t.payee.replace(/\D/g, '').slice(-5);
+      const cands = payeeBy5[d5] ? [...payeeBy5[d5]] : [];
+      if (cands.length === 1) t.ragicPayee = cands[0];
+      else {
+        const name = t.payee.replace(/[\d\s]+/g, '').replace(/[A-Za-z]+$/, '');
+        t.ragicPayee = (d5.length === 5 && name) ? name + d5 : t.payee;
+        t.payeeNew = true;
+      }
+    }
     const rows = pending.map(t => {
       const k = `${t.accountName}|${toRagicDate(t.date)}|${isIncome(t.type) ? '+' : '-'}|${parseFloat(t.amount)}`;
       const dup = existing[k] > 0; if (dup) existing[k]--;
@@ -806,12 +828,16 @@ function renderPrecheck() {
       <tr><td colspan="6" style="font-size:12px;color:var(--gray-600)">算式：${fmtNum(s.before)} ＋ ${fmtNum(s.inc)} － ${fmtNum(s.exp)} ＝ ${fmtNum(exp)}</td></tr>`;
   }
   html += '</tbody></table>';
+  const pays = toImport.filter(r => r.tx.payee);
+  if (pays.length) {
+    html += `<details style="margin-top:12px" ${pays.some(r => r.tx.payeeNew) ? 'open' : ''}><summary>收款人對應（${pays.length} 筆，依帳號末 5 碼對到 Ragic 既有收款人）</summary><ul style="margin:6px 0 0 18px">${pays.map(r => `<li>${h(r.tx.payee)} → <b>${h(r.tx.ragicPayee)}</b>${r.tx.payeeNew ? '　<span style="color:var(--warning)">（Ragic 沒有這位，會新寫入這個名稱）</span>' : ''}</li>`).join('')}</ul></details>`;
+  }
   if (dupRows.length) {
     html += `<div class="alert alert-warning" style="margin-top:12px;display:block"><b>⚠️ ${dupRows.length} 筆疑似已經在 Ragic 裡</b>（同帳戶、同日期、同收支方向、同金額），預設不匯入：
       <ul style="margin:6px 0 6px 18px">${dupRows.map(r => `<li>${h(toRagicDate(r.tx.date))}　${h(r.tx.type)}　${fmtNum(r.tx.amount)}　${h(r.tx.description)}</li>`).join('')}</ul>
       <label style="font-size:13px"><input type="checkbox" id="ri-include-dup" ${includeDup ? 'checked' : ''} onchange="renderPrecheck()"> 我確認這些不是重複，也要匯入</label></div>`;
   }
-  riStatus(`✅ 檢查完成：這次要匯入 <b>${toImport.length}</b> 筆${dupRows.length ? `（另有 ${dupRows.length} 筆疑似重複${includeDup ? '，也會匯入' : '，略過'}）` : ''}。確認數字沒問題再按「② 開始匯入」。`);
+  riStatus(`✅ 檢查完成：這次要匯入 <b>${toImport.length}</b> 筆${dupRows.length ? `（另有 ${dupRows.length} 筆疑似重複${includeDup ? '，也會匯入' : '，略過'}）` : ''}。確認數字沒問題再按「② 開始匯入」（約需 ${Math.max(1, Math.ceil(toImport.length * 10 / 60))} 分鐘）。`);
   riResult(html);
   document.getElementById('ri-run-btn').disabled = toImport.length === 0;
 }
@@ -827,7 +853,7 @@ async function ragicRunImport() {
   let fail = null;
   for (let i = 0; i < list.length; i++) {
     const tx = list[i].tx;
-    riStatus(`⏳ 匯入中 ${i + 1} / ${list.length}…（請不要關閉頁面）`);
+    riStatus(`⏳ 匯入中 ${i + 1} / ${list.length}…（Ragic 每筆約 10 秒會自動確認交易，剩約 ${Math.ceil((list.length - i) * 10 / 60)} 分鐘，請不要關閉頁面）`);
     const F = RAGIC.F;
     const body = new URLSearchParams();
     body.set(F.date, toRagicDate(tx.date));
@@ -838,7 +864,8 @@ async function ragicRunImport() {
     body.set(F.amount, String(tx.amount));
     body.set(F.main, tx.main || '');
     body.set(F.sub, tx.sub || '');
-    if (tx.payee) body.set(F.payee, tx.payee);
+    const payeeOut = tx.ragicPayee || tx.payee || '';
+    if (payeeOut) body.set(F.payee, payeeOut);
     body.set(F.desc, tx.description || '');
     try {
       const r = await ragicFetch(`/${RAGIC.TX}?api&doFormula=true&doDefaultValue=true&doLinkLoad=true`, { method: 'POST', body });
@@ -850,7 +877,7 @@ async function ragicRunImport() {
       if (!d[F.confirmed]) warns.push(`${no}：Ragic 沒有自動「確認交易」，請到 Ragic 手動按一次`);
       if ((d[F.main] || '') !== (tx.main || '')) warns.push(`${no}：主分類「${tx.main}」沒寫進去（Ragic 選單沒有這個選項），請到 Ragic 補`);
       if ((d[F.sub] || '') !== (tx.sub || '')) warns.push(`${no}：子分類「${tx.sub}」沒寫進去（Ragic 選單沒有這個選項），請到 Ragic 補`);
-      if (tx.payee) { const p = d[F.payee]; const ok = Array.isArray(p) ? p.includes(tx.payee) : p === tx.payee; if (!ok) warns.push(`${no}：收款人「${tx.payee}」沒寫進去，請到 Ragic 補`); }
+      if (payeeOut) { const p = d[F.payee]; const ok = Array.isArray(p) ? p.includes(payeeOut) : p === payeeOut; if (!ok) warns.push(`${no}：收款人「${payeeOut}」沒寫進去，請到 Ragic 補`); }
     } catch (e) { fail = { tx, msg: e.message }; break; }
   }
   // 匯入後比對餘額
