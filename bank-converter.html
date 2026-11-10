@@ -109,7 +109,7 @@
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
 
-  <div class="sidebar-footer">v2.4 · Feebit © 2026</div>
+  <div class="sidebar-footer">v3.0 · Feebit © 2026</div>
 </div>
 
 <!-- ── SIDEBAR OVERLAY ── -->
@@ -122,7 +122,7 @@
       <button class="btn-hamburger" onclick="openSidebar()">☰</button>
       <span class="topbar-title">帳務轉換</span>
       <span class="topbar-badge">財務工具</span>
-      <span style="font-size:11px;color:var(--gray-400);margin-left:4px">v2.4</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:4px">v3.0</span>
     </div>
     <button class="btn-share" onclick="copyShare(this)" title="複製分享連結">🔗 分享</button>
   </div>
@@ -167,6 +167,7 @@
             <div style="display:flex;gap:8px">
               <button class="btn btn-outline" onclick="resetUpload()">↩ 重新上傳</button>
               <button class="btn btn-success" onclick="downloadCSV()">⬇ 下載 CSV</button>
+              <button class="btn btn-primary" onclick="openRagicImport()">⬆ 直接匯入 Ragic</button>
             </div>
           </div>
           <div class="table-wrapper">
@@ -272,6 +273,35 @@
       <button class="btn btn-outline" onclick="skipCategory()">跳過此筆</button>
       <button class="btn btn-outline" onclick="saveAndClose()" style="margin-left:auto">暫存並關閉</button>
     </div>
+  </div>
+</div>
+
+<!-- ── RAGIC IMPORT MODAL ── -->
+<div id="ragic-backdrop" class="modal-backdrop" style="display:none">
+  <div class="modal" style="width:760px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <h2 style="margin-bottom:0">⬆ 直接匯入 Ragic 交易明細</h2>
+      <button id="ri-close" onclick="closeRagicImport()" style="border:none;background:none;cursor:pointer;font-size:20px;color:var(--gray-400);line-height:1;padding:0 4px">✕</button>
+    </div>
+    <p style="font-size:13px;color:var(--gray-600);margin-bottom:12px">用 API 新增的交易，Ragic 會自動完成「確認交易」並更新帳戶的現有餘額，不用再一筆一筆按。匯入前後會自動比對餘額。</p>
+    <div class="form-group">
+      <label>Ragic API 金鑰（需要：交易明細「新增」、帳戶列表「讀取」權限）</label>
+      <input type="password" id="ri-key" placeholder="貼上金鑰" autocomplete="off">
+      <div class="checkbox-row" style="margin-top:6px">
+        <input type="checkbox" id="ri-remember" checked>
+        <label for="ri-remember">記住在這台電腦的瀏覽器</label>
+      </div>
+    </div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="ri-transfer" checked>
+      <label for="ri-transfer">交易類別用「轉帳收入／轉帳支出」（跟 Ragic 過去的彰銀紀錄一致）</label>
+    </div>
+    <div class="modal-actions" style="margin-top:12px">
+      <button class="btn btn-outline" id="ri-check-btn" onclick="ragicPrecheck()">① 匯入前檢查</button>
+      <button class="btn btn-primary" id="ri-run-btn" onclick="ragicRunImport()" disabled>② 開始匯入</button>
+    </div>
+    <div id="ri-status" style="margin-top:16px;font-size:13px"></div>
+    <div id="ri-result" style="margin-top:12px;font-size:13px"></div>
   </div>
 </div>
 
@@ -439,7 +469,7 @@ function renderPreview() {
     const tr = document.createElement('tr');
     if (tx.description && /更正|被更正/.test(tx.description)) tr.style.backgroundColor = '#fed7aa';
     const cls = tx.type==='收入' ? 'type-in' : 'type-out';
-    const statusTag = tx.needsCat ? '<span class="tag-unknown">待分類</span>' : tx.edited ? '<span class="tag-auto" style="background:#dbeafe;color:#1d4ed8">已編輯</span>' : '<span class="tag-auto">自動</span>';
+    const statusTag = tx.ragicId ? `<a class="tag-auto" style="background:#ede9fe;color:#6d28d9;text-decoration:none" href="${RAGIC.base}/${RAGIC.TX}/${tx.ragicId}" target="_blank" rel="noopener" title="已匯入 Ragic，之後在這裡改分類不會同步到 Ragic">已匯入 Ragic</a>` : tx.needsCat ? '<span class="tag-unknown">待分類</span>' : tx.edited ? '<span class="tag-auto" style="background:#dbeafe;color:#1d4ed8">已編輯</span>' : '<span class="tag-auto">自動</span>';
     tr.innerHTML = `<td>${tx.date}</td><td class="${cls}">${tx.type}</td><td>${tx.accountName}</td>
       <td>${tx.currency}</td><td>${tx.currency}</td><td style="text-align:right">${tx.amount.toLocaleString()}</td>
       <td>${tx.main||'<span style="color:#9ca3af">未分類</span>'}</td><td>${tx.sub}</td>
@@ -654,6 +684,206 @@ function downloadCSV() {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = `feebit_${new Date().toISOString().slice(0,10).replace(/-/g,'')}.csv`; a.click();
   localStorage.removeItem(KEY_SESSION);
+}
+
+// ── RAGIC IMPORT ──────────────────────────────────────────────
+// 2026-11-10 實測：POST 新增（doFormula/doDefaultValue/doLinkLoad）後，Ragic 會自動完成「確認交易」
+// 並更新帳戶列表的「現有餘額」，不需要再呼叫按鈕。
+const KEY_RAGIC = 'feebit_bank_ragic_key';
+const RAGIC = {
+  base: 'https://ap13.ragic.com/feebit50968407/ragicpersonal-finance',
+  TX: '20002', ACCT: '20001',
+  F: { date:'3005433', type:'3005434', acct:'3005435', acctCur:'3005859', mainCur:'3005869',
+       amount:'3005439', main:'3005437', sub:'3005438', payee:'3005452', desc:'3005442', confirmed:'3005458' },
+};
+let ragicPlan = null;   // 匯入前檢查的結果
+let ragicBusy = false;
+const h = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtNum = n => Number(n).toLocaleString('zh-TW', { maximumFractionDigits: 4 });
+const toRagicDate = d => /^\d{8}$/.test(d) ? `${d.slice(0,4)}/${d.slice(4,6)}/${d.slice(6,8)}` : d;
+const isIncome = type => String(type).includes('收入');
+function ragicType(tx) {
+  const transfer = document.getElementById('ri-transfer').checked;
+  return transfer ? (isIncome(tx.type) ? '轉帳收入' : '轉帳支出') : (isIncome(tx.type) ? '收入' : '支出');
+}
+function ragicKey() { return document.getElementById('ri-key').value.trim().replace(/^Basic\s+/i, ''); }
+async function ragicFetch(path, opts = {}) {
+  const key = ragicKey();
+  if (!key) throw new Error('請先貼上 Ragic API 金鑰');
+  const r = await fetch(RAGIC.base + path, { ...opts, headers: { Authorization: 'Basic ' + key, ...(opts.headers || {}) } });
+  const t = await r.text();
+  let j; try { j = JSON.parse(t); } catch (e) { throw new Error(`Ragic 回應不是 JSON（HTTP ${r.status}）：${t.slice(0, 120)}`); }
+  if (j && j.status === 'ERROR') throw new Error('Ragic 回報錯誤：' + (j.msg || JSON.stringify(j)).slice(0, 200));
+  return j;
+}
+async function ragicBalances() {
+  const j = await ragicFetch(`/${RAGIC.ACCT}?api&v=3&limit=500&subtables=0`);
+  const map = {};
+  for (const a of Object.values(j)) if (a && a['帳戶名稱']) map[a['帳戶名稱']] = { id: a._ragicId, bal: parseFloat(a['現有餘額']) || 0 };
+  return map;
+}
+function riStatus(html) { document.getElementById('ri-status').innerHTML = html; }
+function riResult(html) { document.getElementById('ri-result').innerHTML = html; }
+
+function openRagicImport() {
+  if (!transactions.length) { alert('還沒有交易資料'); return; }
+  let saved = ''; try { saved = localStorage.getItem(KEY_RAGIC) || ''; } catch (e) {}
+  document.getElementById('ri-key').value = saved;
+  ragicPlan = null;
+  document.getElementById('ri-run-btn').disabled = true;
+  riStatus(''); riResult('');
+  document.getElementById('ragic-backdrop').style.display = 'flex';
+}
+function closeRagicImport() {
+  if (ragicBusy) { alert('匯入進行中，請等它跑完再關閉'); return; }
+  document.getElementById('ragic-backdrop').style.display = 'none';
+}
+
+async function ragicPrecheck() {
+  if (ragicBusy) return;
+  document.getElementById('ri-run-btn').disabled = true; ragicPlan = null; riResult('');
+  const pending = transactions.filter(t => !t.ragicId);
+  const already = transactions.length - pending.length;
+  const uncategorized = pending.filter(t => t.needsCat || !t.main);
+  if (!pending.length) { riStatus('✅ 這批交易都已經匯入過 Ragic 了，不需要再匯入。'); return; }
+  if (uncategorized.length) { riStatus(`⚠️ 還有 <b>${uncategorized.length}</b> 筆沒分類，請先分類完再匯入。`); return; }
+  try {
+    if (document.getElementById('ri-remember').checked) { try { localStorage.setItem(KEY_RAGIC, ragicKey()); } catch (e) {} }
+    else { try { localStorage.removeItem(KEY_RAGIC); } catch (e) {} }
+    riStatus('⏳ 讀取 Ragic 帳戶餘額…');
+    const bals = await ragicBalances();
+    const accts = [...new Set(pending.map(t => t.accountName))];
+    const missing = accts.filter(a => !bals[a]);
+    if (missing.length) {
+      riStatus(`⛔ Ragic 帳戶列表找不到：<b>${missing.map(h).join('、')}</b>。<br>請到「帳戶設定」分頁把名稱改成跟 Ragic「帳戶名稱」完全一樣。`);
+      return;
+    }
+    // 疑似重複：同帳戶、同日期、同方向、同金額，Ragic 已經有的筆數
+    riStatus('⏳ 檢查 Ragic 是否已有相同交易…');
+    const existing = {};
+    for (const a of accts) {
+      const minDate = toRagicDate(pending.filter(t => t.accountName === a).map(t => t.date).sort()[0]);
+      const q = `/${RAGIC.TX}?api&v=3&limit=3000&where=${encodeURIComponent(RAGIC.F.acct + ',eq,' + a)}&where=${encodeURIComponent(RAGIC.F.date + ',gte,' + minDate)}`;
+      const j = await ragicFetch(q);
+      for (const r of Object.values(j)) {
+        if (!r || r['自帳戶'] !== a) continue;
+        const k = `${a}|${r['交易日期']}|${isIncome(r['交易類別']) ? '+' : '-'}|${parseFloat(r['原幣金額'])}`;
+        existing[k] = (existing[k] || 0) + 1;
+      }
+    }
+    const rows = pending.map(t => {
+      const k = `${t.accountName}|${toRagicDate(t.date)}|${isIncome(t.type) ? '+' : '-'}|${parseFloat(t.amount)}`;
+      const dup = existing[k] > 0; if (dup) existing[k]--;
+      return { tx: t, dup };
+    });
+    const summary = {};
+    for (const a of accts) summary[a] = { before: bals[a].bal, inc: 0, exp: 0, n: 0 };
+    for (const r of rows) {
+      if (r.dup) continue;
+      const s = summary[r.tx.accountName]; s.n++;
+      if (isIncome(r.tx.type)) s.inc += r.tx.amount; else s.exp += r.tx.amount;
+    }
+    ragicPlan = { rows, summary };
+    renderPrecheck();
+  } catch (e) {
+    riStatus('⛔ ' + h(e.message) + (/Failed to fetch/i.test(e.message) ? '<br>（連不到 Ragic：檢查網路或金鑰是否正確）' : ''));
+  }
+}
+function renderPrecheck() {
+  const { rows, summary } = ragicPlan;
+  const includeDup = document.getElementById('ri-include-dup')?.checked || false;
+  const dupRows = rows.filter(r => r.dup);
+  const toImport = rows.filter(r => !r.dup || includeDup);
+  // 依是否含重複重新計算預期
+  const sum = {};
+  for (const [a, s] of Object.entries(summary)) sum[a] = { before: s.before, inc: 0, exp: 0, n: 0 };
+  for (const r of toImport) { const s = sum[r.tx.accountName]; s.n++; if (isIncome(r.tx.type)) s.inc += r.tx.amount; else s.exp += r.tx.amount; }
+  ragicPlan.toImport = toImport; ragicPlan.expect = sum;
+  let html = `<table style="width:100%;font-size:13px"><thead><tr><th>帳戶</th><th>筆數</th><th style="text-align:right">目前餘額</th><th style="text-align:right">＋收入</th><th style="text-align:right">－支出</th><th style="text-align:right">預期匯入後</th></tr></thead><tbody>`;
+  for (const [a, s] of Object.entries(sum)) {
+    const exp = s.before + s.inc - s.exp;
+    html += `<tr><td>${h(a)}</td><td>${s.n}</td><td style="text-align:right">${fmtNum(s.before)}</td><td style="text-align:right" class="type-in">${fmtNum(s.inc)}</td><td style="text-align:right" class="type-out">${fmtNum(s.exp)}</td><td style="text-align:right"><b>${fmtNum(exp)}</b></td></tr>
+      <tr><td colspan="6" style="font-size:12px;color:var(--gray-600)">算式：${fmtNum(s.before)} ＋ ${fmtNum(s.inc)} － ${fmtNum(s.exp)} ＝ ${fmtNum(exp)}</td></tr>`;
+  }
+  html += '</tbody></table>';
+  if (dupRows.length) {
+    html += `<div class="alert alert-warning" style="margin-top:12px;display:block"><b>⚠️ ${dupRows.length} 筆疑似已經在 Ragic 裡</b>（同帳戶、同日期、同收支方向、同金額），預設不匯入：
+      <ul style="margin:6px 0 6px 18px">${dupRows.map(r => `<li>${h(toRagicDate(r.tx.date))}　${h(r.tx.type)}　${fmtNum(r.tx.amount)}　${h(r.tx.description)}</li>`).join('')}</ul>
+      <label style="font-size:13px"><input type="checkbox" id="ri-include-dup" ${includeDup ? 'checked' : ''} onchange="renderPrecheck()"> 我確認這些不是重複，也要匯入</label></div>`;
+  }
+  riStatus(`✅ 檢查完成：這次要匯入 <b>${toImport.length}</b> 筆${dupRows.length ? `（另有 ${dupRows.length} 筆疑似重複${includeDup ? '，也會匯入' : '，略過'}）` : ''}。確認數字沒問題再按「② 開始匯入」。`);
+  riResult(html);
+  document.getElementById('ri-run-btn').disabled = toImport.length === 0;
+}
+
+async function ragicRunImport() {
+  if (ragicBusy || !ragicPlan || !ragicPlan.toImport.length) return;
+  const list = ragicPlan.toImport;
+  if (!confirm(`確定要匯入 ${list.length} 筆到 Ragic 交易明細？\n匯入後會立即確認交易、改變帳戶餘額。`)) return;
+  ragicBusy = true;
+  document.getElementById('ri-run-btn').disabled = true;
+  document.getElementById('ri-check-btn').disabled = true;
+  const done = [], warns = [];
+  let fail = null;
+  for (let i = 0; i < list.length; i++) {
+    const tx = list[i].tx;
+    riStatus(`⏳ 匯入中 ${i + 1} / ${list.length}…（請不要關閉頁面）`);
+    const F = RAGIC.F;
+    const body = new URLSearchParams();
+    body.set(F.date, toRagicDate(tx.date));
+    body.set(F.type, ragicType(tx));
+    body.set(F.acct, tx.accountName);
+    body.set(F.acctCur, tx.currency || 'TWD');
+    body.set(F.mainCur, tx.currency || 'TWD');
+    body.set(F.amount, String(tx.amount));
+    body.set(F.main, tx.main || '');
+    body.set(F.sub, tx.sub || '');
+    if (tx.payee) body.set(F.payee, tx.payee);
+    body.set(F.desc, tx.description || '');
+    try {
+      const r = await ragicFetch(`/${RAGIC.TX}?api&doFormula=true&doDefaultValue=true&doLinkLoad=true`, { method: 'POST', body });
+      if (r.status !== 'SUCCESS' || !r.ragicId) throw new Error('新增失敗：' + JSON.stringify(r).slice(0, 200));
+      tx.ragicId = r.ragicId;
+      const d = r.data || {};
+      const no = d['3005432'] || ('#' + r.ragicId);
+      done.push({ tx, id: r.ragicId, no });
+      if (!d[F.confirmed]) warns.push(`${no}：Ragic 沒有自動「確認交易」，請到 Ragic 手動按一次`);
+      if ((d[F.main] || '') !== (tx.main || '')) warns.push(`${no}：主分類「${tx.main}」沒寫進去（Ragic 選單沒有這個選項），請到 Ragic 補`);
+      if ((d[F.sub] || '') !== (tx.sub || '')) warns.push(`${no}：子分類「${tx.sub}」沒寫進去（Ragic 選單沒有這個選項），請到 Ragic 補`);
+      if (tx.payee) { const p = d[F.payee]; const ok = Array.isArray(p) ? p.includes(tx.payee) : p === tx.payee; if (!ok) warns.push(`${no}：收款人「${tx.payee}」沒寫進去，請到 Ragic 補`); }
+    } catch (e) { fail = { tx, msg: e.message }; break; }
+  }
+  // 匯入後比對餘額
+  let html = '';
+  try {
+    riStatus('⏳ 匯入完成，重新讀取 Ragic 餘額比對中…');
+    const after = await ragicBalances();
+    const exp = {};
+    for (const a of Object.keys(ragicPlan.expect)) exp[a] = ragicPlan.expect[a].before;
+    for (const d of done) exp[d.tx.accountName] += isIncome(d.tx.type) ? d.tx.amount : -d.tx.amount;
+    let allOk = true;
+    html += `<table style="width:100%;font-size:13px"><thead><tr><th>帳戶</th><th style="text-align:right">匯入前</th><th style="text-align:right">預期</th><th style="text-align:right">Ragic 實際</th><th>結果</th></tr></thead><tbody>`;
+    for (const a of Object.keys(exp)) {
+      const actual = after[a] ? after[a].bal : NaN;
+      const ok = Math.abs(actual - exp[a]) < 0.005;
+      if (!ok) allOk = false;
+      html += `<tr><td>${h(a)}</td><td style="text-align:right">${fmtNum(ragicPlan.expect[a].before)}</td><td style="text-align:right">${fmtNum(exp[a])}</td><td style="text-align:right"><b>${fmtNum(actual)}</b></td><td>${ok ? '✅ 相符' : `❌ 差 ${fmtNum(actual - exp[a])}`}</td></tr>`;
+    }
+    html += '</tbody></table>';
+    if (!allOk) html = `<div class="alert alert-warning" style="display:block"><b>❌ 餘額對不起來</b>：可能是匯入期間有人在 Ragic 改了這個帳戶，或有交易沒自動確認。請到 Ragic 帳戶列表核對。</div>` + html;
+  } catch (e) { html += `<div class="alert alert-warning" style="display:block">⚠️ 匯入後讀取餘額失敗：${h(e.message)}，請到 Ragic 帳戶列表手動核對。</div>`; }
+  if (warns.length) html += `<div class="alert alert-warning" style="margin-top:12px;display:block"><b>⚠️ 要到 Ragic 補的地方（${warns.length}）</b><ul style="margin:6px 0 0 18px">${warns.map(w => `<li>${h(w)}</li>`).join('')}</ul></div>`;
+  if (done.length) html += `<details style="margin-top:12px"><summary>已匯入 ${done.length} 筆明細</summary><ul style="margin:6px 0 0 18px">${done.map(d => `<li><a href="${RAGIC.base}/${RAGIC.TX}/${d.id}" target="_blank" rel="noopener">${h(d.no)}</a>　${h(toRagicDate(d.tx.date))}　${h(ragicType(d.tx))}　${fmtNum(d.tx.amount)}　${h(d.tx.main)}／${h(d.tx.sub)}</li>`).join('')}</ul></details>`;
+  riResult(html);
+  riStatus(fail
+    ? `⛔ 匯入到第 ${done.length + 1} 筆時停止（已成功 ${done.length} 筆）：${h(fail.msg)}<br>已成功的不會重複匯入，修正後可再按「① 匯入前檢查」接著匯入剩下的。`
+    : `✅ 已匯入 ${done.length} 筆，並自動確認交易。`);
+  // 記住哪些已匯入，避免重複
+  try { localStorage.setItem(KEY_SESSION, JSON.stringify({ transactions, savedAt: Date.now() })); } catch (e) {}
+  ragicPlan = null;
+  ragicBusy = false;
+  document.getElementById('ri-check-btn').disabled = false;
+  renderPreview();
 }
 
 // ── RULES MGMT ───────────────────────────────────────────────
