@@ -336,7 +336,7 @@
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
 
-  <div class="sidebar-footer">v1.28 · Feebit © 2026</div>
+  <div class="sidebar-footer">v1.29 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -521,10 +521,11 @@ const SKILLS = [
   { icon:'🗂️', name:'Slack 對話每月整理與備份', cat:'自動化', ver:'排程', desc:'每月 1 日 09:00 讀上月全部 Slack 頻道與 DM，存原文備份＋問答統整，列出重複問題與建議補進 Ragic SOP 的項目，密碼個資自動遮蔽', url:null, info:'Claude 桌面版排程 · monthly-slack-archive · 存本機 200_Reference/slack-archive/', host:'Jennifer 的 Mac（Claude 桌面版需開啟）' },
   { icon:'🚨', name:'n8n 錯誤總管', cat:'自動化', ver:'v1.0', desc:'32 支 n8n 流程當掉時自動接手：名單內的先等 1 分鐘補跑一次，仍失敗或不在名單就寫進 Ragic 觸發失敗通知信', url:'https://n8n-production-e240.up.railway.app/workflow/FypPKYouiQlFeZjg', ext:true, host:'n8n（Railway）· Error Trigger' },
   { icon:'📅', name:'年度休假表自動建立', cat:'自動化', ver:'GAS', desc:'每年 12/31 自動建隔年休假表分頁並填入政府放假日，每月 1 號補新補假日並寄停印日期通知', url:null, info:'Google Apps Script · feebit.automation 獨立專案 · 每月 31 號＋每月 1 號觸發', host:'Google Apps Script' },
+  { icon:'🧾', name:'數碼發票外部字軌配號', cat:'自動化', ver:'v1.4', desc:'雙數月 21 日 19:30 自動設外部開立發票本、配 10 個號碼，寫 Ragic 14 筆（賣場 10＋酷澎 4 卷），Slack 附寶雅／酷澎匯入 CSV', url:null, info:'Feebit 主機排程 digital-one-invoice-bimonthly · diy_flow.py', host:'Feebit 主機（Windows）' },
   // ── 系統 ──
   { icon:'🏠', name:'首頁',     cat:'系統', ver:'v4.4', desc:'飛比特營運工具箱入口，所有工具快速導覽', url:'index.html' },
   { icon:'🔧', name:'使用工具', cat:'系統', ver:'v1.1', desc:'外部平台與後台連結總覽，點擊前往各系統', url:'tools.html' },
-  { icon:'🌳', name:'技能樹',   cat:'系統', ver:'v1.28', desc:'飛比特所有工具與技能可視化總覽，含版本與說明', url:'skill-tree.html' },
+  { icon:'🌳', name:'技能樹',   cat:'系統', ver:'v1.29', desc:'飛比特所有工具與技能可視化總覽，含版本與說明', url:'skill-tree.html' },
   { icon:'💳', name:'訂閱服務管理', cat:'系統', ver:'v2.1', desc:'付費工具/平台方案、價格、結帳日、帳號、後台、付款統編＋各公司每月/每年分攤，Supabase 共用', url:'subscriptions.html' },
   { icon:'🤖', name:'AI 需求問卷', cat:'系統', ver:'v2.1', desc:'勾選工作情境自動算出最該先導入的 5 個 AI 工具，填答存 Supabase；卡片直接進後台：逐人顯示自填需求、前 5 名原因／做法／追問，一鍵複製問卷連結', url:'ai-needs-survey.html?admin=1' },
   { icon:'🛡️', name:'Git 安全防護', cat:'系統', ver:'v1.0', desc:'.gitignore 禁止上傳清單：擋下 .env、金鑰、憑證等機密檔，避免推上公開 repo', url:null, info:'repo 根目錄 .gitignore · 由 /project-security-bootstrap 建立 · 2026-10-03 上線', host:'GitHub repo jennifer-shao-ai/feebit' },
