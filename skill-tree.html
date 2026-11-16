@@ -337,7 +337,7 @@
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
 
-  <div class="sidebar-footer">v1.33 · Feebit © 2026</div>
+  <div class="sidebar-footer">v1.34 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -523,11 +523,11 @@ const SKILLS = [
   { icon:'🗂️', name:'Slack 對話每月整理與備份', cat:'自動化', ver:'排程', desc:'每月 1 日 09:00 讀上月全部 Slack 頻道與 DM，存原文備份＋問答統整，列出重複問題與建議補進 Ragic SOP 的項目，密碼個資自動遮蔽', url:null, info:'Claude 桌面版排程 · monthly-slack-archive · 存本機 200_Reference/slack-archive/', host:'Jennifer 的 Mac（Claude 桌面版需開啟）' },
   { icon:'🚨', name:'n8n 錯誤總管', cat:'自動化', ver:'v1.0', desc:'32 支 n8n 流程當掉時自動接手：名單內的先等 1 分鐘補跑一次，仍失敗或不在名單就寫進 Ragic 觸發失敗通知信', url:'https://n8n-production-e240.up.railway.app/workflow/FypPKYouiQlFeZjg', ext:true, host:'n8n（Railway）· Error Trigger' },
   { icon:'📅', name:'年度休假表自動建立', cat:'自動化', ver:'GAS', desc:'每年 12/31 自動建隔年休假表分頁並填入政府放假日，每月 1 號補新補假日並寄停印日期通知', url:null, info:'Google Apps Script · feebit.automation 獨立專案 · 每月 31 號＋每月 1 號觸發', host:'Google Apps Script' },
-  { icon:'🧾', name:'數碼發票外部字軌配號', cat:'自動化', ver:'v1.4', desc:'雙數月 21 日 19:30 自動設外部開立發票本、配 10 個號碼，寫 Ragic 14 筆（賣場 10＋酷澎 4 卷），Slack 附寶雅／酷澎匯入 CSV', url:null, info:'Feebit 主機排程 digital-one-invoice-bimonthly · diy_flow.py', host:'Feebit 主機（Windows）' },
+  { icon:'🧾', name:'數碼發票外部字軌配號', cat:'自動化', ver:'v1.4', desc:'⏰ 雙數月 21 日 19:30｜遠端請避開 19:25～20:00｜自動設外部開立發票本、配 10 個號碼，寫 Ragic 14 筆（賣場 10＋酷澎 4 卷），Slack 附寶雅／酷澎匯入 CSV', url:null, info:'Feebit 主機排程 digital-one-invoice-bimonthly · diy_flow.py', host:'Feebit 主機（Windows）' },
   // ── 系統 ──
   { icon:'🏠', name:'首頁',     cat:'系統', ver:'v4.4', desc:'飛比特營運工具箱入口，所有工具快速導覽', url:'index.html' },
   { icon:'🔧', name:'使用工具', cat:'系統', ver:'v1.1', desc:'外部平台與後台連結總覽，點擊前往各系統', url:'tools.html' },
-  { icon:'🌳', name:'技能樹',   cat:'系統', ver:'v1.33', desc:'飛比特所有工具與技能可視化總覽，含版本與說明', url:'skill-tree.html' },
+  { icon:'🌳', name:'技能樹',   cat:'系統', ver:'v1.34', desc:'飛比特所有工具與技能可視化總覽，含版本與說明', url:'skill-tree.html' },
   { icon:'💳', name:'訂閱服務管理', cat:'系統', ver:'v2.1', desc:'付費工具/平台方案、價格、結帳日、帳號、後台、付款統編＋各公司每月/每年分攤，Supabase 共用', url:'subscriptions.html' },
   { icon:'🤖', name:'AI 需求問卷', cat:'系統', ver:'v2.1', desc:'勾選工作情境自動算出最該先導入的 5 個 AI 工具，填答存 Supabase；卡片直接進後台：逐人顯示自填需求、前 5 名原因／做法／追問，一鍵複製問卷連結', url:'ai-needs-survey.html?admin=1' },
   { icon:'🛡️', name:'Git 安全防護', cat:'系統', ver:'v1.0', desc:'.gitignore 禁止上傳清單：擋下 .env、金鑰、憑證等機密檔，避免推上公開 repo', url:null, info:'repo 根目錄 .gitignore · 由 /project-security-bootstrap 建立 · 2026-10-03 上線', host:'GitHub repo jennifer-shao-ai/feebit' },
@@ -560,14 +560,13 @@ const SKILLS = [
   { icon:"🌐", name:"Browserless 雲端瀏覽器", cat:"自動化", ver:"Railway", desc:"雲端無頭 Chrome：n8n 有 8 支流程（SHOPLINE 4 支、酷澎 2 支、OpenAI 發票、評價生成 Step 1）靠它登入後台抓資料，關掉這些流程都會失敗", url:"https://railway.com/project/d2d91f9b-ce04-41d2-8cb0-c0a15cb3c462", ext:true, host:"Railway · browserless", handover:true, where:"cloud" },
   { icon:"🔤", name:"ddddocr 驗證碼辨識（已停）", cat:"自動化", ver:"Railway", desc:"開源驗證碼辨識 API，原本給已下架的 n8n「電子發票自動登入」流程用。2026-10-17 移除部署停止計費，要用時到 Railway 部署紀錄按 Redeploy 還原", url:"https://railway.com/project/cc6c2a9a-3e7b-4437-955d-c92d11ef2025", ext:true, host:"Railway · ddddocr（服務已離線）", handover:true, where:"cloud", off:true },
   { icon:"📉", name:"n8n 失敗次數查詢", cat:"自動化", ver:"Railway", desc:"小 API：直接查 n8n 資料庫，列出每支流程累計失敗幾次。打開網址就回傳，不用登入", url:"https://query-failed-workflows-production.up.railway.app/", ext:true, host:"Railway · anadetint · query-failed-workflows", handover:true, where:"cloud" },
-  { icon:"🕒", name:"Feebit 主機排程時間表", cat:"自動化", ver:"時間表", desc:"主機遠端操作請避開這些時段（避開範圍為預估）：平日 08:00、14:01 蝦皮印單（07:55～08:40、13:55～14:40，週一到 09:30）｜平日 18:30 數碼庫存同步（18:25～19:00）｜每月 1～5 日 09:00 寶雅請款（08:55～09:30）｜每月 1 日 16:00 月報表匯入（15:55～16:30）｜雙數月 21 日 19:30 發票配號（19:25～20:00）｜每週五 15:30 Windows 更新週檢（只讀，可不避開）｜Windows Update 每天約重開 2 次，時間不固定｜安全連線時段：平日 09:30～13:55、14:40～18:25", url:null, info:"Feebit 主機 · Windows 工作排程器（來源：TOOLS.md）", host:"Feebit 主機", handover:true, where:"pc" },
-  { icon:"🖨️", name:"蝦皮出貨單自動列印", cat:"自動化", ver:"Python", desc:"print_flow.py（v1.5）：自動到蝦皮後台列印出貨單、標籤；印完會確認頁面有內容、印表機有收到，沒印出會發失敗通知", url:null, info:"Feebit 主機 · shopee-print-automation", host:"Feebit 主機 · shopee-print-automation", handover:true, where:"pc" },
-  { icon:"🔄", name:"庫存更新（數碼通）", cat:"自動化", ver:"Python", desc:"下載庫存 Excel 後更新 Ragic 數碼庫存", url:null, info:"Feebit 主機 · stock_flow.py", host:"Feebit 主機 · stock_flow.py", handover:true, where:"pc" },
-  { icon:"🧾", name:"寶雅請款 Python 版", cat:"自動化", ver:"Python", desc:"寶雅供應商平台自動請款（跟 n8n 版可能重複，要擇一）", url:null, info:"Feebit 主機 · poya_claim.py", host:"Feebit 主機 · poya_claim.py", handover:true, where:"pc" },
-  { icon:"💾", name:"雲端硬碟增量備份", cat:"自動化", ver:"Python", desc:"把 NAS 資料夾增量備份到 Google 雲端硬碟", url:null, info:"Feebit 主機 · drive_incremental_backup.py", host:"Feebit 主機 · drive_incremental_backup.py", handover:true, where:"pc" },
-  { icon:"💬", name:"第二 LINE＋蝦皮素材下載", cat:"自動化", ver:"排程", desc:"每週三、五 09:30 開第二個 LINE 讀「蝦蝦 X Jasmine」群組，下載最新蝦皮宣傳素材", url:null, info:"Feebit 主機 · Sandboxie＋Claude 排程", host:"Feebit 主機 · Sandboxie＋Claude 排程", handover:true, where:"pc" },
-  { icon:"📝", name:"評論爬蟲與 SHOPLINE 匯入", cat:"自動化", ver:"Python", desc:"review_scraper.py 抓評論、shopline_importer.py 匯入 SHOPLINE", url:null, info:"Feebit 主機 · R備份\\Review", host:"Feebit 主機 · R備份\\Review", handover:true, where:"pc" },
-  { icon:"📊", name:"每月報表自動下載", cat:"自動化", ver:"Python", desc:"每月報表自動下載、發票自動化工具、蝦皮商品描述圖上傳工具", url:null, info:"Feebit 主機 · R備份\\Application", host:"Feebit 主機 · R備份\\Application", handover:true, where:"pc" },
+  { icon:"🖨️", name:"蝦皮出貨單自動列印", cat:"自動化", ver:"Python", desc:"⏰ 平日 08:00、14:01｜遠端請避開 07:55～08:40、13:55～14:40，週一到 09:30｜print_flow.py（v1.5）：自動到蝦皮後台列印出貨單、標籤；印完會確認頁面有內容、印表機有收到，沒印出會發失敗通知", url:null, info:"Feebit 主機 · shopee-print-automation", host:"Feebit 主機 · shopee-print-automation", handover:true, where:"pc" },
+  { icon:"🔄", name:"庫存更新（數碼通）", cat:"自動化", ver:"Python", desc:"⏰ 平日 18:30｜遠端請避開 18:25～19:00｜下載庫存 Excel 後更新 Ragic 數碼庫存", url:null, info:"Feebit 主機 · stock_flow.py", host:"Feebit 主機 · stock_flow.py", handover:true, where:"pc" },
+  { icon:"🧾", name:"寶雅請款 Python 版", cat:"自動化", ver:"Python", desc:"⏰ 每月 1～5 日 09:00｜遠端請避開 08:55～09:30｜寶雅供應商平台自動請款（跟 n8n 版可能重複，要擇一）", url:null, info:"Feebit 主機 · poya_claim.py", host:"Feebit 主機 · poya_claim.py", handover:true, where:"pc" },
+  { icon:"💾", name:"雲端硬碟增量備份", cat:"自動化", ver:"Python", desc:"⏰ 排程時間未記錄（待確認）｜把 NAS 資料夾增量備份到 Google 雲端硬碟", url:null, info:"Feebit 主機 · drive_incremental_backup.py", host:"Feebit 主機 · drive_incremental_backup.py", handover:true, where:"pc" },
+  { icon:"💬", name:"第二 LINE＋蝦皮素材下載", cat:"自動化", ver:"排程", desc:"⏰ 每週三、五 09:30｜開第二個 LINE 讀「蝦蝦 X Jasmine」群組，下載最新蝦皮宣傳素材", url:null, info:"Feebit 主機 · Sandboxie＋Claude 排程", host:"Feebit 主機 · Sandboxie＋Claude 排程", handover:true, where:"pc" },
+  { icon:"📝", name:"評論爬蟲與 SHOPLINE 匯入", cat:"自動化", ver:"Python", desc:"⏰ 排程時間未記錄（待確認）｜review_scraper.py 抓評論、shopline_importer.py 匯入 SHOPLINE", url:null, info:"Feebit 主機 · R備份\\Review", host:"Feebit 主機 · R備份\\Review", handover:true, where:"pc" },
+  { icon:"📊", name:"每月報表自動下載", cat:"自動化", ver:"Python", desc:"⏰ 每月 1 日 16:00（錯過會補跑）｜遠端請避開 15:55～16:30｜每月報表自動下載、發票自動化工具、蝦皮商品描述圖上傳工具", url:null, info:"Feebit 主機 · R備份\\Application", host:"Feebit 主機 · R備份\\Application", handover:true, where:"pc" },
   { icon:"📨", name:"合作邀約自動寄信", cat:"自動化", ver:"n8n", desc:"手動觸發，寄出合作邀約信（綁的 Gmail 憑證已不存在）", url:"https://n8n-production-e240.up.railway.app/workflow/O9ktLJfMvoZhNBRs", ext:true, host:"n8n", handover:true, where:"cloud", off:true },
   { icon:"💲", name:"每日價格比對", cat:"自動化", ver:"n8n", desc:"每日比對商品在各平台的售價", url:"https://n8n-production-e240.up.railway.app/workflow/Gz3GIUuV1S8Ox6Wt", ext:true, host:"n8n", handover:true, where:"cloud", off:true },
   { icon:"📧", name:"商品價格比對發信 - 2", cat:"自動化", ver:"n8n", desc:"價格比對結果寄信通知（由其他流程呼叫）", url:"https://n8n-production-e240.up.railway.app/workflow/ycfIVhEC957w09xV", ext:true, host:"n8n", handover:true, where:"cloud", off:true },
