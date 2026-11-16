@@ -54,6 +54,7 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);padding:0
 .badge{font-size:11px;border:1px solid var(--line);border-radius:6px;padding:0 5px;margin-left:4px;color:var(--sub)}
 .x,.ed{border:none;background:none;cursor:pointer;font-size:16px;color:var(--accent)}
 .ed{color:var(--sub)}
+.sw1{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);cursor:pointer;padding:0;flex:none}
 .dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}
 .weather{font-size:13px;color:var(--sub);margin:0 0 10px}
 .hist{font-size:13px;color:var(--sub)}
@@ -78,6 +79,11 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);padding:0
       <div class="row" id="wxRow"></div>
       <div class="lab">哪些類別要放進轉盤（點掉＝今天不想吃）</div>
       <div class="row" id="cuisineRow"></div>
+      <button class="mini" id="catMgrBtn" style="margin:-4px 0 8px -6px"></button>
+      <div id="catMgr" hidden style="margin-bottom:10px">
+        <div id="catList"></div>
+        <div class="row" style="margin-top:8px"><input id="catNew" placeholder="新類別名稱（例：早午餐、火鍋）" maxlength="10" style="flex:1"><button class="btn pri" id="catAdd">新增類別</button></div>
+      </div>
       <div class="lab">轉盤模式</div>
       <div class="row" id="modeRow"></div>
       <div class="lab">預算上限（元，0＝不限）</div>
@@ -138,7 +144,7 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);padding:0
     </div>
   </div>
 </div>
-<p style="text-align:center;font-size:12px;color:var(--sub)">今天吃什麼 v1.0</p>
+<p style="text-align:center;font-size:12px;color:var(--sub)">今天吃什麼 v2.0</p>
 
 <script>
 // ================= 資料層（之後做 App 只要換掉這一塊）=================
@@ -151,7 +157,10 @@ const DB={
 };
 let _u=0;const uid=()=>Date.now()*100+(_u++%100);
 
-const CUISINES={日式:'#a65d5d',中式:'#5b7890',台式:'#a898bb',西式:'#6a706f',韓式:'#c58882',東南亞:'#94b0c4',麵食:'#76658a',輕食沙拉:'#a5aaa8',其他:'#dfb0aa'};
+const PALETTE=['#a65d5d','#5b7890','#a898bb','#6a706f','#c58882','#94b0c4','#76658a','#a5aaa8','#dfb0aa','#8a9a7b','#b59a6d','#6f8f8c'];
+const DEFAULT_CATS=[['日式',0],['中式',1],['台式',2],['西式',3],['韓式',4],['東南亞',5],['麵食',6],['輕食沙拉',7],['其他',8]].map(([name,i])=>({name,color:PALETTE[i]}));
+const catNames=()=>S.cats.map(c=>c.name);
+const catColor=n=>(S.cats.find(c=>c.name===n)||{}).color||'#888';
 const HUNGER=['小餓（吃點小東西）','普通','超餓（要吃飽）'];
 const WEATHERS=['舒適','炎熱','寒冷','下雨'];
 const HOWS=[['any','都可以'],['out','出門吃'],['delivery','外送']];
@@ -182,6 +191,7 @@ function migrate(d){
   return{ver:2,lists,cur:L1,stores:st.length?st:sampleStores(L1),history:d.history||[],hunger:d.hunger??1,weather:d.weather??0,off:d.off||[],budget:d.budget||0,equal:!!d.equal,how:'any'};
 }
 let S=migrate(DB.get(KEY))||migrate(DB.get(OLD))||fresh();
+if(!S.cats)S.cats=DEFAULT_CATS.map(c=>({...c}));
 const save=()=>DB.set(KEY,S);
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -221,15 +231,19 @@ function render(){
   chips($('howRow'),HOWS.map(x=>x[1]),i=>S.how===HOWS[i][0],i=>S.how=HOWS[i][0]);
   chips($('hungerRow'),HUNGER,i=>S.hunger===i,i=>S.hunger=i);
   chips($('wxRow'),WEATHERS,i=>S.weather===i,i=>S.weather=i);
-  chips($('cuisineRow'),['全選',...Object.keys(CUISINES)],(i,t)=>i===0?!S.off.length:!S.off.includes(t),(i,t)=>{if(i===0){S.off=[]}else{const k=S.off.indexOf(t);k<0?S.off.push(t):S.off.splice(k,1)}});
+  chips($('cuisineRow'),['全選',...catNames()],(i,t)=>i===0?!S.off.length:!S.off.includes(t),(i,t)=>{if(i===0){S.off=[]}else{const k=S.off.indexOf(t);k<0?S.off.push(t):S.off.splice(k,1)}});
   chips($('modeRow'),['依今天狀態加權','平均（純靠運氣）'],i=>(i===1)===S.equal,i=>S.equal=i===1);
   $('budget').value=S.budget||0;
+  if(!S.cats)S.cats=DEFAULT_CATS.map(c=>({...c}));
+  const fc=$('fCuisine'),pv=fc.value;fc.innerHTML=catNames().map(c=>`<option>${esc(c)}</option>`).join('');if(catNames().includes(pv))fc.value=pv;
+  $('catMgr').hidden=!catOpen;$('catMgrBtn').textContent=catOpen?'收起類別管理':'✎ 管理類別（新增／改名／換色／刪除）';
+  if(catOpen)$('catList').innerHTML=S.cats.map((c,i)=>`<div class="item"><button class="sw1" style="background:${c.color}" title="點一下換顏色" onclick="catSwatch(${i})"></button><span class="n">${esc(c.name)} <span class="tag">${S.stores.filter(x=>x.cuisine===c.name).length} 間</span></span><button class="ed" title="改名" onclick="catRename(${i})">✎</button><button class="x" title="刪除" onclick="catDel(${i})">✕</button></div>`).join('');
   $('fList').innerHTML=S.lists.map(l=>`<option value="${l.id}">${esc(l.name)}</option>`).join('');
   if(!editing)$('fList').value=S.cur;
   // 店家列表
   const cs=curStores();
   $('listTitle').textContent=`「${curList().name}」的店家（${cs.length}）`;
-  $('list').innerHTML=cs.length?cs.map(s=>`<div class="item"><input type="checkbox" ${sel.has(s.id)?'checked':''} onchange="tog(${s.id},this.checked)"><span class="dot" style="background:${CUISINES[s.cuisine]||'#888'}"></span><span class="n">${esc(s.name)}${s.sample?'<span class="badge">範例</span>':''}<br><span class="tag">${s.cuisine}・${s.portion}・${s.temp}${s.price?'・$'+s.price:''}${s.dine?'・出門':''}${s.deliver?'・外送':''}${s.map?'・📍':''}</span></span><button class="ed" title="編輯" onclick="edit(${s.id})">✎</button></div>`).join(''):'<div class="tag" style="padding:12px 0">這份清單還沒有店家。用上面的表單新增，或按「載入範例店家」。</div>';
+  $('list').innerHTML=cs.length?cs.map(s=>`<div class="item"><input type="checkbox" ${sel.has(s.id)?'checked':''} onchange="tog(${s.id},this.checked)"><span class="dot" style="background:${catColor(s.cuisine)}"></span><span class="n">${esc(s.name)}${s.sample?'<span class="badge">範例</span>':''}<br><span class="tag">${s.cuisine}・${s.portion}・${s.temp}${s.price?'・$'+s.price:''}${s.dine?'・出門':''}${s.deliver?'・外送':''}${s.map?'・📍':''}</span></span><button class="ed" title="編輯" onclick="edit(${s.id})">✎</button></div>`).join(''):'<div class="tag" style="padding:12px 0">這份清單還沒有店家。用上面的表單新增，或按「載入範例店家」。</div>';
   $('delSel').textContent=`刪除勾選（${sel.size}）`;$('delSel').disabled=!sel.size;
   const h=S.history.slice(-8).reverse().map(x=>{const s=S.stores.find(a=>a.id===x.id);return new Date(x.t).toLocaleDateString('zh-TW',{month:'numeric',day:'numeric'})+' '+esc(s?s.name:(x.name||'（已刪除的店）'))}).filter(t=>!t.endsWith(' （已刪除的店）')||true);
   if(h.length)$('hist').innerHTML=h.join('<br>');
@@ -245,6 +259,32 @@ function delList(){
   if(!confirm(`刪除「${l.name}」清單？裡面 ${n} 間店也會一起刪除，無法復原。`))return;
   S.stores=S.stores.filter(s=>s.listId!==l.id);S.lists=S.lists.filter(x=>x.id!==l.id);S.cur=S.lists[0].id;sel.clear();render()}
 
+// ---- 類別管理 ----
+let catOpen=false;
+$('catMgrBtn').onclick=()=>{catOpen=!catOpen;render()};
+function catSwatch(i){const c=S.cats[i],k=PALETTE.indexOf(c.color);c.color=PALETTE[(k+1)%PALETTE.length];render()}
+function catRename(i){
+  const c=S.cats[i],n=(prompt('類別改名為',c.name)||'').trim().slice(0,10);
+  if(!n||n===c.name)return;
+  if(S.cats.some(x=>x.name===n))return alert('已經有「'+n+'」這個類別了');
+  S.stores.forEach(x=>{if(x.cuisine===c.name)x.cuisine=n});S.off=S.off.map(x=>x===c.name?n:x);c.name=n;render()}
+function catDel(i){
+  if(S.cats.length<2)return alert('至少要留一個類別');
+  const c=S.cats[i],used=S.stores.filter(x=>x.cuisine===c.name),rest=S.cats.filter(x=>x!==c),to=(rest.find(x=>x.name==='其他')||rest[0]).name;
+  if(!confirm(used.length?`刪除類別「${c.name}」？目前有 ${used.length} 間店會改歸到「${to}」。`:`刪除類別「${c.name}」？`))return;
+  used.forEach(x=>x.cuisine=to);S.off=S.off.filter(x=>x!==c.name);S.cats=rest;render()}
+function catAdd(){
+  const n=$('catNew').value.trim().slice(0,10);if(!n)return $('catNew').focus();
+  if(S.cats.some(x=>x.name===n))return alert('已經有「'+n+'」這個類別了');
+  if(S.cats.length>=30)return alert('類別最多 30 個');
+  const free=PALETTE.find(c=>!S.cats.some(x=>x.color===c))||PALETTE[S.cats.length%PALETTE.length];
+  S.cats.push({name:n,color:free});$('catNew').value='';render()}
+$('catAdd').onclick=catAdd;$('catNew').onkeydown=e=>{if(e.key==='Enter')catAdd()};
+function cuisineFor(v){
+  const n=String(v==null?'':v).trim().slice(0,10);
+  if(n&&!S.cats.some(c=>c.name===n)&&S.cats.length<30)S.cats.push({name:n,color:PALETTE[S.cats.length%PALETTE.length]});
+  return S.cats.some(c=>c.name===n)?n:(S.cats.find(c=>c.name==='其他')||S.cats[0]).name}
+
 // ---- 勾選刪除 ----
 function tog(id,on){on?sel.add(id):sel.delete(id);$('delSel').textContent=`刪除勾選（${sel.size}）`;$('delSel').disabled=!sel.size}
 $('selAll').onclick=()=>{curStores().forEach(s=>sel.add(s.id));render()};
@@ -254,7 +294,6 @@ $('delSel').onclick=()=>{if(!sel.size)return;if(!confirm(`刪除勾選的 ${sel.
 $('loadSample').onclick=()=>{S.stores.push(...sampleStores(S.cur));render()};
 
 // ---- 新增／編輯店家 ----
-$('fCuisine').innerHTML=Object.keys(CUISINES).map(c=>`<option>${c}</option>`).join('');
 function edit(id){
   const s=S.stores.find(x=>x.id===id);if(!s)return;editing=id;
   $('fName').value=s.name;$('fCuisine').value=s.cuisine;$('fPortion').value=s.portion;$('fTemp').value=s.temp;
@@ -287,7 +326,7 @@ function draw(){
   if(!cur.length){cx.fillStyle=css('--line');cx.beginPath();cx.arc(0,0,R,0,7);cx.fill();cx.fillStyle=css('--ink');cx.textAlign='center';cx.font='bold 36px sans-serif';cx.fillText('沒有符合的店',0,-70);cx.font='26px sans-serif';cx.fillText('放寬類別、預算或吃的方式',0,-26);cx.fillText('或到上方新增店家',0,14);cx.restore();return}
   const tot=cur.reduce((a,x)=>a+x.w,0);let a=0;
   cur.forEach(x=>{x.a0=a;x.span=x.w/tot*Math.PI*2;a+=x.span;
-    const col=CUISINES[x.s.cuisine]||'#888';
+    const col=catColor(x.s.cuisine);
     cx.beginPath();cx.moveTo(0,0);cx.arc(0,0,R,rot+x.a0,rot+x.a0+x.span);cx.closePath();
     cx.fillStyle=col;cx.fill();cx.strokeStyle=css('--card');cx.lineWidth=5;cx.stroke();
     cx.save();cx.rotate(rot+x.a0+x.span/2);cx.fillStyle=txtOn(col);cx.textAlign='right';cx.textBaseline='middle';
@@ -356,7 +395,7 @@ function takeShare(h){
   const id=uid();S.lists.push({id,name:nm});S.cur=id;
   const str=(v,n)=>String(v==null?'':v).slice(0,n),url=v=>isUrl(v)?String(v).slice(0,500):'';
   rows.forEach(a=>{if(!Array.isArray(a)||!a[0])return;
-    S.stores.push({id:uid(),listId:id,name:str(a[0],40),cuisine:CUISINES[a[1]]?a[1]:'其他',portion:a[2] in PORTION?a[2]:'正常',temp:['熱湯熱食','都可以','清爽涼食'].includes(a[3])?a[3]:'都可以',price:Math.max(0,+a[4]||0),map:url(a[5]),deliveryUrl:url(a[6]),dine:!!a[7]||!a[8],deliver:!!a[8],sample:false})});
+    S.stores.push({id:uid(),listId:id,name:str(a[0],40),cuisine:cuisineFor(a[1]),portion:a[2] in PORTION?a[2]:'正常',temp:['熱湯熱食','都可以','清爽涼食'].includes(a[3])?a[3]:'都可以',price:Math.max(0,+a[4]||0),map:url(a[5]),deliveryUrl:url(a[6]),dine:!!a[7]||!a[8],deliver:!!a[8],sample:false})});
   sel.clear();render();
 }
 addEventListener('hashchange',()=>takeShare());
