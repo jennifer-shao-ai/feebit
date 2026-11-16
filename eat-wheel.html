@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1d201f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>今天吃什麼</title>
+<style>
+:root{--bg:#1d201f;--card:#1a2b3c;--ink:#d1dede;--sub:#8fa5b0;--line:#2f4559;--inp:#1d201f;--accent:#df928e;--on:#1d201f;--rose:#df928e}
+:root[data-accent=blue]{--accent:#8fb0cf;--rose:#8fb0cf}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 -apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif}
+.wrap{max-width:980px;margin:0 auto;padding:16px;display:grid;gap:16px;grid-template-columns:1fr}
+@media(min-width:860px){.wrap{grid-template-columns:430px 1fr}}
+.top{display:flex;justify-content:space-between;align-items:center}
+.sw{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--sub)}
+.sw button{width:26px;height:26px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0}
+.sw button.on{border-color:var(--ink)}
+h1{margin:0 0 4px;font-size:26px;font-weight:800}
+h2{margin:0 0 12px;font-size:13px;letter-spacing:.12em;color:var(--sub);font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:0 2px 12px #0003}
+.row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center}
+.lab{font-size:13px;color:var(--sub);margin:6px 0 4px}
+.chip{border:1px solid var(--line);background:transparent;border-radius:999px;padding:6px 12px;cursor:pointer;font-size:14px;color:var(--ink)}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--on)}
+.mini{border:none;background:none;color:var(--sub);cursor:pointer;font-size:13px;padding:4px 6px}
+.mini:hover{color:var(--ink)}
+.wheelbox{position:relative;width:100%;max-width:400px;margin:0 auto}
+canvas{width:100%;height:auto;display:block}
+.pointer{position:absolute;left:50%;top:-6px;transform:translateX(-50%);width:0;height:0;border-left:13px solid transparent;border-right:13px solid transparent;border-top:26px solid var(--rose);filter:drop-shadow(0 2px 2px #0003);z-index:2}
+.go{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:84px;height:84px;border-radius:50%;border:5px solid var(--card);background:var(--accent);color:var(--on);font-size:20px;font-weight:700;letter-spacing:.1em;cursor:pointer;box-shadow:0 4px 14px #0004}
+.go:disabled{opacity:.6}
+.result{text-align:center;margin-top:12px;min-height:96px}
+.result .name{font-size:28px;font-weight:800}
+.result .why{color:var(--sub);font-size:14px;margin:4px 0 8px}
+.result .btn{margin:2px}
+.btn{border:1px solid var(--line);background:transparent;border-radius:10px;padding:8px 14px;cursor:pointer;font-size:14px;color:var(--ink);text-decoration:none;display:inline-block}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--on)}
+.btn.danger{color:var(--accent)}
+.btn:hover{border-color:var(--ink)}
+.btn:disabled{opacity:.4;cursor:default}
+input,select{font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--inp);color:var(--ink);min-width:0}
+.add{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.add .full{grid-column:1/3}
+.checks{display:flex;gap:14px;align-items:center;font-size:14px}
+.checks label{display:flex;gap:6px;align-items:center;cursor:pointer}
+input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);padding:0}
+.list{max-height:360px;overflow:auto;margin-top:10px}
+.item{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px dashed var(--line);font-size:14px}
+.item .n{flex:1;min-width:0}
+.tag{font-size:12px;color:var(--sub)}
+.badge{font-size:11px;border:1px solid var(--line);border-radius:6px;padding:0 5px;margin-left:4px;color:var(--sub)}
+.x,.ed{border:none;background:none;cursor:pointer;font-size:16px;color:var(--accent)}
+.ed{color:var(--sub)}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}
+.weather{font-size:13px;color:var(--sub);margin:0 0 10px}
+.hist{font-size:13px;color:var(--sub)}
+.bar{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <div class="top"><h1>🍱 今天吃什麼</h1><div class="sw">按鈕色<button id="swPink" style="background:#df928e" title="粉色"></button><button id="swBlue" style="background:#8fb0cf" title="藍色"></button></div></div>
+    <p class="weather" id="wx">天氣：載入中…</p>
+
+    <div class="card" style="margin-bottom:16px">
+      <h2>今天的狀態</h2>
+      <div class="lab">要從哪份清單轉</div>
+      <div class="row" id="listRow"></div>
+      <div class="lab">今天怎麼吃</div>
+      <div class="row" id="howRow"></div>
+      <div class="lab">肚子餓不餓</div>
+      <div class="row" id="hungerRow"></div>
+      <div class="lab">今天天氣（會自動偵測台北，也可手動改）</div>
+      <div class="row" id="wxRow"></div>
+      <div class="lab">哪些類別要放進轉盤（點掉＝今天不想吃）</div>
+      <div class="row" id="cuisineRow"></div>
+      <div class="lab">轉盤模式</div>
+      <div class="row" id="modeRow"></div>
+      <div class="lab">預算上限（元，0＝不限）</div>
+      <input type="number" id="budget" min="0" step="10" value="0" style="width:120px">
+    </div>
+
+    <div class="card">
+      <h2 id="formTitle">新增店家</h2>
+      <div class="add">
+        <input class="full" id="fName" placeholder="店名（例：巷口拉麵）">
+        <select id="fCuisine"></select>
+        <select id="fPortion"><option>小東西</option><option selected>正常</option><option>吃很飽</option></select>
+        <select id="fTemp"><option>熱湯熱食</option><option selected>都可以</option><option>清爽涼食</option></select>
+        <select id="fList"></select>
+        <input id="fPrice" type="number" min="0" placeholder="均價 元">
+        <div class="checks full">吃的方式：
+          <label><input type="checkbox" id="fDine" checked>出門吃</label>
+          <label><input type="checkbox" id="fDeliver">可外送</label>
+        </div>
+        <input class="full" id="fMap" type="url" placeholder="Google 地圖連結（選填，貼上最準）">
+        <input class="full" id="fDUrl" type="url" placeholder="外送連結（選填：Uber Eats／foodpanda／店家訂餐頁）">
+        <button class="btn pri" id="addBtn">＋ 加進轉盤</button>
+        <button class="btn" id="cancelBtn" hidden>取消修改</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h2 id="listTitle">店家</h2>
+      <div class="bar">
+        <button class="mini" id="selAll">全選</button>
+        <button class="mini" id="selSample">只選範例</button>
+        <button class="mini" id="selNone">取消</button>
+        <button class="btn danger" id="delSel" style="margin-left:auto">刪除勾選</button>
+      </div>
+      <div class="list" id="list"></div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn pri" id="shareBtn">🔗 分享這份清單</button>
+        <button class="btn" id="loadSample">載入範例店家</button>
+        <button class="btn" id="exportBtn">匯出備份</button>
+        <button class="btn" id="importBtn">匯入</button>
+        <input type="file" id="file" accept=".json" hidden>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="wheelbox">
+        <div class="pointer"></div>
+        <canvas id="wheel" width="800" height="800"></canvas>
+        <button class="go" id="go">轉！</button>
+      </div>
+      <div class="result" id="result"><span class="tag">設定好今天的狀態，按「轉！」</span></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h2>最近吃過</h2>
+      <div class="hist" id="hist">還沒有紀錄。轉出來按「就這家」才會記，3 天內吃過的機率會自動調低。</div>
+    </div>
+  </div>
+</div>
+<p style="text-align:center;font-size:12px;color:var(--sub)">今天吃什麼 v1.0</p>
+
+<script>
+// ================= 資料層（之後做 App 只要換掉這一塊）=================
+const KEY='feebit_lunch_v2',OLD='feebit_lunch_v1',ACC='feebit_lunch_accent';
+const DB={
+  get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},
+  raw(k){try{return localStorage.getItem(k)}catch(e){return null}},
+  rawSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+};
+let _u=0;const uid=()=>Date.now()*100+(_u++%100);
+
+const CUISINES={日式:'#a65d5d',中式:'#5b7890',台式:'#a898bb',西式:'#6a706f',韓式:'#c58882',東南亞:'#94b0c4',麵食:'#76658a',輕食沙拉:'#a5aaa8',其他:'#dfb0aa'};
+const HUNGER=['小餓（吃點小東西）','普通','超餓（要吃飽）'];
+const WEATHERS=['舒適','炎熱','寒冷','下雨'];
+const HOWS=[['any','都可以'],['out','出門吃'],['delivery','外送']];
+const PORTION={'小東西':0,'正常':1,'吃很飽':2};
+const HW=[[3,2,.5],[1.5,3,1.5],[.5,2,3]];
+
+// 範例：[店名,類別,份量,冷熱,均價,出門,外送]
+const SAMPLES=[
+ ['日式丼飯','日式','吃很飽','都可以',150,1,1],['壽司','日式','正常','清爽涼食',180,1,1],['日式咖哩飯','日式','吃很飽','熱湯熱食',160,1,1],
+ ['豚骨拉麵','麵食','吃很飽','熱湯熱食',220,1,0],['牛肉麵','麵食','吃很飽','熱湯熱食',180,1,1],['涼麵','麵食','小東西','清爽涼食',70,1,0],
+ ['滷肉飯','台式','正常','都可以',70,1,1],['自助餐','台式','正常','都可以',100,1,0],['雞腿便當','台式','吃很飽','都可以',110,1,1],
+ ['水餃','中式','正常','熱湯熱食',90,1,1],['港式燒臘','中式','吃很飽','都可以',130,1,1],['小籠包','中式','小東西','熱湯熱食',120,1,0],
+ ['義大利麵','西式','正常','都可以',200,1,1],['漢堡','西式','吃很飽','都可以',160,1,1],['三明治','西式','小東西','清爽涼食',80,1,1],
+ ['韓式豆腐鍋','韓式','正常','熱湯熱食',200,1,0],['韓式拌飯','韓式','正常','都可以',180,1,1],
+ ['泰式打拋豬','東南亞','正常','都可以',170,1,1],['越南河粉','東南亞','正常','熱湯熱食',160,1,0],
+ ['雞胸沙拉碗','輕食沙拉','小東西','清爽涼食',150,1,1],['御飯糰＋豆漿','其他','小東西','都可以',60,1,0]
+];
+function sampleStores(listId){return SAMPLES.map(a=>({id:uid(),listId,name:a[0],cuisine:a[1],portion:a[2],temp:a[3],price:a[4],map:'',deliveryUrl:'',dine:!!a[5],deliver:!!a[6],sample:true}))}
+
+function fresh(){const L1=uid(),L2=uid();return{ver:2,lists:[{id:L1,name:'午餐'},{id:L2,name:'回家'}],cur:L1,stores:sampleStores(L1),history:[],hunger:1,weather:0,off:[],budget:0,equal:false,how:'any'}}
+function migrate(d){
+  if(!d||!Array.isArray(d.stores))return null;
+  if(d.ver===2)return d;
+  const L1=uid(),L2=uid();
+  const keep=d.stores.filter(s=>!/^（範例）/.test(s.name));
+  const st=keep.map(s=>({...s,listId:L1,map:s.map||'',deliveryUrl:'',dine:true,deliver:false,sample:false}));
+  const lists=[{id:L1,name:'午餐'},{id:L2,name:'回家'}];
+  return{ver:2,lists,cur:L1,stores:st.length?st:sampleStores(L1),history:d.history||[],hunger:d.hunger??1,weather:d.weather??0,off:d.off||[],budget:d.budget||0,equal:!!d.equal,how:'any'};
+}
+let S=migrate(DB.get(KEY))||migrate(DB.get(OLD))||fresh();
+const save=()=>DB.set(KEY,S);
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const days=a=>Math.floor((Date.now()-a)/864e5);
+const curList=()=>S.lists.find(l=>l.id===S.cur)||S.lists[0];
+const curStores=()=>S.stores.filter(s=>s.listId===curList().id);
+
+function setAccent(a,keep){document.documentElement.dataset.accent=a;$('swPink').classList.toggle('on',a==='pink');$('swBlue').classList.toggle('on',a==='blue');if(keep)DB.rawSet(ACC,a)}
+
+// ================= 權重 =================
+function weight(st){
+  let w=1,why=[];
+  const ok=S.how==='out'?st.dine:S.how==='delivery'?st.deliver:(st.dine||st.deliver);
+  if(!ok)return{w:0,why};
+  if(S.off.includes(st.cuisine))return{w:0,why};
+  if(S.budget>0&&st.price>S.budget)return{w:0,why};
+  if(S.equal)return{w:1,why};
+  const h=HW[S.hunger][PORTION[st.portion]];w*=h;
+  if(h>=3)why.push('份量剛好');
+  const wx=WEATHERS[S.weather];
+  if(wx==='炎熱'){const m={'清爽涼食':3,'都可以':2,'熱湯熱食':.6}[st.temp];w*=m;if(m===3)why.push('天熱吃清爽')}
+  if(wx==='寒冷'){const m={'熱湯熱食':3,'都可以':2,'清爽涼食':.5}[st.temp];w*=m;if(m===3)why.push('天冷吃熱的')}
+  if(wx==='下雨'){const m={'熱湯熱食':1.5,'都可以':1.2,'清爽涼食':.8}[st.temp];w*=m;if(m===1.5)why.push('下雨天吃熱的')}
+  if(S.history.some(x=>x.id===st.id&&days(x.t)<3)){w*=.15;why.push('最近才吃過，機率調低')}
+  return{w,why};
+}
+const eligible=()=>curStores().map(s=>({s,...weight(s)})).filter(x=>x.w>0);
+
+// ================= 畫面 =================
+let sel=new Set(),editing=null;
+function chips(el,items,isOn,onClick){el.innerHTML='';items.forEach((t,i)=>{const b=document.createElement('button');b.className='chip'+(isOn(i,t)?' on':'');b.textContent=t;b.onclick=()=>{onClick(i,t);render()};el.appendChild(b)})}
+function render(){
+  // 清單
+  const lr=$('listRow');lr.innerHTML='';
+  S.lists.forEach(l=>{const b=document.createElement('button');b.className='chip'+(l.id===S.cur?' on':'');b.textContent=l.name+' ('+S.stores.filter(s=>s.listId===l.id).length+')';b.onclick=()=>{S.cur=l.id;sel.clear();cancelEdit();render()};lr.appendChild(b)});
+  [['＋','新增清單',addList],['改名','改名',renameList],['刪除','刪除這份清單',delList]].forEach(([t,ti,fn])=>{const b=document.createElement('button');b.className='mini';b.textContent=t;b.title=ti;b.onclick=fn;lr.appendChild(b)});
+  chips($('howRow'),HOWS.map(x=>x[1]),i=>S.how===HOWS[i][0],i=>S.how=HOWS[i][0]);
+  chips($('hungerRow'),HUNGER,i=>S.hunger===i,i=>S.hunger=i);
+  chips($('wxRow'),WEATHERS,i=>S.weather===i,i=>S.weather=i);
+  chips($('cuisineRow'),['全選',...Object.keys(CUISINES)],(i,t)=>i===0?!S.off.length:!S.off.includes(t),(i,t)=>{if(i===0){S.off=[]}else{const k=S.off.indexOf(t);k<0?S.off.push(t):S.off.splice(k,1)}});
+  chips($('modeRow'),['依今天狀態加權','平均（純靠運氣）'],i=>(i===1)===S.equal,i=>S.equal=i===1);
+  $('budget').value=S.budget||0;
+  $('fList').innerHTML=S.lists.map(l=>`<option value="${l.id}">${esc(l.name)}</option>`).join('');
+  if(!editing)$('fList').value=S.cur;
+  // 店家列表
+  const cs=curStores();
+  $('listTitle').textContent=`「${curList().name}」的店家（${cs.length}）`;
+  $('list').innerHTML=cs.length?cs.map(s=>`<div class="item"><input type="checkbox" ${sel.has(s.id)?'checked':''} onchange="tog(${s.id},this.checked)"><span class="dot" style="background:${CUISINES[s.cuisine]||'#888'}"></span><span class="n">${esc(s.name)}${s.sample?'<span class="badge">範例</span>':''}<br><span class="tag">${s.cuisine}・${s.portion}・${s.temp}${s.price?'・$'+s.price:''}${s.dine?'・出門':''}${s.deliver?'・外送':''}${s.map?'・📍':''}</span></span><button class="ed" title="編輯" onclick="edit(${s.id})">✎</button></div>`).join(''):'<div class="tag" style="padding:12px 0">這份清單還沒有店家。用上面的表單新增，或按「載入範例店家」。</div>';
+  $('delSel').textContent=`刪除勾選（${sel.size}）`;$('delSel').disabled=!sel.size;
+  const h=S.history.slice(-8).reverse().map(x=>{const s=S.stores.find(a=>a.id===x.id);return new Date(x.t).toLocaleDateString('zh-TW',{month:'numeric',day:'numeric'})+' '+esc(s?s.name:(x.name||'（已刪除的店）'))}).filter(t=>!t.endsWith(' （已刪除的店）')||true);
+  if(h.length)$('hist').innerHTML=h.join('<br>');
+  save();draw();
+}
+
+// ---- 清單管理 ----
+function addList(){const n=(prompt('新清單名稱（例：回家、週末、公司附近）')||'').trim();if(!n)return;const id=uid();S.lists.push({id,name:n});S.cur=id;sel.clear();render()}
+function renameList(){const n=(prompt('改名為',curList().name)||'').trim();if(!n)return;curList().name=n;render()}
+function delList(){
+  if(S.lists.length<2)return alert('至少要留一份清單');
+  const l=curList(),n=curStores().length;
+  if(!confirm(`刪除「${l.name}」清單？裡面 ${n} 間店也會一起刪除，無法復原。`))return;
+  S.stores=S.stores.filter(s=>s.listId!==l.id);S.lists=S.lists.filter(x=>x.id!==l.id);S.cur=S.lists[0].id;sel.clear();render()}
+
+// ---- 勾選刪除 ----
+function tog(id,on){on?sel.add(id):sel.delete(id);$('delSel').textContent=`刪除勾選（${sel.size}）`;$('delSel').disabled=!sel.size}
+$('selAll').onclick=()=>{curStores().forEach(s=>sel.add(s.id));render()};
+$('selSample').onclick=()=>{sel.clear();curStores().filter(s=>s.sample).forEach(s=>sel.add(s.id));render()};
+$('selNone').onclick=()=>{sel.clear();render()};
+$('delSel').onclick=()=>{if(!sel.size)return;if(!confirm(`刪除勾選的 ${sel.size} 間店？無法復原（可先按「匯出備份」）。`))return;S.stores=S.stores.filter(s=>!sel.has(s.id));sel.clear();cancelEdit();render()};
+$('loadSample').onclick=()=>{S.stores.push(...sampleStores(S.cur));render()};
+
+// ---- 新增／編輯店家 ----
+$('fCuisine').innerHTML=Object.keys(CUISINES).map(c=>`<option>${c}</option>`).join('');
+function edit(id){
+  const s=S.stores.find(x=>x.id===id);if(!s)return;editing=id;
+  $('fName').value=s.name;$('fCuisine').value=s.cuisine;$('fPortion').value=s.portion;$('fTemp').value=s.temp;
+  $('fPrice').value=s.price||'';$('fMap').value=s.map||'';$('fDUrl').value=s.deliveryUrl||'';
+  $('fDine').checked=!!s.dine;$('fDeliver').checked=!!s.deliver;$('fList').value=s.listId;
+  $('formTitle').textContent='編輯店家';$('addBtn').textContent='儲存修改';$('cancelBtn').hidden=false;
+  $('fName').scrollIntoView({block:'center',behavior:'smooth'});$('fName').focus();
+}
+function cancelEdit(){editing=null;['fName','fPrice','fMap','fDUrl'].forEach(i=>$(i).value='');$('fDine').checked=true;$('fDeliver').checked=false;$('formTitle').textContent='新增店家';$('addBtn').textContent='＋ 加進轉盤';$('cancelBtn').hidden=true}
+$('cancelBtn').onclick=()=>{cancelEdit();render()};
+$('addBtn').onclick=()=>{
+  const n=$('fName').value.trim();if(!n)return $('fName').focus();
+  if(!$('fDine').checked&&!$('fDeliver').checked)return alert('「出門吃」和「可外送」至少要勾一個');
+  const data={name:n,cuisine:$('fCuisine').value,portion:$('fPortion').value,temp:$('fTemp').value,price:+$('fPrice').value||0,map:$('fMap').value.trim(),deliveryUrl:$('fDUrl').value.trim(),dine:$('fDine').checked,deliver:$('fDeliver').checked,listId:+$('fList').value};
+  if(editing){const s=S.stores.find(x=>x.id===editing);Object.assign(s,data,{sample:false})}
+  else S.stores.push({id:uid(),sample:false,...data});
+  cancelEdit();render();
+};
+$('budget').onchange=e=>{S.budget=+e.target.value||0;render()};
+$('exportBtn').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,1)],{type:'application/json'}));a.download='eat-wheel-backup.json';a.click()};
+$('importBtn').onclick=()=>$('file').click();
+$('file').onchange=e=>{const f=e.target.files[0];if(!f)return;f.text().then(t=>{try{const d=migrate(JSON.parse(t));if(!d)throw 0;if(!confirm('匯入會取代目前所有清單與店家，確定？'))return;S=d;sel.clear();cancelEdit();render()}catch(x){alert('檔案格式不對')}})};
+
+// ================= 轉盤 =================
+const cv=$('wheel'),cx=cv.getContext('2d');let rot=0,spinning=false,cur=[];
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+function txtOn(h){const n=parseInt(h.slice(1),16),l=(.299*(n>>16)+.587*((n>>8)&255)+.114*(n&255))/255;return l>.62?'#1a2b3c':'#fff'}
+function draw(){
+  cur=eligible();const W=cv.width,R=W/2-6;cx.clearRect(0,0,W,W);cx.save();cx.translate(W/2,W/2);
+  if(!cur.length){cx.fillStyle=css('--line');cx.beginPath();cx.arc(0,0,R,0,7);cx.fill();cx.fillStyle=css('--ink');cx.textAlign='center';cx.font='bold 36px sans-serif';cx.fillText('沒有符合的店',0,-70);cx.font='26px sans-serif';cx.fillText('放寬類別、預算或吃的方式',0,-26);cx.fillText('或到上方新增店家',0,14);cx.restore();return}
+  const tot=cur.reduce((a,x)=>a+x.w,0);let a=0;
+  cur.forEach(x=>{x.a0=a;x.span=x.w/tot*Math.PI*2;a+=x.span;
+    const col=CUISINES[x.s.cuisine]||'#888';
+    cx.beginPath();cx.moveTo(0,0);cx.arc(0,0,R,rot+x.a0,rot+x.a0+x.span);cx.closePath();
+    cx.fillStyle=col;cx.fill();cx.strokeStyle=css('--card');cx.lineWidth=5;cx.stroke();
+    cx.save();cx.rotate(rot+x.a0+x.span/2);cx.fillStyle=txtOn(col);cx.textAlign='right';cx.textBaseline='middle';
+    const fs=Math.max(20,Math.min(34,x.span*R*.38));cx.font=`bold ${fs}px sans-serif`;
+    let t=x.s.name;if(t.length>7)t=t.slice(0,7)+'…';t+=' '+Math.round(x.w/tot*100)+'%';
+    if(x.span*R>fs*1.1)cx.fillText(t,R-24,0);cx.restore()});
+  cx.restore();
+}
+$('go').onclick=()=>{
+  if(spinning||!cur.length)return;
+  const tot=cur.reduce((a,x)=>a+x.w,0);let r=Math.random()*tot,pick=cur[cur.length-1];
+  for(const x of cur){if((r-=x.w)<0){pick=x;break}}
+  const theta=pick.a0+pick.span*(.2+Math.random()*.6);
+  const target=-Math.PI/2-theta,twoPi=Math.PI*2;
+  const delta=((target-rot)%twoPi+twoPi)%twoPi+twoPi*(5+Math.floor(Math.random()*3));
+  const start=rot,dur=4200,t0=performance.now();spinning=true;$('go').disabled=true;$('result').innerHTML='<span class="tag">轉轉轉…</span>';
+  (function f(now){const p=Math.min(1,(now-t0)/dur);rot=start+delta*(1-Math.pow(1-p,4));draw();
+    if(p<1)requestAnimationFrame(f);else{spinning=false;$('go').disabled=false;rot%=twoPi;show(pick)}})(t0);
+};
+const isUrl=u=>/^https?:\/\//.test(u||'');
+function mapUrl(s){return isUrl(s.map)?s.map:'https://www.google.com/maps/search/'+encodeURIComponent(s.name)}
+function deliverUrl(s){return isUrl(s.deliveryUrl)?s.deliveryUrl:'https://www.google.com/search?q='+encodeURIComponent(s.name+' 外送')}
+function show(x){
+  const s=x.s,why=x.why.length?x.why.join('、'):'今天的運氣';
+  const showMap=s.dine&&S.how!=='delivery',showDel=s.deliver&&S.how!=='out';
+  $('result').innerHTML=`<div class="name">🎉 ${esc(s.name)}</div><div class="why">${esc(why)}</div>
+  <button class="btn pri" onclick="accept(${s.id})">就這家！</button>
+  <button class="btn" onclick="skip(${s.id})">不想吃這家，重轉</button><br>
+  ${showMap?`<a class="btn" target="_blank" rel="noopener" href="${esc(mapUrl(s))}">📍 地圖</a>`:''}
+  ${showDel?`<a class="btn" target="_blank" rel="noopener" href="${esc(deliverUrl(s))}">🛵 外送</a>`:''}`;
+}
+function accept(id){S.history.push({id,t:Date.now(),name:(S.stores.find(s=>s.id===id)||{}).name});S.history=S.history.slice(-60);
+  $('result').innerHTML='<div class="name">吃飯去 😋</div><div class="why">已記錄，未來 3 天機率會調低</div>';render()}
+function skip(id){S.history.push({id,t:Date.now()-2*864e5,name:''});$('result').innerHTML='<span class="tag">已調低這家機率，再轉一次</span>';render()}
+
+// ================= 自動天氣（固定台北座標，不送任何個人資料）=================
+fetch('https://api.open-meteo.com/v1/forecast?latitude=25.04&longitude=121.56&current=temperature_2m,precipitation')
+ .then(r=>r.json()).then(d=>{const t=d.current.temperature_2m,p=d.current.precipitation;
+  $('wx').textContent=`天氣：台北目前 ${t}°C${p>0?'，正在下雨':''}（已自動帶入，可手動改）`;
+  S.weather=p>0?3:t>=29?1:t<=18?2:0;render()})
+ .catch(()=>{$('wx').textContent='天氣：無法自動偵測，請手動選'});
+setAccent(DB.raw(ACC)==='blue'?'blue':'pink');
+$('swPink').onclick=()=>setAccent('pink',true);$('swBlue').onclick=()=>setAccent('blue',true);
+
+// ================= 分享清單（連結內含整份清單，不經過任何伺服器）=================
+const b64enc=o=>{const b=new TextEncoder().encode(JSON.stringify(o));let t='';b.forEach(c=>t+=String.fromCharCode(c));return btoa(t).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')};
+const b64dec=t=>{t=t.replace(/-/g,'+').replace(/_/g,'/');const bin=atob(t),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return JSON.parse(new TextDecoder().decode(u))};
+function shareUrl(){
+  const L=curList(),rows=curStores().map(s=>[s.name,s.cuisine,s.portion,s.temp,s.price||0,s.map||'',s.deliveryUrl||'',s.dine?1:0,s.deliver?1:0]);
+  return location.href.split('#')[0]+'#share='+b64enc({n:L.name,s:rows});
+}
+$('shareBtn').onclick=async()=>{
+  if(!curStores().length)return alert('這份清單是空的，沒有東西可以分享');
+  const u=shareUrl(),b=$('shareBtn');
+  try{await navigator.clipboard.writeText(u);b.textContent='已複製連結 ✓';setTimeout(()=>b.textContent='🔗 分享這份清單',2500)}
+  catch(e){prompt('複製這串連結傳給同事：',u)}
+};
+function takeShare(h){
+  const m=(h||location.hash).match(/^#share=(.+)$/);if(!m)return;
+  try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}
+  let d;try{d=b64dec(m[1]);if(!d||!Array.isArray(d.s))throw 0}catch(e){return alert('這個分享連結壞掉了，請對方重新分享')}
+  const rows=d.s.slice(0,200),name=String(d.n||'分享的清單').slice(0,30);
+  if(!confirm(`收到分享的清單「${name}」，共 ${rows.length} 間店。\n\n加入你的清單？（會新增一份清單，不會動到你現有的資料）`))return;
+  let nm=name;const taken=n=>S.lists.some(l=>l.name===n);
+  if(taken(nm)){const dt=new Date(),tag=`${dt.getMonth()+1}/${dt.getDate()}`;nm=`${name}（分享 ${tag}）`;for(let i=2;taken(nm);i++)nm=`${name}（分享 ${tag}-${i}）`}
+  const id=uid();S.lists.push({id,name:nm});S.cur=id;
+  const str=(v,n)=>String(v==null?'':v).slice(0,n),url=v=>isUrl(v)?String(v).slice(0,500):'';
+  rows.forEach(a=>{if(!Array.isArray(a)||!a[0])return;
+    S.stores.push({id:uid(),listId:id,name:str(a[0],40),cuisine:CUISINES[a[1]]?a[1]:'其他',portion:a[2] in PORTION?a[2]:'正常',temp:['熱湯熱食','都可以','清爽涼食'].includes(a[3])?a[3]:'都可以',price:Math.max(0,+a[4]||0),map:url(a[5]),deliveryUrl:url(a[6]),dine:!!a[7]||!a[8],deliver:!!a[8],sample:false})});
+  sel.clear();render();
+}
+addEventListener('hashchange',()=>takeShare());
+render();takeShare();
+</script>
+</body>
+</html>
