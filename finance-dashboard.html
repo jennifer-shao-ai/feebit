@@ -218,7 +218,7 @@ tr.total-row td:first-child{background:var(--gray-100)!important}
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
 
-  <div class="sidebar-footer">v3.0 · Feebit © 2026</div>
+  <div class="sidebar-footer">v4.0 · Feebit © 2026</div>
 </div>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
@@ -227,7 +227,7 @@ tr.total-row td:first-child{background:var(--gray-100)!important}
   <div class="topbar">
     <div style="display:flex;align-items:center;gap:10px">
       <button class="btn-hamburger" onclick="toggleSidebar()">☰</button>
-      <span class="topbar-title">帳務分析 <span style="font-size:11px;font-weight:400;color:var(--gray-500);">v3.0</span></span>
+      <span class="topbar-title">帳務分析 <span style="font-size:11px;font-weight:400;color:var(--gray-500);">v4.0</span></span>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <button class="btn btn-outline" onclick="openDbModal()" style="font-size:12px;padding:4px 10px">⚙️ 初始化DB</button>
@@ -237,7 +237,7 @@ tr.total-row td:first-child{background:var(--gray-100)!important}
       <button class="btn btn-outline" onclick="openDeleteModal()" style="font-size:12px;padding:4px 10px;color:#e53e3e;border-color:#e53e3e">🗑 刪除月份資料</button>
       <button class="btn btn-primary" onclick="document.getElementById('csv-input').click()" style="font-size:12px;padding:4px 12px">⬆ 上傳CSV</button>
       <input type="file" id="csv-input" accept=".csv" style="display:none">
-      <span class="topbar-badge">v3.0</span>
+      <span class="topbar-badge">v4.0</span>
     </div>
   </div>
 
@@ -328,6 +328,7 @@ tr.total-row td:first-child{background:var(--gray-100)!important}
               <div style="display:flex;gap:4px">
                 <button id="zj-toggle-btn" onclick="toggleZhoujuan()" class="zj-toggle excluded" title="週轉金還款">週轉金排除中</button>
                 <button id="sh-toggle-btn" onclick="toggleShareholder()" class="zj-toggle excluded" title="股東費用（含 Ricky）">股東排除中</button>
+                <button id="dbs-toggle-btn" onclick="toggleDbs()" class="zj-toggle excluded" title="星展環星匯台幣帳戶（台幣轉入再付廠商貨款，收入與支出一併排除）">星展排除中</button>
               </div>
             </div>
           </div>
@@ -623,6 +624,8 @@ let pieC, lineC, barC;
 let curFromDate='', curToDate='';
 let curExcludeZhoujuan=true;
 let curExcludeShareholder=true;
+let curExcludeDbs=true; // 星展環星匯-台幣：台幣轉入再付廠商貨款，收入與支出一併排除
+const DBS_ACCOUNT='飛比特星展環星匯-台幣';
 let curCurrencyFilter='TWD'; // 'TWD' or 'USD' — no "all" option
 const FX_KEY='feebit_fx_rates';
 const BAL_HIDDEN_KEY='feebit_bal_hidden';
@@ -639,11 +642,13 @@ function getDisplayData(){
   if(curCurrencyFilter) d=d.filter(r=>normCur(r.currency)===curCurrencyFilter);
   if(curExcludeZhoujuan) d=d.filter(r=>!isZhoujuan(r));
   if(curExcludeShareholder) d=d.filter(r=>!isShareholder(r));
+  if(curExcludeDbs) d=d.filter(r=>(r.payee||'').trim()!==DBS_ACCOUNT);
   d=d.filter(r=>!isSecondaryPayee(r)); // 排除所有餘額/儲值帳戶收支
   return d;
 }
 function toggleZhoujuan(){ curExcludeZhoujuan=!curExcludeZhoujuan; renderAll(); }
 function toggleShareholder(){ curExcludeShareholder=!curExcludeShareholder; renderAll(); }
+function toggleDbs(){ curExcludeDbs=!curExcludeDbs; renderAll(); }
 function setCurrencyFilter(cur){ curCurrencyFilter=cur; renderAll(); }
 
 function renderAcctFilter(){
@@ -812,6 +817,8 @@ function renderAll(){
   if(shEl) shEl.textContent=shRecs.length?`股東費用：${shRecs.length} 筆，${fmt(shAmt)}`:'';
   const shBtn=document.getElementById('sh-toggle-btn');
   if(shBtn){ shBtn.textContent=curExcludeShareholder?'股東排除中':'股東列入中'; shBtn.className='zj-toggle '+(curExcludeShareholder?'excluded':'included'); }
+  const dbsBtn=document.getElementById('dbs-toggle-btn');
+  if(dbsBtn){ dbsBtn.textContent=curExcludeDbs?'星展排除中':'星展列入中'; dbsBtn.className='zj-toggle '+(curExcludeDbs?'excluded':'included'); }
   setPieMode(curPieMode, true);
   renderLine(); renderBar(); renderTable();
   showUnmapped();
