@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>成本計算機 — 飛比特</title>
+<link rel="icon" href="favicon.svg">
+<style>
+:root{
+  --bg:#f3f4f6;--card:#fff;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;
+  --primary:#2563eb;--primary-soft:#dbeafe;
+  --good:#16a34a;--good-soft:#dcfce7;--warn:#d97706;--warn-soft:#fef9c3;--bad:#dc2626;--bad-soft:#fee2e2;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang TC','Microsoft JhengHei',sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}
+.wrap{max-width:980px;margin:0 auto;padding:20px 16px 60px}
+header{margin-bottom:18px}
+h1{font-size:22px;font-weight:800}
+.sub{color:var(--muted);font-size:13px;margin-top:4px}
+.card{background:var(--card);border-radius:10px;padding:18px;box-shadow:0 1px 3px rgba(0,0,0,.07);margin-bottom:16px}
+.card h2{font-size:14px;font-weight:700;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.fg label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px}
+.pfx{display:flex;align-items:center;border:1.5px solid var(--line);border-radius:7px;background:#fff;padding:0 10px}
+.pfx:focus-within{border-color:var(--primary)}
+.pfx span{color:var(--muted);font-size:13px}
+.pfx input{border:none;outline:none;width:100%;padding:9px 6px;font-size:15px;font-family:inherit;background:transparent}
+.hint{font-size:11.5px;color:var(--muted);margin-top:4px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.chip{border:1px solid var(--line);background:#fff;border-radius:16px;padding:3px 11px;font-size:12px;cursor:pointer;font-family:inherit}
+.chip.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:640px}
+th{text-align:right;font-size:11.5px;color:var(--muted);font-weight:600;padding:8px 10px;border-bottom:2px solid var(--line);white-space:nowrap}
+td{text-align:right;padding:10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+td.name{font-weight:700}
+td.name small{display:block;font-weight:400;color:var(--muted);font-size:11px;white-space:normal}
+.rate{width:54px;border:1px dashed var(--muted);border-radius:5px;padding:2px 4px;text-align:right;font-size:13px;font-family:inherit;background:transparent}
+.rate.changed{border-color:var(--warn);background:var(--warn-soft)}
+.badge{display:inline-block;padding:2px 9px;border-radius:12px;font-weight:700;font-size:12.5px}
+.b-good{background:var(--good-soft);color:var(--good)}
+.b-warn{background:var(--warn-soft);color:var(--warn)}
+.b-bad{background:var(--bad-soft);color:var(--bad)}
+.profit-pos{color:var(--good);font-weight:600}
+.profit-neg{color:var(--bad);font-weight:600}
+.sug{color:var(--primary);font-weight:700}
+.empty{padding:26px;text-align:center;color:var(--muted);font-size:13px}
+.status{font-size:11.5px;color:var(--muted)}
+.status.err{color:var(--warn)}
+.formula{font-size:12px;color:var(--muted);line-height:1.8}
+.formula b{color:var(--ink)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.btn{border:1px solid var(--line);background:#fff;border-radius:7px;padding:7px 14px;font-size:13px;cursor:pointer;font-family:inherit}
+.btn:hover{border-color:var(--primary);color:var(--primary)}
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 16px;border-radius:18px;font-size:12.5px;opacity:0;pointer-events:none;transition:.2s}
+#toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🧮 成本計算機</h1>
+    <p class="sub">輸入成本與售價，一次看各平台的抽成、實收、利潤與毛利率。成本與售價只在你自己的瀏覽器裡算，不會上傳、不會儲存。</p>
+  </header>
+
+  <div class="card">
+    <h2>💵 輸入</h2>
+    <div class="grid">
+      <div class="fg">
+        <label for="cost">成本（含稅、含運進貨成本）</label>
+        <div class="pfx"><span>$</span><input id="cost" type="number" inputmode="decimal" min="0" step="any" placeholder="0"></div>
+      </div>
+      <div class="fg">
+        <label for="extra">其他費用（包材／贈品／運費，選填）</label>
+        <div class="pfx"><span>$</span><input id="extra" type="number" inputmode="decimal" min="0" step="any" placeholder="0"></div>
+      </div>
+      <div class="fg">
+        <label for="price">售價（平台上架價／供貨價）</label>
+        <div class="pfx"><span>$</span><input id="price" type="number" inputmode="decimal" min="0" step="any" placeholder="0"></div>
+      </div>
+      <div class="fg">
+        <label for="target">目標毛利率（算建議售價用）</label>
+        <div class="pfx"><input id="target" type="number" inputmode="decimal" min="1" max="95" step="any" value="20"><span>%</span></div>
+        <div class="chips" id="chips"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="padding:0">
+    <div style="padding:16px 18px 6px;display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px">
+      <h2 style="margin:0">📊 各平台試算</h2>
+      <span class="status" id="status">載入抽成資料中…</span>
+    </div>
+    <div class="tbl" id="result"><div class="empty">請先輸入成本與售價</div></div>
+    <p class="hint" style="padding:6px 18px 14px">抽成欄可以臨時改著試算（會標黃色），重新整理就回到公司共用的數字，不會影響別人。</p>
+  </div>
+
+  <div class="card">
+    <h2>📐 算法</h2>
+    <p class="formula">
+      <b>總成本</b> = 成本 + 其他費用<br>
+      <b>實收</b> = 售價 × (1 − 抽成%)　（酷澎、寶雅供貨價抽成為 0）<br>
+      <b>利潤</b> = 實收 − 總成本<br>
+      <b>毛利率</b> = 利潤 ÷ 實收（brand-trend「利潤設定」要填的就是這個）；另列「利潤佔售價」供參考<br>
+      <b>建議售價</b> = 總成本 ÷ (1 − 抽成%) ÷ (1 − 目標毛利率%)，進位到整數
+    </p>
+    <div class="actions"><button class="btn" id="copy">📋 複製結果</button><button class="btn" id="reset">清空輸入</button></div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+// 抽成資料來源：data/platform-fees.json（全公司共用，改一處、大家同步）。
+// 下面是讀不到檔案時（斷網、file:// 開啟）的備援，內容要跟 JSON 保持一致。
+var FALLBACK = {
+  updated: '2026-11-22',
+  platforms: [
+    {id:'shopee-lalav',name:'蝦皮 LaLaV',fee:22,note:'抽成後實收'},
+    {id:'shopee-other',name:'蝦皮 其他店',fee:15,note:'抽成後實收'},
+    {id:'official',name:'官網 Shopline',fee:5,note:'金流＋平台費'},
+    {id:'carrefour',name:'家樂福商城',fee:15,note:'抽成後實收'},
+    {id:'momo',name:'momo',fee:35,note:'綜合扣抵（固定 35%）'},
+    {id:'coupang',name:'酷澎（供貨價）',fee:0,note:'供貨價已是實收，不扣抽成'},
+    {id:'poya',name:'寶雅（供貨價）',fee:0,note:'供貨價已是實收，不扣抽成'}
+  ]
+};
+var platforms = [];      // 共用抽成（唯讀來源）
+var overrides = {};      // 本次臨時改的抽成 {id: 數字}
+
+function $(id){ return document.getElementById(id); }
+function num(id){ var v = parseFloat($(id).value); return isFinite(v) ? v : 0; }
+function fmt(x){ return Math.round(x).toLocaleString('zh-TW'); }
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function rateOf(p){ return overrides.hasOwnProperty(p.id) ? overrides[p.id] : p.fee; }
+
+function compute(p, total, price, target){
+  var r = rateOf(p) / 100;
+  var received = price * (1 - r);
+  var out = {r: r, received: received, profit: null, margin: null, pctPrice: null, sug: null};
+  if (price > 0 && received > 0){
+    out.profit = received - total;
+    out.margin = out.profit / received;
+    out.pctPrice = out.profit / price;
+  }
+  var den = (1 - r) * (1 - target / 100);
+  if (total > 0 && den > 0) out.sug = Math.ceil(total / den);
+  return out;
+}
+
+function render(){
+  var total = num('cost') + num('extra');
+  var price = num('price');
+  var target = num('target') || 20;
+  if (total <= 0 && price <= 0){ $('result').innerHTML = '<div class="empty">請先輸入成本與售價</div>'; return; }
+  var rows = platforms.map(function(p){
+    var c = compute(p, total, price, target);
+    var changed = overrides.hasOwnProperty(p.id);
+    var m = c.margin === null ? '—' :
+      '<span class="badge ' + (c.margin >= 0.3 ? 'b-good' : c.margin >= 0.15 ? 'b-warn' : 'b-bad') + '">' + (c.margin * 100).toFixed(1) + '%</span>';
+    var pf = c.profit === null ? '—' :
+      '<span class="' + (c.profit >= 0 ? 'profit-pos' : 'profit-neg') + '">$' + fmt(c.profit) + '</span>';
+    var sg = c.sug ? '<span class="sug">$' + fmt(c.sug) + '</span>' : (total > 0 ? '<span style="color:var(--muted)">目標過高</span>' : '—');
+    return '<tr>' +
+      '<td class="name">' + esc(p.name) + (p.note ? '<small>' + esc(p.note) + '</small>' : '') + '</td>' +
+      '<td><input class="rate' + (changed ? ' changed' : '') + '" type="number" step="any" min="0" max="99" data-id="' + esc(p.id) + '" value="' + rateOf(p) + '">%</td>' +
+      '<td>' + (price > 0 ? '$' + fmt(c.received) : '—') + '</td>' +
+      '<td>' + pf + '</td>' +
+      '<td>' + m + '</td>' +
+      '<td>' + (c.pctPrice === null ? '—' : (c.pctPrice * 100).toFixed(1) + '%') + '</td>' +
+      '<td>' + sg + '</td></tr>';
+  }).join('');
+  $('result').innerHTML = '<table><thead><tr><th>平台</th><th>抽成</th><th>實收</th><th>利潤</th><th>毛利率</th><th>利潤佔售價</th><th>建議售價（目標' + target + '%）</th></tr></thead><tbody>' + rows + '</tbody></table>';
+}
+
+// 只重畫表格。抽成欄打字時不重畫，避免輸入框失去焦點
+$('result').addEventListener('input', function(e){
+  var t = e.target;
+  if (!t.classList.contains('rate')) return;
+  var id = t.getAttribute('data-id');
+  var v = parseFloat(t.value);
+  var p = platforms.filter(function(x){ return x.id === id; })[0];
+  if (!p) return;
+  if (isFinite(v) && v !== p.fee) overrides[id] = v; else delete overrides[id];
+  t.classList.toggle('changed', overrides.hasOwnProperty(id));
+  // 更新同一列的數字，不動輸入框
+  var total = num('cost') + num('extra'), price = num('price'), target = num('target') || 20;
+  var tr = t.closest('tr'), c = compute(p, total, price, target), cells = tr.children;
+  cells[2].textContent = price > 0 ? '$' + fmt(c.received) : '—';
+  cells[3].innerHTML = c.profit === null ? '—' : '<span class="' + (c.profit >= 0 ? 'profit-pos' : 'profit-neg') + '">$' + fmt(c.profit) + '</span>';
+  cells[4].innerHTML = c.margin === null ? '—' : '<span class="badge ' + (c.margin >= 0.3 ? 'b-good' : c.margin >= 0.15 ? 'b-warn' : 'b-bad') + '">' + (c.margin * 100).toFixed(1) + '%</span>';
+  cells[5].textContent = c.pctPrice === null ? '—' : (c.pctPrice * 100).toFixed(1) + '%';
+  cells[6].innerHTML = c.sug ? '<span class="sug">$' + fmt(c.sug) + '</span>' : (total > 0 ? '<span style="color:var(--muted)">目標過高</span>' : '—');
+});
+
+['cost','extra','price','target'].forEach(function(id){
+  $(id).addEventListener('input', function(){ if (id === 'target') syncChips(); render(); });
+});
+
+function syncChips(){
+  var t = num('target');
+  Array.prototype.forEach.call($('chips').children, function(b){ b.classList.toggle('on', parseFloat(b.dataset.v) === t); });
+}
+[15,20,25,30,35].forEach(function(v){
+  var b = document.createElement('button');
+  b.className = 'chip'; b.textContent = v + '%'; b.dataset.v = v;
+  b.addEventListener('click', function(){ $('target').value = v; syncChips(); render(); });
+  $('chips').appendChild(b);
+});
+
+function toast(msg){ var t = $('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(function(){ t.classList.remove('show'); }, 1600); }
+
+$('copy').addEventListener('click', function(){
+  var total = num('cost') + num('extra'), price = num('price'), target = num('target') || 20;
+  if (price <= 0){ toast('請先輸入售價'); return; }
+  var lines = ['平台\t抽成\t實收\t利潤\t毛利率\t建議售價(目標' + target + '%)'];
+  platforms.forEach(function(p){
+    var c = compute(p, total, price, target);
+    lines.push([p.name, rateOf(p) + '%', Math.round(c.received), c.profit === null ? '' : Math.round(c.profit), c.margin === null ? '' : (c.margin * 100).toFixed(1) + '%', c.sug || ''].join('\t'));
+  });
+  navigator.clipboard.writeText('成本' + total + '　售價' + price + '\n' + lines.join('\n')).then(function(){ toast('已複製'); }, function(){ toast('複製失敗，請手動選取'); });
+});
+$('reset').addEventListener('click', function(){
+  ['cost','extra','price'].forEach(function(id){ $(id).value = ''; });
+  overrides = {}; render();
+});
+
+function setStatus(msg, err){ var s = $('status'); s.textContent = msg; s.className = 'status' + (err ? ' err' : ''); }
+function useData(d, fromFile){
+  platforms = d.platforms;
+  setStatus('抽成資料更新日：' + d.updated + (fromFile ? '' : '（離線備援，可能不是最新）'), !fromFile);
+  render();
+}
+
+syncChips();
+fetch('data/platform-fees.json?t=' + Date.now(), {cache:'no-store'})
+  .then(function(r){ if (!r.ok) throw new Error(r.status); return r.json(); })
+  .then(function(d){
+    if (!d || !Array.isArray(d.platforms) || !d.platforms.length) throw new Error('格式不對');
+    useData(d, true);
+  })
+  .catch(function(){ useData(FALLBACK, false); });
+</script>
+</body>
+</html>
