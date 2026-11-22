@@ -1,0 +1,13 @@
+{
+  "updated": "2026-11-22",
+  "note": "全公司共用的平台抽成。改這個檔、部署後，所有同事的成本計算機重新整理就會同步。只放抽成比例，不放任何成本或售價。",
+  "platforms": [
+    { "id": "shopee-lalav", "name": "蝦皮 LaLaV", "fee": 22, "note": "抽成後實收" },
+    { "id": "shopee-other", "name": "蝦皮 其他店", "fee": 15, "note": "抽成後實收" },
+    { "id": "official", "name": "官網 Shopline", "fee": 5, "note": "金流＋平台費" },
+    { "id": "carrefour", "name": "家樂福商城", "fee": 15, "note": "抽成後實收" },
+    { "id": "momo", "name": "momo", "fee": 35, "note": "綜合扣抵（固定 35%）" },
+    { "id": "coupang", "name": "酷澎（供貨價）", "fee": 0, "note": "供貨價已是實收，不扣抽成" },
+    { "id": "poya", "name": "寶雅（供貨價）", "fee": 0, "note": "供貨價已是實收，不扣抽成" }
+  ]
+}
