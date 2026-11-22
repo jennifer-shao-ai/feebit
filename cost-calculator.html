@@ -100,7 +100,7 @@ td.name small{display:block;font-weight:400;color:var(--muted);font-size:11px;wh
     <h2>📐 算法</h2>
     <p class="formula">
       <b>總成本</b> = 成本 + 其他費用<br>
-      <b>實收</b> = 售價 × (1 − 抽成%)　（蝦皮抽成是總費用率，含基本抽成、免運、金流、稅金、人力包材等；活動日每月 6 天另加蝦幣。非蝦皮平台為暫估總費率）<br>
+      <b>實收</b> = 售價 × (1 − 抽成%)　<br>
       <b>利潤</b> = 實收 − 總成本<br>
       <b>毛利率</b> = 利潤 ÷ 實收（brand-trend「利潤設定」要填的就是這個）；另列「利潤佔售價」供參考<br>
       <b>建議售價</b> = 總成本 ÷ (1 − 抽成%) ÷ (1 − 目標毛利率%)，進位到整數
@@ -113,7 +113,7 @@ td.name small{display:block;font-weight:400;color:var(--muted);font-size:11px;wh
 <script>
 // 抽成資料來源：data/platform-fees.json（全公司共用，改一處、大家同步）。
 // 下面是讀不到檔案時（斷網、file:// 開啟）的備援，內容要跟 JSON 保持一致。
-var FALLBACK = {"updated": "2026-11-22", "platforms": [{"id": "shopee-lalav", "name": "蝦皮 LaLaV", "fee": 34.3, "eventFee": 39.3, "note": "商城美妝類：基本11.8＋免運6.5＋金流2.5＋聯盟3＋發票0.5＋稅5＋人力包材5；活動日加蝦幣5"}, {"id": "shopee-wanmei", "name": "蝦皮 玩美／寶媽", "fee": 27.5, "eventFee": 31.5, "note": "基本8＋免運6.5＋金流2.5＋發票0.5＋稅5＋人力包材5；活動日加蝦幣4"}, {"id": "shopee-sangdie", "name": "蝦皮 桑爹", "fee": 22, "eventFee": 26, "note": "基本8＋免運6.5＋金流2.5＋人力包材5；活動日加蝦幣4"}, {"id": "official", "name": "官網 Shopline", "fee": 26.2, "note": "暫估（Jennifer 2026-11-22 指定，之後有明細再改）"}, {"id": "momo", "name": "momo", "fee": 40, "note": "暫估（Jennifer 2026-11-22 指定，之後有明細再改）"}, {"id": "mo-plus", "name": "mo+", "fee": 20, "note": "暫估（Jennifer 2026-11-22 指定，之後有明細再改）"}, {"id": "carrefour", "name": "家樂福商城", "fee": 20, "note": "暫估（Jennifer 2026-11-22 指定，之後有明細再改）"}, {"id": "coupang", "name": "酷澎", "fee": 20, "note": "暫估（Jennifer 2026-11-22 指定，之後有明細再改）"}, {"id": "poya", "name": "寶雅", "fee": 20, "note": "暫估（Jennifer 2026-11-22 指定，之後有明細再改）"}]};
+var FALLBACK = {"updated": "2026-11-22", "platforms": [{"id": "shopee-lalav", "name": "蝦皮商城賣場", "fee": 34.3, "eventFee": 39.3}, {"id": "shopee-wanmei", "name": "蝦皮一般賣場", "fee": 27.5, "eventFee": 31.5}, {"id": "shopee-sangdie", "name": "蝦皮個人賣場（免開發票）", "fee": 22, "eventFee": 26}, {"id": "official", "name": "官網 Shopline", "fee": 26.2}, {"id": "momo", "name": "momo", "fee": 40}, {"id": "mo-plus", "name": "mo+", "fee": 20}, {"id": "carrefour", "name": "家樂福商城", "fee": 20}, {"id": "coupang", "name": "酷澎", "fee": 20}, {"id": "poya", "name": "寶雅", "fee": 20}]};
 var platforms = [];      // 共用抽成（唯讀來源）
 var overrides = {};      // 本次臨時改的抽成 {id: 數字}
 
@@ -201,7 +201,7 @@ function syncChips(){
   var t = num('target');
   Array.prototype.forEach.call($('chips').children, function(b){ b.classList.toggle('on', parseFloat(b.dataset.v) === t); });
 }
-[15,20,25,30,35].forEach(function(v){
+[15,20,25,30,40,50].forEach(function(v){
   var b = document.createElement('button');
   b.className = 'chip'; b.textContent = v + '%'; b.dataset.v = v;
   b.addEventListener('click', function(){ $('target').value = v; syncChips(); render(); });
