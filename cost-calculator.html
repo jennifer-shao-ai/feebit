@@ -102,7 +102,7 @@ td.name small{display:block;font-weight:400;color:var(--muted);font-size:11px;wh
       <b>總成本</b> = 成本 + 其他費用<br>
       <b>實收</b> = 售價 × (1 − 抽成%)　<br>
       <b>利潤</b> = 實收 − 總成本<br>
-      <b>毛利率</b> = 利潤 ÷ 實收（brand-trend「利潤設定」要填的就是這個）；另列「利潤佔售價」供參考<br>
+      <b>毛利率</b> = 利潤 ÷ 實收（brand-trend「利潤設定」要填的就是這個）<br>
       <b>建議售價</b> = 總成本 ÷ (1 − 抽成%) ÷ (1 − 目標毛利率%)，進位到整數
     </p>
     <div class="actions"><button class="btn" id="copy">📋 複製結果</button><button class="btn" id="reset">清空輸入</button></div>
@@ -167,10 +167,9 @@ function render(){
       '<td>' + (price > 0 ? '$' + fmt(c.received) : '—') + '</td>' +
       '<td>' + pf + '</td>' +
       '<td>' + m + '</td>' +
-      '<td>' + (c.pctPrice === null ? '—' : (c.pctPrice * 100).toFixed(1) + '%') + '</td>' +
       '<td>' + sg + '</td></tr>';
   }).join('');
-  $('result').innerHTML = '<table><thead><tr><th>平台</th><th>抽成</th><th>實收</th><th>利潤</th><th>毛利率</th><th>利潤佔售價</th><th>建議售價（目標' + target + '%）</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  $('result').innerHTML = '<table><thead><tr><th>平台</th><th>抽成</th><th>實收</th><th>利潤</th><th>毛利率</th><th>建議售價（目標' + target + '%）</th></tr></thead><tbody>' + rows + '</tbody></table>';
 }
 
 // 只重畫表格。抽成欄打字時不重畫，避免輸入框失去焦點
@@ -189,8 +188,7 @@ $('result').addEventListener('input', function(e){
   cells[2].textContent = price > 0 ? '$' + fmt(c.received) : '—';
   cells[3].innerHTML = c.profit === null ? '—' : '<span class="' + (c.profit >= 0 ? 'profit-pos' : 'profit-neg') + '">$' + fmt(c.profit) + '</span>';
   cells[4].innerHTML = c.margin === null ? '—' : '<span class="badge ' + (c.margin >= 0.3 ? 'b-good' : c.margin >= 0.15 ? 'b-warn' : 'b-bad') + '">' + (c.margin * 100).toFixed(1) + '%</span>';
-  cells[5].textContent = c.pctPrice === null ? '—' : (c.pctPrice * 100).toFixed(1) + '%';
-  cells[6].innerHTML = c.sug ? '<span class="sug">$' + fmt(c.sug) + '</span>' : (total > 0 ? '<span style="color:var(--muted)">目標過高</span>' : '—');
+  cells[5].innerHTML = c.sug ? '<span class="sug">$' + fmt(c.sug) + '</span>' : (total > 0 ? '<span style="color:var(--muted)">目標過高</span>' : '—');
 });
 
 ['cost','extra','price','target'].forEach(function(id){
