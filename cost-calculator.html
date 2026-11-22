@@ -100,7 +100,7 @@ td.name small{display:block;font-weight:400;color:var(--muted);font-size:11px;wh
     <h2>📐 算法</h2>
     <p class="formula">
       <b>總成本</b> = 成本 + 其他費用<br>
-      <b>實收</b> = 售價 × (1 − 抽成%)　（酷澎、寶雅供貨價抽成為 0）<br>
+      <b>實收</b> = 售價 × (1 − 抽成%)　（蝦皮抽成是總費用率，含基本抽成、免運、金流、稅金、人力包材等；活動日每月 6 天另加蝦幣。酷澎、寶雅供貨價抽成為 0）<br>
       <b>利潤</b> = 實收 − 總成本<br>
       <b>毛利率</b> = 利潤 ÷ 實收（brand-trend「利潤設定」要填的就是這個）；另列「利潤佔售價」供參考<br>
       <b>建議售價</b> = 總成本 ÷ (1 − 抽成%) ÷ (1 − 目標毛利率%)，進位到整數
@@ -113,18 +113,7 @@ td.name small{display:block;font-weight:400;color:var(--muted);font-size:11px;wh
 <script>
 // 抽成資料來源：data/platform-fees.json（全公司共用，改一處、大家同步）。
 // 下面是讀不到檔案時（斷網、file:// 開啟）的備援，內容要跟 JSON 保持一致。
-var FALLBACK = {
-  updated: '2026-11-22',
-  platforms: [
-    {id:'shopee-lalav',name:'蝦皮 LaLaV',fee:22,note:'抽成後實收'},
-    {id:'shopee-other',name:'蝦皮 其他店',fee:15,note:'抽成後實收'},
-    {id:'official',name:'官網 Shopline',fee:5,note:'金流＋平台費'},
-    {id:'carrefour',name:'家樂福商城',fee:15,note:'抽成後實收'},
-    {id:'momo',name:'momo',fee:35,note:'綜合扣抵（固定 35%）'},
-    {id:'coupang',name:'酷澎（供貨價）',fee:0,note:'供貨價已是實收，不扣抽成'},
-    {id:'poya',name:'寶雅（供貨價）',fee:0,note:'供貨價已是實收，不扣抽成'}
-  ]
-};
+var FALLBACK = {"updated": "2026-11-22", "platforms": [{"id": "shopee-lalav", "name": "蝦皮 LaLaV", "fee": 34.3, "eventFee": 39.3, "note": "商城美妝類：基本11.8＋免運6.5＋金流2.5＋聯盟3＋發票0.5＋稅5＋人力包材5；活動日加蝦幣5"}, {"id": "shopee-wanmei", "name": "蝦皮 玩美／寶媽", "fee": 27.5, "eventFee": 31.5, "note": "基本8＋免運6.5＋金流2.5＋發票0.5＋稅5＋人力包材5；活動日加蝦幣4"}, {"id": "shopee-sangdie", "name": "蝦皮 桑爹", "fee": 22, "eventFee": 26, "note": "基本8＋免運6.5＋金流2.5＋人力包材5；活動日加蝦幣4"}, {"id": "official", "name": "官網 Shopline", "fee": 5, "note": "金流＋平台費"}, {"id": "carrefour", "name": "家樂福商城", "fee": 15, "note": "抽成後實收"}, {"id": "momo", "name": "momo", "fee": 35, "note": "綜合扣抵（固定 35%）"}, {"id": "coupang", "name": "酷澎（供貨價）", "fee": 0, "note": "供貨價已是實收，不扣抽成"}, {"id": "poya", "name": "寶雅（供貨價）", "fee": 0, "note": "供貨價已是實收，不扣抽成"}]};
 var platforms = [];      // 共用抽成（唯讀來源）
 var overrides = {};      // 本次臨時改的抽成 {id: 數字}
 
@@ -132,6 +121,17 @@ function $(id){ return document.getElementById(id); }
 function num(id){ var v = parseFloat($(id).value); return isFinite(v) ? v : 0; }
 function fmt(x){ return Math.round(x).toLocaleString('zh-TW'); }
 function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+// 有 eventFee 的平台拆成「一般日」「活動日」兩列
+function expand(list){
+  var out = [];
+  list.forEach(function(p){
+    if (p.eventFee != null){
+      out.push({id:p.id, name:p.name + '・一般日', fee:p.fee, note:p.note});
+      out.push({id:p.id + ':event', name:p.name + '・活動日', fee:p.eventFee, note:p.note});
+    } else out.push(p);
+  });
+  return out;
+}
 function rateOf(p){ return overrides.hasOwnProperty(p.id) ? overrides[p.id] : p.fee; }
 
 function compute(p, total, price, target){
@@ -227,7 +227,7 @@ $('reset').addEventListener('click', function(){
 
 function setStatus(msg, err){ var s = $('status'); s.textContent = msg; s.className = 'status' + (err ? ' err' : ''); }
 function useData(d, fromFile){
-  platforms = d.platforms;
+  platforms = expand(d.platforms);
   setStatus('抽成資料更新日：' + d.updated + (fromFile ? '' : '（離線備援，可能不是最新）'), !fromFile);
   render();
 }
