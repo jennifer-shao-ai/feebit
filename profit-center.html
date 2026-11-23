@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>全產品成本利潤中心 — 飛比特</title>
+<link rel="icon" href="favicon.svg">
+<script src="auth.js"></script>
+<style>
+:root{
+  --bg:#f3f4f6;--card:#fff;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;
+  --primary:#2563eb;--primary-soft:#dbeafe;
+  --good:#16a34a;--good-soft:#dcfce7;--warn:#d97706;--warn-soft:#fef9c3;--bad:#dc2626;--bad-soft:#fee2e2;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang TC','Microsoft JhengHei',sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;font-size:14px}
+.wrap{max-width:1280px;margin:0 auto;padding:18px 16px 60px}
+h1{font-size:22px;font-weight:800}
+.sub{color:var(--muted);font-size:12.5px;margin-top:3px}
+.topbar{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.status{font-size:12px;color:var(--muted)}
+.status.err{color:var(--bad);font-weight:600}
+.tabs{display:flex;gap:4px;border-bottom:2px solid var(--line);margin-bottom:14px;flex-wrap:wrap}
+.tab{padding:8px 16px;border:none;background:none;font-size:14px;font-family:inherit;cursor:pointer;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px}
+.tab.on{color:var(--primary);border-bottom-color:var(--primary);font-weight:700}
+.card{background:var(--card);border-radius:10px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.07);margin-bottom:14px}
+.card h2{font-size:14px;font-weight:700;margin-bottom:10px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+input[type=text],input[type=number],input[type=password],input[type=date],select,textarea{border:1.5px solid var(--line);border-radius:7px;padding:7px 10px;font-size:14px;font-family:inherit;background:#fff;color:var(--ink)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--primary)}
+#q{flex:1;min-width:240px}
+.btn{border:1px solid var(--line);background:#fff;border-radius:7px;padding:7px 14px;font-size:13px;cursor:pointer;font-family:inherit}
+.btn:hover{border-color:var(--primary);color:var(--primary)}
+.btn.pri{background:var(--primary);color:#fff;border-color:var(--primary)}
+.btn.pri:hover{color:#fff;opacity:.9}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:#fff;border-radius:16px;padding:3px 12px;font-size:12.5px;cursor:pointer;font-family:inherit}
+.chip.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.seg{display:inline-flex;border:1.5px solid var(--line);border-radius:7px;overflow:hidden}
+.seg button{border:none;background:#fff;padding:7px 14px;font-size:13px;cursor:pointer;font-family:inherit}
+.seg button.on{background:var(--primary);color:#fff}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:right;font-size:11.5px;color:var(--muted);font-weight:600;padding:7px 8px;border-bottom:2px solid var(--line);white-space:nowrap;position:sticky;top:0;background:#fff}
+td{text-align:right;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th.l,td.l{text-align:left}
+td.name{white-space:normal;min-width:240px;max-width:420px}
+td.name small{display:block;color:var(--muted);font-size:11px}
+tr.click{cursor:pointer}
+tr.click:hover td{background:#f8fafc}
+.thumb{width:36px;height:36px;object-fit:cover;border-radius:5px;background:#f3f4f6;display:block}
+.pos{color:var(--good);font-weight:600}.neg{color:var(--bad);font-weight:700}.warn{color:var(--warn);font-weight:600}
+.badge{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11.5px;font-weight:600}
+.b-bad{background:var(--bad-soft);color:var(--bad)}.b-warn{background:var(--warn-soft);color:var(--warn)}.b-good{background:var(--good-soft);color:var(--good)}.b-gray{background:#f3f4f6;color:var(--muted)}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.stat{background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.07);cursor:pointer;border:2px solid transparent}
+.stat:hover{border-color:var(--primary)}
+.stat b{font-size:26px;display:block}
+.stat span{color:var(--muted);font-size:12.5px}
+.hint{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.7}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.fg label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px}
+.fg input,.fg select{width:100%}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-start;justify-content:center;padding:30px 12px;overflow:auto;z-index:50}
+#modal.show{display:flex}
+#modal .box{background:#fff;border-radius:12px;max-width:980px;width:100%;padding:20px;position:relative}
+#modal .x{position:absolute;top:10px;right:14px;border:none;background:none;font-size:22px;cursor:pointer;color:var(--muted)}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:6px 18px;font-size:13px;margin:10px 0}
+.kv span{color:var(--muted)}
+.hl td{background:#fffbeb}
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 16px;border-radius:18px;font-size:12.5px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:99}
+#toast.show{opacity:1}
+.banner{background:var(--warn-soft);border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div>
+      <h1>全產品成本利潤中心</h1>
+      <div class="sub">資料即時讀自 Ragic「全產品總表」，看得到哪些成本由你的 Ragic 權限決定。成本只在這個瀏覽器分頁的記憶體裡，不存檔、不上傳。</div>
+    </div>
+    <div style="text-align:right">
+      <div class="status" id="status">尚未載入</div>
+      <div class="row" style="justify-content:flex-end;margin-top:6px">
+        <button class="btn" onclick="gotoTab('settings')">設定金鑰</button>
+        <button class="btn pri" id="reloadBtn" onclick="loadAll(true)">載入／重新載入</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs" id="tabs">
+    <button class="tab on" data-t="search">商品與供貨商搜尋</button>
+    <button class="tab" data-t="check">平台檢查／調價清單</button>
+    <button class="tab" data-t="missing">缺漏儀表板</button>
+    <button class="tab" data-t="sandbox">新品詢價試算</button>
+    <button class="tab" data-t="settings">設定</button>
+  </div>
+
+  <!-- 搜尋 -->
+  <div id="p-search">
+    <div class="card">
+      <div class="row">
+        <div class="seg" id="modeSeg"><button class="on" data-m="product">搜商品</button><button data-m="supplier">搜供貨商</button></div>
+        <input type="text" id="q" placeholder="商品名、品牌、貨號、條碼、關鍵字（多個詞用空白，全部符合）">
+        <select id="sortSel">
+          <option value="">排序：Ragic 順序</option>
+          <option value="margin">最差利潤率（新費率）低→高</option>
+          <option value="cost">成本 高→低</option>
+          <option value="lastIn">最後進貨日 新→舊</option>
+        </select>
+      </div>
+      <div class="chips" style="margin-top:10px" id="chips"></div>
+      <div class="row" style="margin-top:8px">
+        <select id="brandSel"><option value="">全部品牌</option></select>
+        <span class="status" id="supFilterTag"></span>
+        <span class="status" id="count"></span>
+      </div>
+    </div>
+    <div class="card"><div class="tbl" id="results"><div class="empty">按右上角「載入」，會用你在設定貼的 Ragic 金鑰讀全產品總表（約 5～10 秒）。</div></div></div>
+  </div>
+
+  <!-- 平台檢查 -->
+  <div id="p-check" style="display:none">
+    <div class="card">
+      <h2>選一個賣場價格欄，看誰低於打平價（今天費率 vs 12/11 新費率）</h2>
+      <div class="row">
+        <div class="fg"><label>賣場價格欄</label><select id="chkField"></select></div>
+        <div class="fg"><label>目標利潤率 %（0＝只求打平）</label><input type="number" id="chkTarget" value="0" step="1" style="width:110px"></div>
+        <div class="fg"><label>顯示</label><select id="chkMode">
+          <option value="lowNew">現價低於「新費率」打平價</option>
+          <option value="lowToday">現價低於「今天費率」打平價</option>
+          <option value="all">全部有價格的商品</option></select></div>
+        <div class="fg" style="align-self:flex-end"><button class="btn" onclick="exportCheck()">匯出調價清單 CSV（不含成本）</button></div>
+      </div>
+      <div class="hint" id="chkNote"></div>
+    </div>
+    <div class="card"><div class="tbl" id="chkResults"></div></div>
+  </div>
+
+  <!-- 缺漏 -->
+  <div id="p-missing" style="display:none">
+    <div class="card"><h2>缺資料的商品（已排除「已停產」與隱藏品牌）</h2><div class="stats" id="missStats"></div>
+    <div class="hint">點卡片會跳到搜尋頁並套用篩選。「待配對新品」（採購單新品沒貨號）要等第二階段讀採購單後才會有。</div></div>
+  </div>
+
+  <!-- 新品試算 -->
+  <div id="p-sandbox" style="display:none">
+    <div class="card">
+      <h2>新品詢價試算（還沒有貨號、不用進 Ragic，直接算）</h2>
+      <div class="grid">
+        <div class="fg"><label>幣別</label><select id="sbCur"></select></div>
+        <div class="fg"><label>原幣進貨價</label><input type="number" id="sbPrice" step="any" placeholder="例如 6.7"></div>
+        <div class="fg"><label>匯率（原幣→台幣）</label><input type="number" id="sbRate" step="any"></div>
+        <div class="fg"><label>運費＋關稅係數</label><input type="number" id="sbDuty" step="0.01"></div>
+        <div class="fg"><label>預計售價（選填）</label><input type="number" id="sbSell" step="any" placeholder="算各平台利潤"></div>
+      </div>
+      <div class="hint" id="sbFormula"></div>
+    </div>
+    <div class="card" id="sbOut"></div>
+  </div>
+
+  <!-- 設定 -->
+  <div id="p-settings" style="display:none">
+    <div class="card">
+      <h2>Ragic 金鑰</h2>
+      <div class="row">
+        <input type="password" id="keyInput" placeholder="貼上你的 Ragic API 金鑰（只存在這個瀏覽器）" style="flex:1;min-width:260px" autocomplete="off">
+        <button class="btn pri" onclick="saveKey()">儲存</button>
+        <button class="btn" onclick="clearKey()">清除</button>
+      </div>
+      <div class="hint">金鑰由你自己貼，不會寫進網頁或網址。需要有「全產品總表」的讀取權限；成本欄看不看得到由你的 Ragic 權限決定。</div>
+    </div>
+    <div class="card">
+      <h2>成本換算</h2>
+      <div class="grid">
+        <div class="fg"><label>入系統毛利（Ragic 成本單價＝真實成本 ÷ (1−此值)）</label><input type="number" id="setSys" step="0.01"></div>
+        <div class="fg"><label>運費＋關稅係數（新品試算預設）</label><input type="number" id="setDuty" step="0.01"></div>
+      </div>
+      <h2 style="margin-top:16px">匯率（原幣→台幣）</h2>
+      <div class="grid" id="setCur"></div>
+      <h2 style="margin-top:16px">價格階梯標註</h2>
+      <div class="grid" id="setLadder"></div>
+      <h2 style="margin-top:16px">隱藏品牌（逗號分隔，搜尋預設不顯示）</h2>
+      <textarea id="setHidden" rows="2" style="width:100%" placeholder="例如：淘寶, 商品組合"></textarea>
+      <div class="actions" style="margin-top:10px"><button class="btn pri" onclick="saveSettings()">儲存設定</button></div>
+    </div>
+    <div class="card"><h2>平台費率（唯讀，來自 data/fee-schedule.json）</h2><div class="tbl" id="feeView"></div>
+      <div class="hint">要改費率請改 <code>data/fee-schedule.json</code> 並部署，全員同步。有稅金的平台成本乘 1.05，沒有稅金的（桑爹）不乘，照你 Sheet 的寫法。</div></div>
+  </div>
+</div>
+
+<div id="modal"><div class="box"><button class="x" onclick="closeModal()">×</button><div id="modalBody"></div></div></div>
+<div id="toast"></div>
+
+<script src="profit-core.js"></script>
+<script>
+const RAGIC_BASE = 'https://ap13.ragic.com/feebit50968407';
+const IMG_BASE = 'https://ap13.ragic.com/sims/file.jsp?a=feebit50968407&f=';
+const LS_KEY = 'fb_pc_ragic_key', LS_SET = 'fb_pc_settings';
+const C = ProfitCore;
+const qs = new URLSearchParams(location.search);
+let FEES = null, PRODUCTS = [], SET = {}, rendered = 0;
+const S = { mode:'product', q:'', hideDisc:true, hideBrands:true, onlyListed:false, missCost:false, missImg:false, missPrice:false, missSup:false, brand:'', supplier:'', sort:'', limit:200 };
+
+const esc = s => String(s === undefined || s === null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const f0 = n => n === null || n === undefined || !isFinite(n) ? '—' : Math.round(n).toLocaleString('zh-TW');
+const f1 = n => n === null || n === undefined || !isFinite(n) ? '—' : (Math.round(n * 10) / 10).toLocaleString('zh-TW');
+const pc = n => n === null || n === undefined || !isFinite(n) ? '—' : (n * 100).toFixed(1) + '%';
+const cls = n => n === null ? '' : (n < 0 ? 'neg' : (n < 0.1 ? 'warn' : 'pos'));
+function today() { return qs.get('date') || new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10); }
+function toast(m) { const t = document.getElementById('toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2200); }
+function setStatus(m, err) { const s = document.getElementById('status'); s.textContent = m; s.className = 'status' + (err ? ' err' : ''); }
+function $(id) { return document.getElementById(id); }
+
+// ── 設定（只存非敏感：匯率、標註、隱藏品牌、係數；金鑰另存）──
+function defaultSettings() {
+  const cur = {}; (FEES.currencies || []).forEach(c => cur[c.id] = c.rate);
+  const lab = {}; Object.assign(lab, FEES.ladder.labels);
+  return { sysMargin: FEES.sysMargin, duty: FEES.freightDuty, cur, labels: lab, hidden: [] };
+}
+function loadSettings() {
+  let saved = {}; try { saved = JSON.parse(localStorage.getItem(LS_SET) || '{}'); } catch (e) {}
+  const d = defaultSettings();
+  SET = Object.assign(d, saved);
+  SET.cur = Object.assign(d.cur, saved.cur || {});
+  SET.labels = Object.assign(d.labels, saved.labels || {});
+}
+function saveSettings() {
+  SET.sysMargin = parseFloat($('setSys').value) || 0.10;
+  SET.duty = parseFloat($('setDuty').value) || 1.16;
+  document.querySelectorAll('[data-cur]').forEach(i => { const v = parseFloat(i.value); if (v > 0) SET.cur[i.dataset.cur] = v; });
+  document.querySelectorAll('[data-lab]').forEach(i => { SET.labels[i.dataset.lab] = i.value.trim(); });
+  SET.hidden = $('setHidden').value.split(/[,，、\n]/).map(s => s.trim()).filter(Boolean);
+  try { localStorage.setItem(LS_SET, JSON.stringify(SET)); } catch (e) {}
+  toast('設定已儲存'); fillBrandSel(); render();
+}
+function saveKey() {
+  const v = $('keyInput').value.trim(); if (!v) return toast('請先貼上金鑰');
+  try { localStorage.setItem(LS_KEY, v); } catch (e) { return toast('瀏覽器不允許儲存'); }
+  $('keyInput').value = ''; toast('金鑰已存在這個瀏覽器'); renderKeyState();
+}
+function clearKey() { try { localStorage.removeItem(LS_KEY); } catch (e) {} PRODUCTS = []; render(); toast('已清除金鑰與記憶體裡的成本資料'); renderKeyState(); }
+function renderKeyState() { $('keyInput').placeholder = hasKey() ? '已儲存金鑰（要換就重貼）' : '貼上你的 Ragic API 金鑰（只存在這個瀏覽器）'; }
+function getKey() { try { return localStorage.getItem(LS_KEY) || ''; } catch (e) { return ''; } }
+function hasKey() { return !!getKey(); }
+
+// ── 載入 ──
+async function loadFees() {
+  const r = await fetch('data/fee-schedule.json?v=' + Date.now());
+  if (!r.ok) throw new Error('讀不到 data/fee-schedule.json');
+  FEES = await r.json();
+}
+async function loadAll(manual) {
+  if (qs.get('demo')) { PRODUCTS = demoProducts(); setStatus('示範資料（假的，共 ' + PRODUCTS.length + ' 筆）'); afterLoad(); return; }
+  if (!hasKey()) { setStatus('請先到「設定」貼上 Ragic 金鑰', true); if (manual) gotoTab('settings'); return; }
+  const btn = $('reloadBtn'); btn.disabled = true; setStatus('讀取 Ragic 全產品總表中…（約 5～10 秒）');
+  try {
+    const t0 = performance.now();
+    const r = await fetch(RAGIC_BASE + '/product/16?api&v=3&limit=5000&subtables=0', { headers: { 'Authorization': 'Basic ' + getKey().replace(/^Basic\s+/i, '') } });
+    const j = await r.json();
+    if (j && j.status === 'ERROR') throw new Error(j.msg || 'Ragic 回傳錯誤');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const list = Object.values(j).filter(x => x && typeof x === 'object' && x._ragicId !== undefined);
+    PRODUCTS = list.map(x => C.normalizeProduct(x, FEES.priceFields));
+    setStatus('已載入 ' + PRODUCTS.length.toLocaleString() + ' 筆（' + ((performance.now() - t0) / 1000).toFixed(1) + ' 秒）· 費率日期 ' + today());
+    afterLoad();
+  } catch (e) {
+    setStatus('讀取失敗：' + e.message + '（金鑰是否有「全產品總表」讀取權限？）', true);
+  } finally { btn.disabled = false; }
+}
+function afterLoad() { fillBrandSel(); fillChkField(); render(); renderMissing(); renderCheck(); }
+
+// ── 計算輔助 ──
+function sched() { return { now: C.scheduleAt(FEES.schedules, today()), nxt: C.latestSchedule(FEES.schedules) }; }
+function aaOf(p) { return C.trueCost(p.costRaw, SET.sysMargin); }
+function platRows(p, scs) {
+  const aa = aaOf(p); const out = [];
+  FEES.priceFields.forEach(pf => {
+    const price = p.prices[pf.field]; if (!price || price <= 0) return;
+    const pn = C.findPlatform(FEES, scs.now, pf.platform), px = C.findPlatform(FEES, scs.nxt, pf.platform);
+    out.push({ field: pf.field, price, pn, px,
+      mNow: aa && pn ? C.marginRate(price, aa, pn) : null,
+      mNew: aa && px ? C.marginRate(price, aa, px) : null,
+      pfNow: aa && pn ? C.profit(price, aa, pn) : null,
+      pfNew: aa && px ? C.profit(price, aa, px) : null,
+      beNow: aa && pn ? C.breakEven(aa, pn, 0) : null,
+      beNew: aa && px ? C.breakEven(aa, px, 0) : null });
+  });
+  return out;
+}
+function worstNew(p, scs) {
+  const rows = platRows(p, scs).filter(r => r.mNew !== null); if (!rows.length) return null;
+  return Math.min.apply(null, rows.map(r => r.mNew));
+}
+
+// ── 搜尋 ──
+function hiddenSet() { return new Set(SET.hidden || []); }
+function filtered() {
+  const hid = hiddenSet(); const q = S.q.trim();
+  return PRODUCTS.filter(p => {
+    if (S.hideDisc && C.isDiscontinued(p)) return false;
+    if (S.hideBrands && hid.has(p.brand)) return false;
+    if (S.onlyListed && p.listed !== 'Y') return false;
+    if (S.missCost && p.costRaw) return false;
+    if (S.missImg && p.image) return false;
+    if (S.missPrice && p.list) return false;
+    if (S.missSup && p.supplier) return false;
+    if (S.brand && p.brand !== S.brand) return false;
+    if (S.supplier && (p.supplier || '（未填）') !== S.supplier) return false;
+    if (q && S.mode === 'product' && !C.matchTokens(p.hay, q)) return false;
+    return true;
+  });
+}
+function fillBrandSel() {
+  const sel = $('brandSel'); const cur = S.brand;
+  const brands = [...new Set(PRODUCTS.filter(p => !(S.hideBrands && hiddenSet().has(p.brand))).map(p => p.brand).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">全部品牌</option>' + brands.map(b => '<option' + (b === cur ? ' selected' : '') + '>' + esc(b) + '</option>').join('');
+}
+function renderChips() {
+  const chips = [['hideDisc', '隱藏已停產'], ['hideBrands', '隱藏設定的品牌'], ['onlyListed', '只看持續上架'], ['missCost', '缺成本'], ['missImg', '缺圖'], ['missPrice', '缺定價'], ['missSup', '缺供貨商']];
+  $('chips').innerHTML = chips.map(c => '<button class="chip' + (S[c[0]] ? ' on' : '') + '" data-k="' + c[0] + '">' + c[1] + '</button>').join('');
+  $('chips').querySelectorAll('.chip').forEach(b => b.onclick = () => { S[b.dataset.k] = !S[b.dataset.k]; S.limit = 200; render(); });
+  $('supFilterTag').innerHTML = S.supplier ? '供貨商：<b>' + esc(S.supplier) + '</b> <a href="#" onclick="S.supplier=\'\';render();return false">取消</a>' : '';
+}
+function thumb(p) {
+  if (!p.image) return '';
+  return '<img class="thumb" loading="lazy" src="' + IMG_BASE + encodeURIComponent(p.image) + '" onerror="this.remove()">';
+}
+function render() {
+  if (!FEES) return;
+  renderChips();
+  const box = $('results');
+  if (!PRODUCTS.length) { $('count').textContent = ''; box.innerHTML = '<div class="empty">尚未載入資料。按右上角「載入／重新載入」。</div>'; return; }
+  const scs = sched();
+  let list = filtered();
+  if (S.mode === 'supplier') return renderSuppliers(list);
+  if (S.sort === 'cost') list = list.slice().sort((a, b) => (aaOf(b) || -1) - (aaOf(a) || -1));
+  else if (S.sort === 'lastIn') list = list.slice().sort((a, b) => String(b.lastIn).localeCompare(String(a.lastIn)));
+  else if (S.sort === 'margin') {
+    const w = new Map(list.map(p => [p, worstNew(p, scs)]));
+    list = list.slice().sort((a, b) => (w.get(a) === null ? 9 : w.get(a)) - (w.get(b) === null ? 9 : w.get(b)));
+  }
+  $('count').textContent = '共 ' + list.length.toLocaleString() + ' 筆';
+  if (!list.length) { box.innerHTML = '<div class="empty">沒有符合的商品</div>'; return; }
+  const shown = list.slice(0, S.limit);
+  box.innerHTML = '<table><thead><tr><th class="l">圖</th><th class="l">貨號</th><th class="l">商品</th><th class="l">供貨商</th><th>成本(未稅)</th><th>含稅成本</th><th>定價</th><th>最差利潤率<br>今天費率</th><th>最差利潤率<br>新費率</th></tr></thead><tbody>' +
+    shown.map(p => {
+      const aa = aaOf(p); const rows = platRows(p, scs);
+      const mn = rows.filter(r => r.mNow !== null).map(r => r.mNow), mx = rows.filter(r => r.mNew !== null).map(r => r.mNew);
+      const wn = mn.length ? Math.min.apply(null, mn) : null, wx = mx.length ? Math.min.apply(null, mx) : null;
+      const st = p.saleStatus && p.saleStatus !== '持續販售' ? ' <span class="badge b-gray">' + esc(p.saleStatus) + '</span>' : '';
+      return '<tr class="click" onclick="openProduct(' + PRODUCTS.indexOf(p) + ')"><td class="l">' + thumb(p) + '</td><td class="l">' + esc(p.code) + '</td>' +
+        '<td class="l name">' + esc(p.name) + st + '<small>' + esc(p.brand) + (p.ean && p.ean !== p.code ? ' · ' + esc(p.ean) : '') + '</small></td>' +
+        '<td class="l">' + esc(p.supplier || '—') + '</td>' +
+        '<td>' + (aa ? f1(aa) : '<span class="badge b-bad">缺成本</span>') + '</td><td>' + (aa ? f1(aa * C.TAX) : '—') + '</td><td>' + f0(p.list) + '</td>' +
+        '<td class="' + cls(wn) + '">' + pc(wn) + '</td><td class="' + cls(wx) + '">' + pc(wx) + '</td></tr>';
+    }).join('') + '</tbody></table>' +
+    (list.length > shown.length ? '<div class="empty"><button class="btn" onclick="S.limit+=300;render()">再顯示 300 筆（目前 ' + shown.length + ' / ' + list.length + '）</button></div>' : '');
+}
+function renderSuppliers(list) {
+  const q = S.q.trim(); const g = new Map();
+  list.forEach(p => { const k = p.supplier || '（未填）'; if (!g.has(k)) g.set(k, { name: k, code: p.supplierCode, n: 0, listed: 0, noCost: 0, last: '' }); const o = g.get(k); o.n++; if (p.listed === 'Y') o.listed++; if (!p.costRaw) o.noCost++; if (String(p.lastIn) > o.last) o.last = String(p.lastIn); if (!o.code && p.supplierCode) o.code = p.supplierCode; });
+  let rows = [...g.values()].filter(o => !q || C.matchTokens(o.name + ' ' + o.code, q)).sort((a, b) => b.n - a.n);
+  $('count').textContent = '共 ' + rows.length + ' 家供貨商';
+  if (!rows.length) { $('results').innerHTML = '<div class="empty">找不到供貨商</div>'; return; }
+  $('results').innerHTML = '<table><thead><tr><th class="l">供貨商</th><th class="l">廠商代號</th><th>商品數</th><th>持續上架</th><th>缺成本</th><th>最近進貨日</th></tr></thead><tbody>' +
+    rows.map(o => '<tr class="click" onclick="pickSupplier(\'' + esc(o.name).replace(/'/g, "\\'") + '\')"><td class="l"><b>' + esc(o.name) + '</b></td><td class="l">' + esc(o.code) + '</td><td>' + o.n + '</td><td>' + o.listed + '</td><td>' + (o.noCost ? '<span class="neg">' + o.noCost + '</span>' : 0) + '</td><td>' + esc(o.last || '—') + '</td></tr>').join('') + '</tbody></table>' +
+    '<div class="hint" style="padding:8px">點供貨商會切到「搜商品」並只列這家的商品。</div>';
+}
+function pickSupplier(name) { S.supplier = name === '（未填）' ? '（未填）' : name; S.mode = 'product'; S.q = ''; $('q').value = ''; syncSeg(); render(); }
+function syncSeg() { document.querySelectorAll('#modeSeg button').forEach(b => b.classList.toggle('on', b.dataset.m === S.mode)); }
+
+// ── 商品明細 ──
+function openProduct(i) {
+  const p = PRODUCTS[i]; const aa = aaOf(p); const scs = sched();
+  const rows = platRows(p, scs);
+  const others = [['定價（建議售價）', p.list], ['員購價', p.staff], ['批發價', p.wholesale], ['最低售價', p.minPrice]].filter(x => x[1]);
+  let h = '<h2 style="font-size:18px">' + esc(p.name) + '</h2><div class="sub">' + esc(p.brand) + ' · 貨號 ' + esc(p.code) + (p.ean ? ' · 條碼 ' + esc(p.ean) : '') + '</div>';
+  h += '<div class="kv"><div><span>供貨商：</span>' + esc(p.supplier || '—') + ' ' + esc(p.supplierCode) + (p.supplier ? ' <a href="#" onclick="closeModal();pickSupplier(\'' + esc(p.supplier).replace(/'/g, "\\'") + '\');return false">看這家全部商品</a>' : '') + '</div>' +
+    '<div><span>販售狀態：</span>' + esc(p.saleStatus || '—') + ' · 持續上架 ' + esc(p.listed || '—') + '</div>' +
+    '<div><span>最後進貨日：</span>' + esc(p.lastIn || '—') + ' · 庫存 ' + f0(p.qty) + '</div>' +
+    '<div><span>Ragic 成本單價（入系統）：</span>' + f1(p.costRaw) + '</div>' +
+    '<div><span>真實成本（未稅）：</span><b>' + (aa ? f1(aa) : '缺成本') + '</b></div>' +
+    '<div><span>含稅成本 ×1.05：</span><b>' + (aa ? f1(aa * C.TAX) : '—') + '</b></div></div>';
+  if (!aa) { h += '<div class="banner">這個商品 Ragic 沒有成本單價（或你的權限看不到成本），無法算利潤。</div>'; }
+  // 平台
+  h += '<h2 style="margin-top:14px">各賣場價 × 平台抽成（今天 ' + esc(scs.now.label) + ' ／ 新 ' + esc(scs.nxt.label) + '）</h2>';
+  if (rows.length) {
+    h += '<div class="tbl"><table><thead><tr><th class="l">賣場價欄</th><th>現價</th><th class="l">對應費率</th><th>今天抽成</th><th>今天利潤</th><th>利潤率</th><th>打平價</th><th>新抽成</th><th>新利潤</th><th>利潤率</th><th>新打平價</th><th>建議最低售價</th></tr></thead><tbody>' +
+      rows.map(r => '<tr><td class="l">' + esc(r.field) + '</td><td>' + f0(r.price) + '</td><td class="l">' + (r.px ? esc(r.px.name + ' ' + (r.px.campaign || '')) : '<span class="badge b-gray">尚無費率</span>') + '</td>' +
+        '<td>' + (r.pn ? pc(r.pn.total) : '—') + '</td><td class="' + cls(r.mNow) + '">' + f0(r.pfNow) + '</td><td class="' + cls(r.mNow) + '">' + pc(r.mNow) + '</td><td>' + f0(r.beNow) + '</td>' +
+        '<td>' + (r.px ? pc(r.px.total) : '—') + '</td><td class="' + cls(r.mNew) + '">' + f0(r.pfNew) + '</td><td class="' + cls(r.mNew) + '">' + pc(r.mNew) + '</td><td>' + f0(r.beNew) + '</td>' +
+        '<td><b>' + f0(r.beNew === null ? r.beNow : Math.max(r.beNew, r.beNow || 0)) + '</b></td></tr>').join('') + '</tbody></table></div>' +
+      '<div class="hint">建議最低售價＝新舊費率打平價取較高者，小數無條件進位，僅供參考。</div>';
+  } else h += '<div class="hint">這個商品沒有任何賣場價。</div>';
+  if (others.length && aa) h += '<div class="hint" style="margin-top:8px">其他價格（未扣平台費，只看對含稅成本的毛利）：' + others.map(o => esc(o[0]) + ' ' + f0(o[1]) + '（' + pc((o[1] - aa * C.TAX) / o[1]) + '）').join('　') + '</div>';
+  // 階梯
+  if (aa) {
+    h += '<h2 style="margin-top:14px">價格階梯（成本 ÷ (1 − 毛利率)）</h2><div class="tbl"><table><thead><tr><th class="l">毛利率</th><th class="l">標註</th><th>未稅價</th><th>稅外加(×1.05)</th></tr></thead><tbody>' +
+      C.ladder(aa, FEES.ladder.margins).map(l => { const k = l.m.toFixed(2); return '<tr><td class="l">' + Math.round(l.m * 100) + '%</td><td class="l">' + esc(SET.labels[k] || '') + '</td><td>' + f1(l.ex) + '</td><td>' + f1(l.inc) + '</td></tr>'; }).join('') + '</tbody></table></div>';
+  }
+  $('modalBody').innerHTML = h; $('modal').classList.add('show');
+}
+function closeModal() { $('modal').classList.remove('show'); }
+$('modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// ── 平台檢查 ──
+function fillChkField() {
+  $('chkField').innerHTML = FEES.priceFields.filter(f => f.platform).map(f => '<option>' + esc(f.field) + '</option>').join('');
+}
+function checkRows() {
+  const field = $('chkField').value; const pf = FEES.priceFields.find(f => f.field === field); if (!pf) return [];
+  const t = (parseFloat($('chkTarget').value) || 0) / 100; const scs = sched();
+  const pn = C.findPlatform(FEES, scs.now, pf.platform), px = C.findPlatform(FEES, scs.nxt, pf.platform);
+  const hid = hiddenSet(); const out = [];
+  PRODUCTS.forEach(p => {
+    if (C.isDiscontinued(p) || (S.hideBrands && hid.has(p.brand))) return;
+    const price = p.prices[field]; const aa = aaOf(p); if (!price || price <= 0 || !aa) return;
+    const beNow = pn ? C.breakEven(aa, pn, t) : null, beNew = px ? C.breakEven(aa, px, t) : null;
+    out.push({ p, price, aa, beNow, beNew, mNow: pn ? C.marginRate(price, aa, pn) : null, mNew: px ? C.marginRate(price, aa, px) : null, pn, px });
+  });
+  return out;
+}
+function renderCheck() {
+  if (!FEES || !PRODUCTS.length) { $('chkResults').innerHTML = '<div class="empty">尚未載入資料</div>'; return; }
+  const mode = $('chkMode').value; let rows = checkRows(); const total = rows.length;
+  const lowNow = rows.filter(r => r.beNow !== null && r.price < r.beNow).length, lowNew = rows.filter(r => r.beNew !== null && r.price < r.beNew).length;
+  if (mode === 'lowNew') rows = rows.filter(r => r.beNew !== null && r.price < r.beNew);
+  else if (mode === 'lowToday') rows = rows.filter(r => r.beNow !== null && r.price < r.beNow);
+  rows.sort((a, b) => (a.mNew === null ? 9 : a.mNew) - (b.mNew === null ? 9 : b.mNew));
+  const scs = sched();
+  $('chkNote').innerHTML = '此欄共 ' + total + ' 件有價格且有成本：現價低於<b>今天費率</b>（' + esc(scs.now.label) + '）打平價 <b class="neg">' + lowNow + '</b> 件；低於<b>新費率</b>（' + esc(scs.nxt.label) + '）打平價 <b class="neg">' + lowNew + '</b> 件。';
+  if (!rows.length) { $('chkResults').innerHTML = '<div class="empty">沒有符合的商品 🎉</div>'; return; }
+  $('chkResults').innerHTML = '<table><thead><tr><th class="l">貨號</th><th class="l">商品</th><th class="l">供貨商</th><th>現價</th><th>今天利潤率</th><th>今天打平價</th><th>新費率利潤率</th><th>新打平價</th><th>差額（新打平−現價）</th></tr></thead><tbody>' +
+    rows.slice(0, 300).map(r => '<tr class="click" onclick="openProduct(' + PRODUCTS.indexOf(r.p) + ')"><td class="l">' + esc(r.p.code) + '</td><td class="l name">' + esc(r.p.name) + '<small>' + esc(r.p.brand) + '</small></td><td class="l">' + esc(r.p.supplier || '—') + '</td><td>' + f0(r.price) + '</td><td class="' + cls(r.mNow) + '">' + pc(r.mNow) + '</td><td>' + f0(r.beNow) + '</td><td class="' + cls(r.mNew) + '">' + pc(r.mNew) + '</td><td>' + f0(r.beNew) + '</td><td class="' + (r.beNew !== null && r.beNew > r.price ? 'neg' : '') + '">' + (r.beNew === null ? '—' : f0(r.beNew - r.price)) + '</td></tr>').join('') + '</tbody></table>' +
+    (rows.length > 300 ? '<div class="hint" style="padding:8px">只顯示前 300 件（利潤率最低的），匯出 CSV 會含全部 ' + rows.length + ' 件。</div>' : '');
+}
+function exportCheck() {
+  const rows = checkRows().filter(r => $('chkMode').value === 'all' || (r.beNew !== null && r.price < r.beNew));
+  if (!rows.length) return toast('目前沒有要匯出的商品');
+  const field = $('chkField').value;
+  const lines = [['貨號', '商品', '品牌', '供貨商', '賣場價欄', '現價', '新費率建議最低售價', '建議調整幅度']];
+  rows.forEach(r => lines.push([r.p.code, r.p.name, r.p.brand, r.p.supplier, field, r.price, r.beNew, r.beNew === null ? '' : r.beNew - r.price]));
+  const csv = '﻿' + lines.map(l => l.map(v => '"' + String(v === null || v === undefined ? '' : v).replace(/"/g, '""') + '"').join(',')).join('\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = '調價清單_' + field + '_' + today() + '.csv'; a.click(); toast('已匯出 ' + rows.length + ' 件（不含成本）');
+}
+
+// ── 缺漏 ──
+function renderMissing() {
+  const hid = hiddenSet(); const base = PRODUCTS.filter(p => !C.isDiscontinued(p) && !(S.hideBrands && hid.has(p.brand)));
+  const items = [
+    ['缺成本單價', base.filter(p => !p.costRaw).length, { missCost: true }],
+    ['持續上架但缺成本', base.filter(p => p.listed === 'Y' && !p.costRaw).length, { missCost: true, onlyListed: true }],
+    ['缺圖', base.filter(p => !p.image).length, { missImg: true }],
+    ['缺定價（建議售價）', base.filter(p => !p.list).length, { missPrice: true }],
+    ['缺供貨商', base.filter(p => !p.supplier).length, { missSup: true }]
+  ];
+  $('missStats').innerHTML = PRODUCTS.length ? items.map((it, i) => '<div class="stat" onclick="applyMiss(' + i + ')"><b>' + it[1].toLocaleString() + '</b><span>' + it[0] + '</span></div>').join('') : '<div class="empty">尚未載入資料</div>';
+  window._missItems = items;
+}
+function applyMiss(i) {
+  Object.assign(S, { missCost: false, missImg: false, missPrice: false, missSup: false, onlyListed: false, brand: '', supplier: '', q: '', mode: 'product', limit: 200 }, window._missItems[i][2]);
+  $('q').value = ''; syncSeg(); fillBrandSel(); gotoTab('search');
+}
+
+// ── 新品試算 ──
+function sbInit() {
+  $('sbCur').innerHTML = FEES.currencies.map(c => '<option value="' + c.id + '">' + esc(c.name) + '</option>').join('');
+  $('sbCur').value = 'USD'; sbSetRate();
+  ['sbPrice', 'sbRate', 'sbDuty', 'sbSell'].forEach(id => $(id).addEventListener('input', renderSb));
+  $('sbCur').addEventListener('change', () => { sbSetRate(); renderSb(); });
+}
+function sbSetRate() { $('sbRate').value = SET.cur[$('sbCur').value] || 1; $('sbDuty').value = SET.duty; }
+function renderSb() {
+  const price = parseFloat($('sbPrice').value), rate = parseFloat($('sbRate').value), duty = parseFloat($('sbDuty').value) || 1.16, sell = parseFloat($('sbSell').value);
+  const out = $('sbOut'); $('sbFormula').innerHTML = '成本公式：原幣價 × 匯率 × 運費關稅係數＝<b>未稅成本</b>；× 1.05＝含稅成本。階梯價＝未稅成本 ÷ (1 − 毛利率)。';
+  if (!(price > 0) || !(rate > 0)) { out.innerHTML = '<div class="empty">輸入原幣進貨價開始試算</div>'; return; }
+  const aa = price * rate * duty; const scs = sched();
+  let h = '<div class="kv"><div><span>台幣進貨價：</span>' + f1(price * rate) + '</div><div><span>未稅成本：</span><b>' + f1(aa) + '</b></div><div><span>含稅成本：</span><b>' + f1(aa * C.TAX) + '</b></div><div><span>Ragic 成本單價（入系統）：</span>' + f1(C.toRagicCost(aa, SET.sysMargin)) + '</div></div>';
+  h += '<div class="tbl"><table><thead><tr><th class="l">平台／品類</th><th>今天抽成</th><th>今天打平價</th><th>新抽成</th><th>新打平價</th>' + (sell > 0 ? '<th>預計售價利潤(新)</th><th>利潤率(新)</th>' : '') + '</tr></thead><tbody>';
+  const ids = [...new Set(scs.nxt.platforms.map(p => p.id))];
+  ids.forEach(id => {
+    const pn = C.findPlatform(FEES, scs.now, id), px = C.findPlatform(FEES, scs.nxt, id);
+    h += '<tr><td class="l">' + esc(px.name + ' ' + (px.campaign || '')) + '</td><td>' + (pn ? pc(pn.total) : '—') + '</td><td>' + f0(pn ? C.breakEven(aa, pn, 0) : null) + '</td><td>' + pc(px.total) + '</td><td><b>' + f0(C.breakEven(aa, px, 0)) + '</b></td>' +
+      (sell > 0 ? '<td class="' + cls(C.marginRate(sell, aa, px)) + '">' + f0(C.profit(sell, aa, px)) + '</td><td class="' + cls(C.marginRate(sell, aa, px)) + '">' + pc(C.marginRate(sell, aa, px)) + '</td>' : '') + '</tr>';
+  });
+  (FEES.unscheduled || []).forEach(px => { h += '<tr><td class="l">' + esc(px.name) + '</td><td>' + pc(px.total) + '</td><td>' + f0(C.breakEven(aa, px, 0)) + '</td><td>' + pc(px.total) + '</td><td><b>' + f0(C.breakEven(aa, px, 0)) + '</b></td>' + (sell > 0 ? '<td class="' + cls(C.marginRate(sell, aa, px)) + '">' + f0(C.profit(sell, aa, px)) + '</td><td class="' + cls(C.marginRate(sell, aa, px)) + '">' + pc(C.marginRate(sell, aa, px)) + '</td>' : '') + '</tr>'; });
+  h += '</tbody></table></div><h2 style="margin:14px 0 8px">價格階梯</h2><div class="tbl"><table><thead><tr><th class="l">毛利率</th><th class="l">標註</th><th>未稅價</th><th>稅外加</th></tr></thead><tbody>' +
+    C.ladder(aa, FEES.ladder.margins).map(l => '<tr><td class="l">' + Math.round(l.m * 100) + '%</td><td class="l">' + esc(SET.labels[l.m.toFixed(2)] || '') + '</td><td>' + f1(l.ex) + '</td><td>' + f1(l.inc) + '</td></tr>').join('') + '</tbody></table></div>';
+  out.innerHTML = h;
+}
+
+// ── 設定頁 ──
+function renderSettings() {
+  $('setSys').value = SET.sysMargin; $('setDuty').value = SET.duty;
+  $('setCur').innerHTML = FEES.currencies.map(c => '<div class="fg"><label>' + esc(c.name) + (c.note ? '（' + esc(c.note) + '）' : '') + '</label><input type="number" step="any" data-cur="' + c.id + '" value="' + (SET.cur[c.id] || c.rate) + '"></div>').join('');
+  $('setLadder').innerHTML = FEES.ladder.margins.map(m => { const k = m.toFixed(2); return '<div class="fg"><label>' + Math.round(m * 100) + '%</label><input type="text" data-lab="' + k + '" value="' + esc(SET.labels[k] || '') + '"></div>'; }).join('');
+  $('setHidden').value = (SET.hidden || []).join(', ');
+  let h = '';
+  FEES.schedules.forEach(s => { h += '<h2 style="margin:10px 0 6px">' + esc(s.label) + '：' + esc(s.effective) + ' ～ ' + esc(s.until || '') + '</h2><table><thead><tr><th class="l">平台</th><th class="l">品類</th><th>基本</th><th>免運</th><th>蝦幣</th><th>金流</th><th>聯盟</th><th>發票</th><th>稅金</th><th>人力包材</th><th>總計</th></tr></thead><tbody>' +
+    s.platforms.map(p => '<tr><td class="l">' + esc(p.name) + '</td><td class="l">' + esc(p.campaign || '') + '</td>' + ['base', 'freeShip', 'shopeeCoin', 'payment', 'affiliate', 'invoice', 'tax', 'pack'].map(k => '<td>' + (p[k] ? pc(p[k]) : '') + '</td>').join('') + '<td><b>' + pc(p.total) + '</b></td></tr>').join('') + '</tbody></table>'; });
+  $('feeView').innerHTML = h;
+}
+
+// ── 通用 ──
+function gotoTab(t) {
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+  ['search', 'check', 'missing', 'sandbox', 'settings'].forEach(x => $('p-' + x).style.display = x === t ? '' : 'none');
+  if (t === 'check') renderCheck(); if (t === 'missing') renderMissing(); if (t === 'search') render();
+}
+function demoProducts() {
+  const brands = ['韓國ILLIYOON', '韓國9wishes', '韓國Athens', '韓國rom&nd'], sup = ['SEHAN', 'KR010', 'CN002', '']; const out = [];
+  for (let i = 0; i < 60; i++) {
+    const cost = 150 + (i * 37) % 400; const list = Math.round(cost * 2.2);
+    const raw = { _ragicId: i + 1, '產品代號': '0' + (1000000 + i), '產品名稱': '示範商品 ' + (i + 1) + (i % 7 === 0 ? ' 藍色款' : ''), '品牌': brands[i % 4], '廠商簡稱': sup[i % 4], '廠商代號': 'V00' + (i % 4),
+      'EAN13碼': '88094' + (29000000 + i), '成本單價': i % 9 === 0 ? '' : String(cost), '建議售價': String(list), '官網': String(list - 50), '一般賣場-玩美': String(Math.round(cost * 1.45)), '桑爹': String(Math.round(cost * 1.4)),
+      '蝦皮商城-LaLaV': String(Math.round(cost * 1.5)), '商城－活動日特價': String(Math.round(cost * 1.55)), '販售狀態': i % 11 === 0 ? '已停產' : '持續販售', '持續上架': i % 3 ? 'Y' : 'N', '產品圖片': i % 5 === 0 ? '' : 'x.jpg', '最後進貨日': '2026/0' + (1 + i % 9) + '/15' };
+    out.push(C.normalizeProduct(raw, FEES.priceFields));
+  }
+  return out;
+}
+
+(async function init() {
+  try { await loadFees(); } catch (e) { setStatus('費率檔讀取失敗：' + e.message, true); return; }
+  loadSettings(); renderSettings(); renderKeyState(); sbInit(); renderSb();
+  document.querySelectorAll('.tab').forEach(b => b.onclick = () => gotoTab(b.dataset.t));
+  document.querySelectorAll('#modeSeg button').forEach(b => b.onclick = () => { S.mode = b.dataset.m; S.limit = 200; syncSeg(); render(); });
+  let tm; $('q').addEventListener('input', e => { clearTimeout(tm); tm = setTimeout(() => { S.q = e.target.value; S.limit = 200; render(); }, 150); });
+  $('sortSel').onchange = e => { S.sort = e.target.value; render(); };
+  $('brandSel').onchange = e => { S.brand = e.target.value; S.limit = 200; render(); };
+  ['chkField', 'chkTarget', 'chkMode'].forEach(id => $(id).addEventListener('input', renderCheck));
+  renderChips();
+  if (qs.get('demo') || hasKey()) loadAll(false);
+  else setStatus('請先到「設定」貼上 Ragic 金鑰', true);
+})();
+</script>
+</body>
+</html>
