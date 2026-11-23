@@ -1,0 +1,406 @@
+{
+ "_說明": "平台抽成（依生效日期分段）。來源：Jennifer 的 Sheet「平台抽成」分頁，2026-11-22 讀取；12/11 新費率由 Jennifer 確認為最終值。比率皆為小數（0.08=8%）。total＝含稅金、人力包材的總計；totalExTaxPack＝不含稅金與人力包材。不含任何成本資料，可進 repo。 priceFields：Ragic 賣場價欄位對應到哪個平台費率（platform=null 表示尚無費率）。",
+ "schedules": [
+  {
+   "effective": "2026-01-01",
+   "until": "2026-12-10",
+   "label": "現行（2026/1/-）",
+   "platforms": [
+    {
+     "id": "shopee_general",
+     "name": "蝦皮一般賣場（玩美、寶媽）",
+     "campaign": "一般",
+     "base": 0.06,
+     "freeShip": 0.06,
+     "shopeeCoin": 0,
+     "payment": 0.025,
+     "affiliate": 0,
+     "invoice": 0.005,
+     "tax": 0.05,
+     "pack": 0.05,
+     "total": 0.25,
+     "totalExTaxPack": 0.15
+    },
+    {
+     "id": "shopee_general_promo",
+     "name": "蝦皮一般賣場（玩美、寶媽）",
+     "campaign": "促銷日",
+     "base": 0.06,
+     "freeShip": 0.06,
+     "shopeeCoin": 0.02,
+     "payment": 0.025,
+     "affiliate": 0,
+     "invoice": 0.005,
+     "tax": 0.05,
+     "pack": 0.05,
+     "total": 0.27,
+     "totalExTaxPack": 0.17
+    },
+    {
+     "id": "shopee_sangdie",
+     "name": "蝦皮桑爹",
+     "campaign": "一般",
+     "base": 0.06,
+     "freeShip": 0.06,
+     "shopeeCoin": 0,
+     "payment": 0.025,
+     "affiliate": 0,
+     "invoice": 0,
+     "tax": 0,
+     "pack": 0.05,
+     "total": 0.195,
+     "totalExTaxPack": 0.145
+    },
+    {
+     "id": "shopee_sangdie_promo",
+     "name": "蝦皮桑爹",
+     "campaign": "促銷日",
+     "base": 0.06,
+     "freeShip": 0.06,
+     "shopeeCoin": 0.02,
+     "payment": 0.025,
+     "affiliate": 0,
+     "invoice": 0,
+     "tax": 0,
+     "pack": 0.05,
+     "total": 0.215,
+     "totalExTaxPack": 0.165
+    },
+    {
+     "id": "shopee_mall",
+     "name": "蝦皮商城",
+     "campaign": "一般 美妝類",
+     "base": 0.09,
+     "freeShip": 0.06,
+     "shopeeCoin": 0,
+     "payment": 0.025,
+     "affiliate": 0.03,
+     "invoice": 0.005,
+     "tax": 0.05,
+     "pack": 0.05,
+     "total": 0.31,
+     "totalExTaxPack": 0.21
+    },
+    {
+     "id": "lalav_promo_beauty",
+     "name": "LaLa V",
+     "campaign": "促銷日 美妝類",
+     "base": 0.09,
+     "freeShip": 0.06,
+     "shopeeCoin": 0.03,
+     "payment": 0.025,
+     "affiliate": 0.03,
+     "invoice": 0.005,
+     "tax": 0.05,
+     "pack": 0.05,
+     "total": 0.34,
+     "totalExTaxPack": 0.24
+    }
+   ]
+  },
+  {
+   "effective": "2026-12-11",
+   "until": null,
+   "label": "新費率（2026/12/11~）",
+   "platforms": [
+    {
+     "id": "shopee_general",
+     "name": "蝦皮一般賣場（玩美、寶媽）",
+     "campaign": "一般",
+     "base": 0.08,
+     "freeShip": 0.065,
+     "shopeeCoin": 0,
+     "payment": 0.025,
+     "affiliate": 0,
+     "invoice": 0.005,
+     "tax": 0.05,
+     "pack": 0.05,
+     "total": 0.275,
+     "totalExTaxPack": 0.175
+    },
+    {
+     "id": "shopee_general_promo",
+     "name": "蝦皮一般賣場（玩美、寶媽）",
+     "campaign": "促銷",
+     "base": 0.08,
+     "freeShip": 0.065,
+     "shopeeCoin": 0.04,
+     "payment": 0.025,
+     "affiliate": 0,
+     "invoice": 0.005,
+     "tax": 0.05,
+     "pack": 0.05,
+     "total": 0.315,
+     "totalExTaxPack": 0.215
+    },
+    {
+     "id": "shopee_sangdie",
+     "name": "蝦皮桑爹",
+     "campaign": "一般",
+     "base": 0.08,
+     "freeShip": 0.065,
+     "shopeeCoin": 0,
+     "payment": 0.025,
+     "affiliate": 0,
+     "invoice": 0,
+     "tax": 0,
+     "pack": 0.05,
+     "total": 0.22,
+     "totalExTaxPack": 0.17
+    },
+    {
+     "id": "shopee_sangdie_promo",
+     "name": "蝦皮桑爹",
+     "campaign": "促銷",
+     "base": 0.08,
+     "freeShip": 0.065,
+     "shopeeCoin": 0.04,
+     "payment": 0.025,
+     "affiliate": 0,
+     "invoice": 0,
+     "tax": 0,
+     "pack": 0.05,
+     "total": 0.26,
+     "totalExTaxPack": 0.21
+    },
+    {
+     "id": "shopee_mall",
+     "name": "蝦皮商城",
+     "campaign": "一般 美妝類",
+     "base": 0.118,
+     "freeShip": 0.065,
+     "shopeeCoin": 0,
+     "payment": 0.025,
+     "affiliate": 0.03,
+     "invoice": 0.005,
+     "tax": 0.05,
+     "pack": 0.05,
+     "total": 0.343,
+     "totalExTaxPack": 0.243
+    },
+    {
+     "id": "lalav_promo_beauty",
+     "name": "LaLa V",
+     "campaign": "促銷 美妝類",
+     "base": 0.118,
+     "freeShip": 0.065,
+     "shopeeCoin": 0.05,
+     "payment": 0.025,
+     "affiliate": 0.03,
+     "invoice": 0.005,
+     "tax": 0.05,
+     "pack": 0.05,
+     "total": 0.393,
+     "totalExTaxPack": 0.293
+    },
+    {
+     "id": "lalav_health",
+     "name": "LaLa V",
+     "campaign": "保健食品",
+     "base": 0.11,
+     "freeShip": 0.065,
+     "shopeeCoin": 0.05,
+     "payment": 0.025,
+     "affiliate": 0.03,
+     "invoice": 0.005,
+     "tax": 0.05,
+     "pack": 0.05,
+     "total": 0.385,
+     "totalExTaxPack": 0.285
+    },
+    {
+     "id": "lalav_beauty_tool",
+     "name": "LaLa V",
+     "campaign": "美容工具",
+     "base": 0.118,
+     "freeShip": 0.065,
+     "shopeeCoin": 0.05,
+     "payment": 0.025,
+     "affiliate": 0.03,
+     "invoice": 0.005,
+     "tax": 0.05,
+     "pack": 0.05,
+     "total": 0.393,
+     "totalExTaxPack": 0.293
+    },
+    {
+     "id": "lalav_home",
+     "name": "LaLa V",
+     "campaign": "居家生活",
+     "base": 0.116,
+     "freeShip": 0.065,
+     "shopeeCoin": 0.05,
+     "payment": 0.025,
+     "affiliate": 0.03,
+     "invoice": 0.005,
+     "tax": 0.05,
+     "pack": 0.05,
+     "total": 0.391,
+     "totalExTaxPack": 0.291
+    },
+    {
+     "id": "lalav_accessory",
+     "name": "LaLa V",
+     "campaign": "女生配件/黃金",
+     "base": 0.113,
+     "freeShip": 0.065,
+     "shopeeCoin": 0.05,
+     "payment": 0.025,
+     "affiliate": 0.03,
+     "invoice": 0.005,
+     "tax": 0.05,
+     "pack": 0.05,
+     "total": 0.388,
+     "totalExTaxPack": 0.288
+    },
+    {
+     "id": "lalav_bag",
+     "name": "LaLa V",
+     "campaign": "女生包包/精品",
+     "base": 0.115,
+     "freeShip": 0.065,
+     "shopeeCoin": 0.05,
+     "payment": 0.025,
+     "affiliate": 0.03,
+     "invoice": 0.005,
+     "tax": 0.05,
+     "pack": 0.05,
+     "total": 0.39,
+     "totalExTaxPack": 0.29
+    },
+    {
+     "id": "lalav_phone",
+     "name": "LaLa V",
+     "campaign": "手機周邊",
+     "base": 0.122,
+     "freeShip": 0.095,
+     "shopeeCoin": 0.05,
+     "payment": 0.025,
+     "affiliate": 0.03,
+     "invoice": 0.005,
+     "tax": 0.05,
+     "pack": 0.05,
+     "total": 0.427,
+     "totalExTaxPack": 0.327
+    }
+   ]
+  }
+ ],
+ "unscheduled": [
+  {
+   "id": "shopline",
+   "name": "SHOPLINE 官網",
+   "base": 0.02,
+   "payment": 0.022,
+   "tax": 0.05,
+   "pack": 0.05,
+   "promoShare": 0.08,
+   "cashback": 0.02,
+   "gift": 0.02,
+   "total": 0.262,
+   "totalExTaxPack": 0.162
+  },
+  {
+   "id": "poya_online",
+   "name": "POYA 線上",
+   "base": 0.07,
+   "tax": 0.05,
+   "pack": 0.05,
+   "total": 0.17,
+   "note": "常態促銷 25%"
+  }
+ ],
+ "_待確認": [
+  "LaLa V 的「一般」費率（非促銷日）在 Sheet 沒有列，工具先只放促銷日列，需 Jennifer 補。",
+  "社群＋蝦皮商城 / 專櫃 / 酷澎 / 家樂福 / momo 的費率不在此分頁，需另補。"
+ ],
+ "updated": "2026-11-22",
+ "priceFields": [
+  {
+   "field": "官網",
+   "platform": "shopline"
+  },
+  {
+   "field": "一般賣場-玩美",
+   "platform": "shopee_general"
+  },
+  {
+   "field": "一般－活動日特價",
+   "platform": "shopee_general_promo"
+  },
+  {
+   "field": "寶媽",
+   "platform": "shopee_general"
+  },
+  {
+   "field": "桑爹",
+   "platform": "shopee_sangdie"
+  },
+  {
+   "field": "蝦皮商城-LaLaV",
+   "platform": "shopee_mall"
+  },
+  {
+   "field": "商城－活動日特價",
+   "platform": "lalav_promo_beauty"
+  },
+  {
+   "field": "LINE購物商城",
+   "platform": null
+  },
+  {
+   "field": "酷澎",
+   "platform": null
+  }
+ ],
+ "ladder": {
+  "margins": [
+   0.05,
+   0.1,
+   0.15,
+   0.2,
+   0.25,
+   0.3,
+   0.35,
+   0.4,
+   0.45,
+   0.5
+  ],
+  "labels": {
+   "0.10": "入系統成本",
+   "0.35": "最低期望售價",
+   "0.40": "理想售價",
+   "0.50": "蝦皮理想售價"
+  }
+ },
+ "currencies": [
+  {
+   "id": "USD",
+   "name": "美金 USD",
+   "rate": 32.5
+  },
+  {
+   "id": "CNY",
+   "name": "人民幣 RMB",
+   "rate": 4.7
+  },
+  {
+   "id": "JPY",
+   "name": "日圓 JPY",
+   "rate": 0.22
+  },
+  {
+   "id": "KRW",
+   "name": "韓元 KRW",
+   "rate": 0.0244,
+   "note": "待確認：Sheet S8 寫 41.0，此處暫以 1÷41 換算"
+  },
+  {
+   "id": "TWD",
+   "name": "台幣 TWD",
+   "rate": 1
+  }
+ ],
+ "freightDuty": 1.16,
+ "sysMargin": 0.1
+}
