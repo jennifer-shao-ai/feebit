@@ -116,11 +116,12 @@ dialog::backdrop{background:#0006}
 #toast button{background:none;border:none;color:#ffd666;cursor:pointer;font-weight:700;font-size:14px}
 
 .printonly{display:none}
+.ph h2{margin:0;font-size:20px}.ph span{font-size:13px}
 @media(max-width:560px){.hero .big{font-size:22px}.months{grid-template-columns:1fr}}
 @media print{
   body{background:#fff;color:#000;padding:0}
   .noprint,.selbar,#toast{display:none!important}
-  .printonly{display:block;margin:0 0 6px}
+  .printonly{display:flex;justify-content:space-between;align-items:baseline;margin:0 0 6px}
   .months{grid-template-columns:repeat(3,1fr);gap:8px}
   .mcard{box-shadow:none;break-inside:avoid;padding:6px}
   .cal td,.cal th.nm{height:34px}
@@ -132,8 +133,8 @@ dialog::backdrop{background:#0006}
 </head>
 <body>
 <div class="wrap">
-  <div class="top noprint"><h1>🍱 訂便當排程</h1><span class="ver">v1.2</span></div>
-  <h2 class="printonly" id="printTitle"></h2>
+  <div class="top noprint"><h1>🍱 訂便當排程</h1><span class="ver">v1.3</span></div>
+  <div class="printonly ph"><h2 id="printTitle"></h2><span id="printDate"></span></div>
   <div class="ro noprint" id="ro" hidden></div>
   <section class="card hero noprint" id="hero"></section>
   <div class="ctrl noprint" id="ctrl"></div>
@@ -275,7 +276,7 @@ function chip(i){
 const $=id=>document.getElementById(id);
 function render(){
   if(sel&&readonly)sel=null;
-  $('printTitle').textContent='飛比特　訂便當排程　'+pref.year;
+  $('printTitle').textContent='訂便當排程　'+pref.year;
   renderRO();renderHero();renderCtrl();
   $('main').innerHTML=pref.view==='year'?yearHTML():listHTML();
   renderSel();
@@ -324,7 +325,7 @@ function renderCtrl(){
   $('ctrl').querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{pref.view=b.dataset.v;savePref();render()});
   $('thSel').onchange=e=>{const v=+e.target.value;commit(()=>{S.th=v},`門檻改為：上班日少於 ${v} 天併入上一週`)};
   $('lunarCk').onchange=e=>{pref.lunar=e.target.checked;savePref();render()};
-  $('bShare').onclick=shareLink;$('bPrint').onclick=()=>window.print();
+  $('bShare').onclick=shareLink;$('bPrint').onclick=()=>{const t=new Date();$('printDate').textContent='列印日期：'+t.getFullYear()+'/'+p2(t.getMonth()+1)+'/'+p2(t.getDate());window.print()};
   if(!ro){$('bPeople').onclick=openPeople;$('bExp').onclick=exportJSON;$('bImp').onclick=()=>$('fileIn').click();}
   if($('bUndo'))$('bUndo').onclick=undo;
 }
