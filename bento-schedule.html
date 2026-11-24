@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>訂便當排程 · 飛比特工具箱</title>
+<link rel="icon" href="favicon.svg">
+<style>
+:root{
+  --bg:#f5f3ef;--card:#fff;--ink:#222;--sub:#7a7670;--line:#e4e0d9;--soft:#faf8f5;
+  --accent:#d6403a;--on:#fff;--wk:#f9cdf1;--today:#2563eb;--sel:#fff3c4;--shadow:0 1px 4px #0001;
+  --chipS:72%;--chipL:90%;--chipT:26%;
+}
+@media(prefers-color-scheme:dark){
+  :root{--bg:#1d201f;--card:#262b2a;--ink:#e4e8e8;--sub:#9aa5a8;--line:#3a4443;--soft:#2b3130;
+  --accent:#ef7b74;--on:#1d201f;--wk:#5b3b58;--today:#7ab0ff;--sel:#4d4520;--shadow:0 1px 4px #0005;
+  --chipS:38%;--chipL:30%;--chipT:88%}
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;padding-bottom:110px}
+.wrap{max-width:1180px;margin:0 auto;padding:16px}
+.top{display:flex;align-items:baseline;gap:10px;margin-bottom:12px}
+h1{margin:0;font-size:24px;font-weight:800}
+.ver{font-size:12px;color:var(--sub)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow)}
+button,select,input{font:inherit;color:var(--ink)}
+.btn{border:1px solid var(--line);background:var(--card);border-radius:9px;padding:7px 12px;cursor:pointer;font-size:14px}
+.btn:hover{border-color:var(--ink)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--on);font-weight:600}
+.btn.sm{padding:3px 9px;font-size:13px}
+.btn:disabled{opacity:.4;cursor:default}
+select,input[type=text]{border:1px solid var(--line);background:var(--card);border-radius:9px;padding:7px 9px;min-width:0}
+
+/* hero */
+.hero{display:flex;flex-wrap:wrap;gap:14px 28px;align-items:center;margin-bottom:12px}
+.hero .blk small{display:block;color:var(--sub);font-size:12px}
+.hero .big{font-size:26px;font-weight:800}
+.hero .acts{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+
+/* chips */
+.chip{display:inline-block;padding:1px 10px;border-radius:999px;font-weight:700;white-space:nowrap;
+  background:hsl(var(--h,0) var(--chipS) var(--chipL));color:hsl(var(--h,0) 45% var(--chipT))}
+.chip.rest{--h:0;background:var(--soft);color:var(--sub);border:1px dashed var(--line);font-weight:500}
+.chip.none{background:none;color:var(--sub);font-weight:400}
+.mk{color:var(--accent);font-size:11px;margin-left:2px}
+.big .chip{padding:0 14px;font-size:24px}
+
+/* controls */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.yr{display:flex;align-items:center;gap:4px}
+.yr b{font-size:20px;min-width:64px;text-align:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.seg button{border:none;background:var(--card);padding:7px 14px;cursor:pointer;font-size:14px}
+.seg button.on{background:var(--accent);color:var(--on);font-weight:600}
+.ctrl .sp{flex:1}
+.chk{display:flex;gap:5px;align-items:center;font-size:13px;color:var(--sub);cursor:pointer}
+.ro{background:var(--sel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+/* year calendar */
+.months{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px}
+.mcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;box-shadow:var(--shadow);scroll-margin-top:12px}
+.mcard h3{margin:2px 0 8px;text-align:center;font-size:17px;letter-spacing:.3em}
+table.cal{width:100%;border-collapse:collapse;table-layout:fixed}
+.cal th.nmh{width:70px}
+.cal thead th{font-size:12px;color:var(--sub);font-weight:500;padding:2px 0}
+.cal td,.cal th.nm{border:1px solid var(--line);padding:0;height:42px;text-align:center;vertical-align:middle}
+.cal th.nm{border:2px solid var(--accent);border-radius:0;background:var(--card)}
+.cal td.d{font-size:13px;line-height:1.1}
+.cal td.d b{display:block;font-weight:500}
+.cal td.d i{display:block;font-style:normal;font-size:9.5px;color:var(--sub);margin-top:1px}
+.cal td.we{background:var(--wk)}
+.cal td.off{background:var(--soft)}
+.cal td.today b{display:inline-block;min-width:22px;border-radius:50%;background:var(--today);color:#fff;font-weight:700}
+.cal tr.sel td.d{background:var(--sel)}
+.cal tr.sel th.nm{background:var(--sel);outline:3px solid #f0b400;outline-offset:-3px}
+.cal tr.cur th.nm{box-shadow:inset 0 0 0 2px var(--today)}
+.nmb{border:none;background:none;cursor:pointer;width:100%;height:100%;padding:3px 2px;font-size:13px}
+.nmb .chip{font-size:13px;padding:1px 7px}
+
+/* list view */
+table.wl{width:100%;border-collapse:collapse}
+.wl th,.wl td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left}
+.wl th{font-size:12px;color:var(--sub);font-weight:500}
+.wl tr.past{opacity:.55}
+.wl tr.cur td{background:var(--sel)}
+.wl tr.sel td{background:var(--sel);box-shadow:inset 0 2px 0 #f0b400,inset 0 -2px 0 #f0b400}
+.wl .chip{font-size:15px}
+.badge{font-size:11px;border:1px solid var(--line);border-radius:6px;padding:0 6px;color:var(--sub);margin-left:6px}
+
+/* selection bar */
+.selbar{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:2px solid #f0b400;padding:12px 16px calc(12px + env(safe-area-inset-bottom));display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:center;box-shadow:0 -4px 16px #0003;z-index:20}
+.selbar small{color:var(--sub);flex-basis:100%;text-align:center}
+
+/* dialog */
+dialog{border:1px solid var(--line);border-radius:16px;background:var(--card);color:var(--ink);padding:0;width:min(560px,94vw);max-height:90vh}
+dialog::backdrop{background:#0006}
+.dh{padding:16px 18px 6px;font-size:18px;font-weight:800}
+.db{padding:6px 18px 12px;overflow:auto;max-height:66vh}
+.df{padding:12px 18px 16px;display:flex;gap:8px;justify-content:flex-end;border-top:1px solid var(--line)}
+.prow{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.prow .no{width:22px;text-align:right;color:var(--sub);font-size:13px}
+.prow input{flex:1}
+.prow .btn{padding:4px 8px}
+.hint{font-size:12.5px;color:var(--sub);margin:6px 0}
+.lab{font-size:13px;color:var(--sub);margin:12px 0 4px;font-weight:600}
+.prev{display:flex;flex-wrap:wrap;gap:6px 10px;font-size:13px}
+.prev span.w{color:var(--sub);margin-right:3px}
+
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#222;color:#fff;padding:9px 16px;border-radius:999px;font-size:14px;z-index:40;display:flex;gap:12px;align-items:center;box-shadow:0 4px 16px #0005}
+#toast button{background:none;border:none;color:#ffd666;cursor:pointer;font-weight:700;font-size:14px}
+
+.printonly{display:none}
+@media(max-width:560px){.hero .big{font-size:22px}.months{grid-template-columns:1fr}}
+@media print{
+  body{background:#fff;color:#000;padding:0}
+  .noprint,.selbar,#toast{display:none!important}
+  .printonly{display:block;margin:0 0 6px}
+  .months{grid-template-columns:repeat(3,1fr);gap:8px}
+  .mcard{box-shadow:none;break-inside:avoid;padding:6px}
+  .cal td,.cal th.nm{height:34px}
+  .chip{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .cal td.we{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  @page{size:A4 landscape;margin:8mm}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top noprint"><h1>🍱 訂便當排程</h1><span class="ver">v1.0</span></div>
+  <h2 class="printonly" id="printTitle"></h2>
+  <div class="ro noprint" id="ro" hidden></div>
+  <section class="card hero noprint" id="hero"></section>
+  <div class="ctrl noprint" id="ctrl"></div>
+  <main id="main"></main>
+</div>
+<div class="selbar noprint" id="selbar" hidden></div>
+<dialog id="dlg"></dialog>
+<input type="file" id="fileIn" accept="application/json,.json" hidden>
+<div id="toast" hidden></div>
+
+<script>
+/* ───────── 日期工具（全用本地日期，週日為一週開頭，與現行表一致）───────── */
+const DAY=864e5;
+const p2=n=>String(n).padStart(2,'0');
+const ymd=d=>d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());
+const parse=s=>{const[a,b,c]=s.split('-').map(Number);return new Date(a,b-1,c)};
+const addDays=(d,n)=>new Date(d.getFullYear(),d.getMonth(),d.getDate()+n);
+const sundayOf=d=>addDays(d,-d.getDay());
+const wkOf=d=>ymd(sundayOf(d));
+const md=d=>(d.getMonth()+1)+'/'+d.getDate();
+const range=wk=>{const s=parse(wk);return md(s)+'–'+md(addDays(s,6))};
+const weeksBetween=(a,b)=>Math.round((Date.UTC(...b.split('-').map((x,i)=>i==1?x-1:+x))-Date.UTC(...a.split('-').map((x,i)=>i==1?x-1:+x)))/(7*DAY));
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* 農曆（Intl 內建，不需外部資源） */
+const LF=(()=>{try{return new Intl.DateTimeFormat('en-u-ca-chinese',{month:'numeric',day:'numeric'})}catch(e){return null}})();
+const CD=['','初一','初二','初三','初四','初五','初六','初七','初八','初九','初十','十一','十二','十三','十四','十五','十六','十七','十八','十九','二十','廿一','廿二','廿三','廿四','廿五','廿六','廿七','廿八','廿九','三十'];
+const CM=['','正','二','三','四','五','六','七','八','九','十','十一','十二'];
+const lcache={};
+function lunar(d){
+  if(!LF)return'';const k=ymd(d);if(k in lcache)return lcache[k];
+  let r='';try{const p=LF.formatToParts(d),day=+p.find(x=>x.type==='day').value,mv=p.find(x=>x.type==='month').value;
+    r=day===1?((/bis/.test(mv)?'閏':'')+CM[parseInt(mv)]+'月'):CD[day];}catch(e){}
+  return lcache[k]=r;
+}
+
+/* ───────── 資料 ─────────
+ segments：輪班區段。from=該區段第一週（週日），offset=第一週輪到 people 第幾位，
+           第 k 週 → people[(offset+k) % 人數]。人員異動 = 新增一個從某週起生效的區段，過去週次不會被改動。
+ overrides：手動調整。{週日日期: 人名}，'' 代表該週休息（不訂）。
+ colors：人名 → 色票編號。 */
+const KEY='feebit_bento_schedule_v1', PREF='feebit_bento_pref_v1';
+const HUES=[350,28,48,92,150,178,200,224,262,288,316,8];
+const SEED={segments:[{from:'2026-11-01',offset:0,people:['Trista','Euphie','LUCI','Ryan','Joanne','Feebit','Louis','MoMo','Vincent']}],overrides:{},colors:{}};
+let S=null, readonly=false, hist=[], sel=null;
+let pref={year:new Date().getFullYear(),view:'year',lunar:true};
+try{Object.assign(pref,JSON.parse(localStorage.getItem(PREF)||'{}'));pref.year=new Date().getFullYear();}catch(e){}
+const savePref=()=>{try{localStorage.setItem(PREF,JSON.stringify(pref))}catch(e){}};
+
+const b64e=o=>btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const b64d=s=>JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/g,'+').replace(/_/g,'/')))));
+function valid(o){return o&&Array.isArray(o.segments)&&o.segments.every(s=>/^\d{4}-\d\d-\d\d$/.test(s.from)&&Array.isArray(s.people)&&Number.isInteger(s.offset))&&o.overrides&&typeof o.overrides==='object'}
+function loadState(){
+  try{const m=location.hash.match(/^#s=(.+)$/);if(m){const o=b64d(m[1]);if(valid(o)){readonly=true;return o}}}catch(e){}
+  try{const o=JSON.parse(localStorage.getItem(KEY));if(valid(o))return o}catch(e){}
+  return JSON.parse(JSON.stringify(SEED));
+}
+function ensureColors(){
+  S.colors=S.colors||{};const used=new Set(Object.values(S.colors));
+  const all=[];S.segments.forEach(s=>s.people.forEach(n=>all.push(n)));Object.values(S.overrides).forEach(n=>n&&all.push(n));
+  all.forEach(n=>{if(!(n in S.colors)){let i=0;while(used.has(i)&&i<HUES.length)i++;if(i>=HUES.length)i=Object.keys(S.colors).length%HUES.length;S.colors[n]=i;used.add(i)}});
+}
+function normalize(){
+  S.segments.sort((a,b)=>a.from<b.from?-1:1);
+  for(const wk of Object.keys(S.overrides)){const b=baseName(wk);if(S.overrides[wk]!==''&&S.overrides[wk]===b)delete S.overrides[wk]}
+}
+function save(){if(readonly)return;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function commit(fn,msg){
+  hist.push(JSON.stringify(S));if(hist.length>30)hist.shift();
+  fn();normalize();ensureColors();save();render();if(msg)toast(msg,true);
+}
+function undo(){if(!hist.length)return;S=JSON.parse(hist.pop());save();render();toast('已復原')}
+
+/* ───────── 排程計算 ───────── */
+function segAt(wk){let r=null;for(const s of S.segments)if(s.from<=wk)r=s;return r}
+function baseName(wk){
+  const s=segAt(wk);if(!s||!s.people.length)return null;
+  const n=s.people.length,k=weeksBetween(s.from,wk);return s.people[(((s.offset+k)%n)+n)%n];
+}
+function eff(wk){
+  const b=baseName(wk);
+  if(wk in S.overrides){const o=S.overrides[wk];return o===''?{name:'',kind:'rest',base:b}:{name:o,kind:'swap',base:b}}
+  return b?{name:b,kind:'auto',base:b}:{name:'',kind:'none',base:null};
+}
+function setOv(wk,val){ // val: 人名 / '' 休息 / null 還原
+  if(val===null||(val!==''&&val===baseName(wk)))delete S.overrides[wk];else S.overrides[wk]=val;
+}
+function chip(i){
+  if(i.kind==='rest')return'<span class="chip rest">休息</span>';
+  if(i.kind==='none')return'<span class="chip none">–</span>';
+  const h=HUES[(S.colors[i.name]||0)%HUES.length];
+  return`<span class="chip" style="--h:${h}">${esc(i.name)}</span>`+(i.kind==='swap'?'<sup class="mk" title="已手動調整">⇄</sup>':'');
+}
+
+/* ───────── 畫面 ───────── */
+const $=id=>document.getElementById(id);
+function render(){
+  if(sel&&readonly)sel=null;
+  $('printTitle').textContent='飛比特　訂便當排程　'+pref.year;
+  renderRO();renderHero();renderCtrl();
+  $('main').innerHTML=pref.view==='year'?yearHTML():listHTML();
+  renderSel();
+}
+function renderRO(){
+  const el=$('ro');el.hidden=!readonly;if(!readonly)return;
+  el.innerHTML='<span>👀 這是分享給你的<b>唯讀版</b>，不會改到任何人的資料。</span><span style="flex:1"></span><button class="btn pri" id="adopt">存成我的排程</button>';
+  $('adopt').onclick=()=>{if(confirm('把這份排程存到這台瀏覽器？（會取代你這裡原本的排程）')){readonly=false;history.replaceState(null,'',location.pathname);save();render();toast('已存到本機')}};
+}
+function renderHero(){
+  const t=new Date(),w0=wkOf(t),w1=ymd(addDays(parse(w0),7)),w2=ymd(addDays(parse(w0),14));
+  const i0=eff(w0),i1=eff(w1),i2=eff(w2);
+  $('hero').innerHTML=`
+    <div class="blk"><small>本週（${range(w0)}）訂餐者</small><div class="big">${chip(i0)}</div></div>
+    <div class="blk"><small>下週（${range(w1)}）</small><div class="big" style="font-size:20px">${chip(i1)}</div></div>
+    <div class="blk"><small>下下週（${range(w2)}）</small><div class="big" style="font-size:20px">${chip(i2)}</div></div>
+    <div class="acts"><button class="btn" id="cpNote">📋 複製提醒文字</button></div>`;
+  $('cpNote').onclick=()=>{
+    const nm=i=>i.kind==='rest'?'休息（不訂）':(i.name||'未排');
+    const txt=`🍱 本週（${range(w0)}）訂便當：${nm(i0)}\n下週（${range(w1)}）：${nm(i1)}\n下下週（${range(w2)}）：${nm(i2)}`;
+    copy(txt,'已複製，可直接貼到群組');
+  };
+}
+function renderCtrl(){
+  const ro=readonly;
+  $('ctrl').innerHTML=`
+    <div class="yr"><button class="btn sm" id="yPrev">◀</button><b>${pref.year}</b><button class="btn sm" id="yNext">▶</button><button class="btn sm" id="yNow">今年</button></div>
+    <div class="seg"><button data-v="year" class="${pref.view==='year'?'on':''}">年曆</button><button data-v="list" class="${pref.view==='list'?'on':''}">週列表</button></div>
+    <label class="chk"><input type="checkbox" id="lunarCk" ${pref.lunar?'checked':''}> 顯示農曆</label>
+    <span class="sp"></span>
+    ${ro?'':'<button class="btn pri" id="bPeople">👥 人員設定</button>'}
+    <button class="btn" id="bShare">🔗 分享連結</button>
+    ${ro?'':'<button class="btn" id="bExp">⬇ 備份</button><button class="btn" id="bImp">⬆ 匯入</button>'}
+    <button class="btn" id="bPrint">🖨 列印</button>
+    ${ro||!hist.length?'':'<button class="btn" id="bUndo">↩ 復原</button>'}`;
+  $('yPrev').onclick=()=>{pref.year--;savePref();render()};
+  $('yNext').onclick=()=>{pref.year++;savePref();render()};
+  $('yNow').onclick=()=>{pref.year=new Date().getFullYear();savePref();render();scrollCur()};
+  $('ctrl').querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{pref.view=b.dataset.v;savePref();render()});
+  $('lunarCk').onchange=e=>{pref.lunar=e.target.checked;savePref();render()};
+  $('bShare').onclick=shareLink;$('bPrint').onclick=()=>window.print();
+  if(!ro){$('bPeople').onclick=openPeople;$('bExp').onclick=exportJSON;$('bImp').onclick=()=>$('fileIn').click();}
+  if($('bUndo'))$('bUndo').onclick=undo;
+}
+
+function monthHTML(y,m){
+  const first=new Date(y,m,1),last=new Date(y,m+1,0),todayK=ymd(new Date()),curW=wkOf(new Date());
+  let ws=sundayOf(first),rows='';
+  while(ws<=last){
+    const wk=ymd(ws),info=eff(wk);let cells='';
+    for(let i=0;i<7;i++){
+      const d=addDays(ws,i);
+      if(d.getMonth()!==m){cells+='<td class="d off"></td>';continue}
+      cells+=`<td class="d ${(i===0||i===6)?'we':''} ${ymd(d)===todayK?'today':''}"><b>${d.getDate()}</b>${pref.lunar?`<i>${lunar(d)}</i>`:''}</td>`;
+    }
+    rows+=`<tr data-wk="${wk}" class="${wk===sel?'sel':''} ${wk===curW?'cur':''}"><th class="nm"><button class="nmb" data-wk="${wk}" title="${range(wk)}">${chip(info)}</button></th>${cells}</tr>`;
+    ws=addDays(ws,7);
+  }
+  return`<div class="mcard" id="m-${y}-${m}"><h3>${'一二三四五六七八九十十一十二'.match(/十一|十二|./g)[m]}月</h3>
+  <table class="cal"><thead><tr><th class="nmh">當週訂餐者</th>${['日','一','二','三','四','五','六'].map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function yearHTML(){let h='<div class="months">';for(let m=0;m<12;m++)h+=monthHTML(pref.year,m);return h+'</div>'}
+function listHTML(){
+  const y=pref.year,curW=wkOf(new Date());let ws=sundayOf(new Date(y,0,1)),end=new Date(y,11,31),n=0,rows='';
+  while(ws<=end){
+    const wk=ymd(ws),i=eff(wk);n++;
+    const note=i.kind==='swap'?`<span class="badge">調整過（原：${esc(i.base||'–')}）</span>`:i.kind==='rest'?'<span class="badge">休息</span>':'';
+    rows+=`<tr data-wk="${wk}" class="${wk<curW?'past':''} ${wk===curW?'cur':''} ${wk===sel?'sel':''}"><td>${n}</td><td>${range(wk)}</td><td>${chip(i)}${note}${wk===curW?'<span class="badge">本週</span>':''}</td><td>${readonly?'':`<button class="btn sm nmb2" data-wk="${wk}" style="width:auto;height:auto">更換 / 對調</button>`}</td></tr>`;
+    ws=addDays(ws,7);
+  }
+  return`<div class="card"><table class="wl"><thead><tr><th>#</th><th>日期</th><th>訂餐者</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function scrollCur(){
+  const t=new Date();if(pref.view!=='year'||pref.year!==t.getFullYear())return;
+  const el=$('m-'+t.getFullYear()+'-'+t.getMonth());if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+/* ───────── 選週 / 對調 ───────── */
+$('main').addEventListener('click',e=>{
+  if(readonly)return;
+  const b=e.target.closest('[data-wk]');if(!b||!(b.classList.contains('nmb')||b.classList.contains('nmb2')))return;
+  pick(b.dataset.wk);
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sel){sel=null;render()}});
+function pick(wk){
+  if(sel===null||sel===wk){sel=sel===wk?null:wk;render();return}
+  const A=sel,B=wk,ia=eff(A),ib=eff(B);
+  if(ia.kind==='none'||ib.kind==='none'){toast('這週還沒有排程，無法對調（請先在「人員設定」把起點設到更早的週）');return}
+  sel=null;
+  commit(()=>{setOv(A,ib.kind==='rest'?'':ib.name);setOv(B,ia.kind==='rest'?'':ia.name)},
+    `已對調：${range(A)} ⇄ ${range(B)}（${ib.name||'休息'} ⇄ ${ia.name||'休息'}）`);
+}
+function renderSel(){
+  const el=$('selbar');
+  if(!sel||readonly){el.hidden=true;return}
+  const i=eff(sel),s=segAt(sel),ppl=new Set(s?s.people:[]);if(i.name)ppl.add(i.name);
+  const opts=[...ppl].map(n=>`<option value="${esc(n)}"${n===i.name?' selected':''}>${esc(n)}</option>`).join('');
+  el.hidden=false;
+  el.innerHTML=`
+    <div>已選 <b>${range(sel)}</b>　目前：${chip(i)}</div>
+    <label>改指定為 <select id="selAssign"><option value="__keep">— 選一位 —</option>${opts}<option value="__rest"${i.kind==='rest'?' selected':''}>休息（這週不訂）</option></select></label>
+    ${(sel in S.overrides)?'<button class="btn" id="selReset">還原自動排序</button>':''}
+    <button class="btn" id="selCancel">取消</button>
+    <small>👉 想對調？直接點<b>另一週</b>的名字，兩週就會互換</small>`;
+  $('selAssign').onchange=e=>{
+    const v=e.target.value;if(v==='__keep')return;const wk=sel;sel=null;
+    commit(()=>setOv(wk,v==='__rest'?'':v),`${range(wk)} 改為：${v==='__rest'?'休息':v}`);
+  };
+  if($('selReset'))$('selReset').onclick=()=>{const wk=sel;sel=null;commit(()=>setOv(wk,null),`${range(wk)} 已還原自動排序`)};
+  $('selCancel').onclick=()=>{sel=null;render()};
+}
+
+/* ───────── 人員設定（異動後自動重排） ───────── */
+let D=null;
+function openPeople(){
+  const w0=wkOf(new Date()),nextW=ymd(addDays(parse(w0),7));
+  const cur=segAt(nextW)||S.segments[S.segments.length-1]||{people:[]};
+  D={items:cur.people.map((n,i)=>({id:i+1,name:n,orig:n})),nid:1000,W:nextW,startId:null};
+  renderDlg();$('dlg').showModal();
+}
+function autoStart(){
+  const W=D.W,names=D.items;if(!names.length)return null;
+  const find=old=>names.find(x=>x.orig===old);
+  const prev=baseName(ymd(addDays(parse(W),-7)));
+  if(prev){const it=find(prev);if(it){return names[(names.indexOf(it)+1)%names.length].id}}
+  for(let i=0;i<names.length+2;i++){const nm=baseName(ymd(addDays(parse(W),7*i)));const it=nm&&find(nm);if(it)return it.id}
+  return names[0].id;
+}
+function renderDlg(){
+  const w0=wkOf(new Date());let wopts='';
+  for(let i=-4;i<=60;i++){const wk=ymd(addDays(parse(w0),7*i));wopts+=`<option value="${wk}"${wk===D.W?' selected':''}>${range(wk)} 起${i===0?'（本週）':i===1?'（下週）':''}</option>`}
+  $('dlg').innerHTML=`
+    <div class="dh">👥 人員設定</div>
+    <div class="db">
+      <div class="hint">依<b>由上到下的順序</b>輪流訂餐。新增、刪除、調順序後，從「生效週」起自動重排；<b>生效週以前的紀錄不會被改動</b>。</div>
+      <div id="dList"></div>
+      <div class="prow"><span class="no"></span><input type="text" id="dNew" placeholder="新增人員姓名，按 Enter 加入"><button class="btn" id="dAdd">＋ 加入</button></div>
+      <div class="hint">改名會連過去紀錄一起改（適合改錯字）；有人離職請用 ✕ 刪除，再新增接任者。</div>
+      <div class="lab">從哪一週開始生效</div>
+      <select id="dW">${wopts}</select>
+      <div id="dMeta"></div>
+    </div>
+    <div class="df"><button class="btn" id="dCancel">取消</button><button class="btn pri" id="dApply">套用並重排</button></div>`;
+  renderList();refreshMeta();
+  $('dAdd').onclick=addPerson;
+  $('dNew').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();addPerson()}};
+  $('dW').onchange=e=>{D.W=e.target.value;D.startId=null;refreshMeta()};
+  $('dCancel').onclick=()=>$('dlg').close();
+  $('dApply').onclick=applyPeople;
+}
+function renderList(){
+  $('dList').innerHTML=D.items.map((it,i)=>`
+    <div class="prow"><span class="no">${i+1}</span><input type="text" value="${esc(it.name)}" data-i="${i}">
+    <button class="btn" data-up="${i}" ${i===0?'disabled':''}>↑</button><button class="btn" data-dn="${i}" ${i===D.items.length-1?'disabled':''}>↓</button>
+    <button class="btn" data-rm="${i}">✕</button></div>`).join('')||'<div class="hint">目前沒有人員，請在下方新增。</div>';
+  const L=$('dList');
+  L.querySelectorAll('input').forEach(inp=>inp.oninput=()=>{D.items[+inp.dataset.i].name=inp.value;refreshMeta()});
+  L.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>{const i=+b.dataset.up;[D.items[i-1],D.items[i]]=[D.items[i],D.items[i-1]];renderList();refreshMeta()});
+  L.querySelectorAll('[data-dn]').forEach(b=>b.onclick=()=>{const i=+b.dataset.dn;[D.items[i+1],D.items[i]]=[D.items[i],D.items[i+1]];renderList();refreshMeta()});
+  L.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{D.items.splice(+b.dataset.rm,1);renderList();refreshMeta()});
+}
+function addPerson(){
+  const v=$('dNew').value.trim();if(!v)return;
+  if(D.items.some(x=>x.name.trim()===v)){toast('已經有同名的人了');return}
+  D.items.push({id:D.nid++,name:v,orig:null});$('dNew').value='';renderList();refreshMeta();$('dNew').focus();
+}
+function refreshMeta(){
+  const n=D.items;if(!n.some(x=>x.id===D.startId))D.startId=null;
+  const auto=autoStart(),sid=D.startId??auto;
+  const idx=Math.max(0,n.findIndex(x=>x.id===sid));
+  let prev='';for(let i=0;i<Math.min(8,n.length||0)+ (n.length?0:0);i++){}
+  if(n.length){for(let i=0;i<8;i++){const wk=ymd(addDays(parse(D.W),7*i)),it=n[(idx+i)%n.length];
+    prev+=`<span><span class="w">${md(parse(wk))}</span>${chip({kind:'auto',name:it.name||'?'})}</span>`}}
+  $('dMeta').innerHTML=`
+    <div class="lab">生效週第一位輪到誰</div>
+    <select id="dStart">${n.map(x=>`<option value="${x.id}"${x.id===sid?' selected':''}>${esc(x.name||'（未命名）')}${x.id===auto?'　← 依現有順序接續':''}</option>`).join('')}</select>
+    <div class="lab">套用後預覽（從 ${md(parse(D.W))} 起 8 週）</div><div class="prev">${prev||'<span class="hint">請先新增人員</span>'}</div>`;
+  $('dStart').onchange=e=>{D.startId=+e.target.value;refreshMeta()};
+  // 預覽用的色票：新名字先暫借顏色，不寫入資料
+}
+function applyPeople(){
+  const names=D.items.map(x=>x.name.trim());
+  if(!names.length){toast('至少要有 1 位人員');return}
+  if(names.some(x=>!x)){toast('有人員姓名是空的');return}
+  if(new Set(names).size!==names.length){toast('有重複的姓名');return}
+  const auto=autoStart(),sid=D.startId??auto,startIdx=Math.max(0,D.items.findIndex(x=>x.id===sid)),W=D.W;
+  const ren={};D.items.forEach(x=>{if(x.orig&&x.orig!==x.name.trim())ren[x.orig]=x.name.trim()});
+  $('dlg').close();
+  commit(()=>{
+    if(Object.keys(ren).length){
+      S.segments.forEach(s=>s.people=s.people.map(n=>ren[n]||n));
+      for(const k of Object.keys(S.overrides))if(ren[S.overrides[k]])S.overrides[k]=ren[S.overrides[k]];
+      for(const o of Object.keys(ren)){S.colors[ren[o]]=S.colors[o];delete S.colors[o]}
+    }
+    S.segments=S.segments.filter(s=>s.from<W);
+    S.segments.push({from:W,offset:startIdx,people:names});
+    const set=new Set(names);
+    for(const k of Object.keys(S.overrides))if(k>=W&&S.overrides[k]!==''&&!set.has(S.overrides[k]))delete S.overrides[k];
+  },`已重排：${md(parse(W))} 起依 ${names.length} 人輪流`);
+}
+
+/* ───────── 分享 / 備份 / 匯入 ───────── */
+function shareLink(){
+  const url=location.origin+location.pathname+'#s='+b64e({segments:S.segments,overrides:S.overrides,colors:S.colors});
+  copy(url,'唯讀分享連結已複製（同事打開看到的是此刻這份排程）');
+}
+function exportJSON(){
+  const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='feebit-bento-schedule-'+ymd(new Date())+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+$('fileIn').onchange=e=>{
+  const f=e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{const o=JSON.parse(r.result);if(!valid(o))throw 0;
+    if(!confirm('匯入會取代目前這台瀏覽器裡的排程，確定嗎？（匯入後仍可按「復原」）'))return;
+    commit(()=>{S=o},'已匯入')}catch(err){toast('檔案格式不對，無法匯入')}};
+  r.readAsText(f);e.target.value='';
+};
+function copy(txt,msg){
+  const done=()=>toast(msg);
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(done,()=>fb());else fb();
+  function fb(){const t=document.createElement('textarea');t.value=txt;document.body.appendChild(t);t.select();try{document.execCommand('copy');done()}catch(e){prompt('請自行複製：',txt)}t.remove()}
+}
+let tt=null;
+function toast(msg,undoable){
+  const el=$('toast');el.innerHTML=`<span>${esc(msg)}</span>`+(undoable&&!readonly&&hist.length?'<button id="tUndo">復原</button>':'');el.hidden=false;
+  if($('tUndo'))$('tUndo').onclick=()=>{undo();};
+  clearTimeout(tt);tt=setTimeout(()=>el.hidden=true,5000);
+}
+
+/* ───────── 啟動 ───────── */
+S=loadState();normalize();ensureColors();
+if(!readonly)save();
+render();
+setTimeout(scrollCur,60);
+</script>
+</body>
+</html>
