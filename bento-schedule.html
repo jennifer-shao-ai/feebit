@@ -122,6 +122,7 @@ dialog::backdrop{background:#0006}
   body{background:#fff;color:#000;padding:0}
   .noprint,.selbar,#toast{display:none!important}
   .printonly{display:flex;justify-content:space-between;align-items:baseline;margin:0 0 6px}
+  .pt{display:table;width:100%}.pth{display:table-header-group}.ptb{display:table-row-group}
   .months{grid-template-columns:repeat(3,1fr);gap:8px}
   .mcard{box-shadow:none;break-inside:avoid;padding:6px}
   .cal td,.cal th.nm{height:34px}
@@ -133,12 +134,13 @@ dialog::backdrop{background:#0006}
 </head>
 <body>
 <div class="wrap">
-  <div class="top noprint"><h1>🍱 訂便當排程</h1><span class="ver">v1.3</span></div>
-  <div class="printonly ph"><h2 id="printTitle"></h2><span id="printDate"></span></div>
+  <div class="top noprint"><h1>🍱 訂便當排程</h1><span class="ver">v1.4</span></div>
+
   <div class="ro noprint" id="ro" hidden></div>
   <section class="card hero noprint" id="hero"></section>
   <div class="ctrl noprint" id="ctrl"></div>
-  <main id="main"></main>
+  <div class="pt"><div class="pth"><div class="printonly ph"><h2 id="printTitle"></h2><span id="printDate"></span></div></div>
+  <div class="ptb"><main id="main"></main></div></div>
 </div>
 <div class="selbar noprint" id="selbar" hidden></div>
 <dialog id="dlg"></dialog>
@@ -198,7 +200,7 @@ function ensureColors(){
   all.forEach(n=>{if(!(n in S.colors)){let i=0;while(used.has(i)&&i<HUES.length)i++;if(i>=HUES.length)i=Object.keys(S.colors).length%HUES.length;S.colors[n]=i;used.add(i)}});
 }
 function normalize(){
-  S.wmode=S.wmode||{};S.th=S.th||3;
+  S.wmode=S.wmode||{};S.th=S.th||3;S.cap=S.cap||5;
   S.segments.sort((a,b)=>a.from<b.from?-1:1);
   for(const wk of Object.keys(S.overrides)){const b=baseName(wk);if(S.overrides[wk]!==''&&S.overrides[wk]===b)delete S.overrides[wk]}
 }
@@ -235,19 +237,29 @@ async function ensureHol(){
  每週先判斷類型：off＝整週放假（休息、不佔輪次）、merge＝上班日不足（併入上一輪，同一人）、turn＝正常一輪。 */
 let PLAN={};const resetPlan=()=>{PLAN={}};
 function segAt(wk){let r=null;for(const s of S.segments)if(s.from<=wk)r=s;return r}
-function cls(wk){
-  const m=(S.wmode||{})[wk];if(m==='off'||m==='turn'||m==='merge')return m;
-  const w=workdays(wk);if(w===0)return'off';return w<(S.th||3)?'merge':'turn';
+/* 一週怎麼算（由左到右逐週累計）：
+   off＝整週放假，不佔輪次；
+   merge＝併入目前這一輪（同一人）；turn＝新的一輪。
+   自動併週：這週或目前這輪「少於門檻天數」，且併起來不超過每輪上限（預設 5 天）才併。
+   → 前後週都排得滿 5 天就照輪；短週優先補進前一輪，補不進去就跟下一週湊。 */
+function stepWeek(P,w){
+  const m=(S.wmode||{})[w],wd=workdays(w),th=S.th||3,cap=S.cap||5;
+  if(m==='off'||(!m&&wd===0))return'off';
+  let c;
+  if(m==='turn'||m==='next')c='turn';
+  else if(m==='merge')c=P.turn>=0?'merge':'turn';
+  else if(P.force)c='merge';
+  else c=(P.turn>=0&&P.days+wd<=cap&&(wd<th||P.days<th))?'merge':'turn';
+  if(c==='turn'){P.turn++;P.days=wd;P.force=(m==='next')}else{P.days+=wd;P.force=false}
+  return c;
 }
 function baseInfo(wk){
   const seg=segAt(wk);if(!seg||!seg.people.length)return null;
   const key=seg.from+'|'+seg.offset+'|'+seg.people.join(',');
-  const P=PLAN[key]||(PLAN[key]={turn:-1,next:seg.from,map:{}});
+  const P=PLAN[key]||(PLAN[key]={turn:-1,days:0,force:false,next:seg.from,map:{}});
   while(P.next<=wk){
-    const c=cls(P.next);
-    if(c==='off')P.map[P.next]={cls:'off'};
-    else if(c==='merge'&&P.turn>=0)P.map[P.next]={cls:'merge',turn:P.turn};
-    else{P.turn++;P.map[P.next]={cls:'turn',turn:P.turn}}
+    const c=stepWeek(P,P.next);
+    P.map[P.next]=c==='off'?{cls:'off'}:{cls:c,turn:P.turn};
     P.next=ymd(addDays(parse(P.next),7));
   }
   const r=P.map[wk];if(!r)return null;
@@ -311,7 +323,8 @@ function renderCtrl(){
     <div class="yr"><button class="btn sm" id="yPrev">◀</button><b>${pref.year}</b><button class="btn sm" id="yNext">▶</button><button class="btn sm" id="yNow">今年</button></div>
     <div class="seg"><button data-v="year" class="${pref.view==='year'?'on':''}">年曆</button><button data-v="list" class="${pref.view==='list'?'on':''}">週列表</button></div>
     <label class="chk"><input type="checkbox" id="lunarCk" ${pref.lunar?'checked':''}> 農曆</label>
-    <label class="chk">上班日少於 <select id="thSel" ${ro?'disabled':''}>${[1,2,3,4,5].map(n=>`<option value="${n}"${n===(S.th||3)?' selected':''}>${n}</option>`).join('')}</select> 天併上週</label>
+    <label class="chk" title="上班日少於這個天數的週，會自動找前／後週湊在一起">短週：少於 <select id="thSel" ${ro?'disabled':''}>${[1,2,3,4,5].map(n=>`<option value="${n}"${n===(S.th||3)?' selected':''}>${n}</option>`).join('')}</select> 天</label>
+    <label class="chk" title="併週後同一人的上班日不超過這個天數；前後週都排滿就照輪">每輪最多 <select id="capSel" ${ro?'disabled':''}>${[4,5,6,7,8].map(n=>`<option value="${n}"${n===(S.cap||5)?' selected':''}>${n}</option>`).join('')}</select> 天</label>
     ${holWarn()}
     <span class="sp"></span>
     ${ro?'':'<button class="btn pri" id="bPeople">👥 人員設定</button>'}
@@ -323,7 +336,8 @@ function renderCtrl(){
   $('yNext').onclick=()=>{pref.year++;savePref();render()};
   $('yNow').onclick=()=>{pref.year=new Date().getFullYear();savePref();render();scrollCur()};
   $('ctrl').querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{pref.view=b.dataset.v;savePref();render()});
-  $('thSel').onchange=e=>{const v=+e.target.value;commit(()=>{S.th=v},`門檻改為：上班日少於 ${v} 天併入上一週`)};
+  $('thSel').onchange=e=>{const v=+e.target.value;commit(()=>{S.th=v},`短週門檻改為：少於 ${v} 天`)};
+  $('capSel').onchange=e=>{const v=+e.target.value;commit(()=>{S.cap=v},`每輪上班日上限改為 ${v} 天`)};
   $('lunarCk').onchange=e=>{pref.lunar=e.target.checked;savePref();render()};
   $('bShare').onclick=shareLink;$('bPrint').onclick=()=>{const t=new Date();$('printDate').textContent='列印日期：'+t.getFullYear()+'/'+p2(t.getMonth()+1)+'/'+p2(t.getDate());window.print()};
   if(!ro){$('bPeople').onclick=openPeople;$('bExp').onclick=exportJSON;$('bImp').onclick=()=>$('fileIn').click();}
@@ -388,7 +402,7 @@ function renderSel(){
   el.innerHTML=`
     <div>已選 <b>${range(sel)}</b>（上班日 ${workdays(sel)} 天）　目前：${chip(i)}</div>
     <label>改指定為 <select id="selAssign"><option value="__keep">— 選一位 —</option>${opts}<option value="__rest"${i.kind==='rest'?' selected':''}>休息（這週不訂）</option></select></label>
-    <label>這週算 <select id="selMode"><option value="">自動</option><option value="turn">獨立一輪</option><option value="merge">併入上週</option><option value="off">休息（不佔輪次）</option></select></label>
+    <label>這週算 <select id="selMode"><option value="">自動</option><option value="turn">獨立一輪</option><option value="merge">併入上週</option><option value="next">併入下週</option><option value="off">休息（不佔輪次）</option></select></label>
     ${((sel in S.overrides)||(sel in (S.wmode||{})))?'<button class="btn" id="selReset">還原自動排序</button>':''}
     <button class="btn" id="selCancel">取消</button>
     <small>👉 想對調？直接點<b>另一週</b>的名字，兩週就會互換</small>`;
@@ -397,7 +411,7 @@ function renderSel(){
     commit(()=>setOv(wk,v==='__rest'?'':v),`${range(wk)} 改為：${v==='__rest'?'休息':v}`);
   };
   $('selMode').value=(S.wmode||{})[sel]||'';
-  $('selMode').onchange=e=>{const v=e.target.value,wk=sel;sel=null;commit(()=>{if(v)S.wmode[wk]=v;else delete S.wmode[wk]},`${range(wk)} 處理方式：${{'':'自動','turn':'獨立一輪','merge':'併入上週','off':'休息（不佔輪次）'}[v]}`)};
+  $('selMode').onchange=e=>{const v=e.target.value,wk=sel;sel=null;commit(()=>{if(v)S.wmode[wk]=v;else delete S.wmode[wk]},`${range(wk)} 處理方式：${{'':'自動','turn':'獨立一輪','merge':'併入上週','next':'併入下週','off':'休息（不佔輪次）'}[v]}`)};
   if($('selReset'))$('selReset').onclick=()=>{const wk=sel;sel=null;commit(()=>{setOv(wk,null);delete S.wmode[wk]},`${range(wk)} 已還原自動排序`)};
   $('selCancel').onclick=()=>{sel=null;render()};
 }
@@ -461,10 +475,9 @@ function refreshMeta(){
   const auto=autoStart(),sid=D.startId??auto;
   const idx=Math.max(0,n.findIndex(x=>x.id===sid));
   let prev='';
-  if(n.length){let turn=-1;for(let i=0;i<10;i++){const wk=ymd(addDays(parse(D.W),7*i)),c=cls(wk);let h;
+  if(n.length){const P={turn:-1,days:0,force:false};for(let i=0;i<10;i++){const wk=ymd(addDays(parse(D.W),7*i)),c=stepWeek(P,wk);let h;
     if(c==='off')h=chip({kind:'rest',auto:true});
-    else if(c==='merge'&&turn>=0)h=chip({kind:'auto',name:n[(idx+turn)%n.length].name||'?',cls:'merge'});
-    else{turn++;h=chip({kind:'auto',name:n[(idx+turn)%n.length].name||'?'})}
+    else h=chip({kind:'auto',name:n[(idx+P.turn)%n.length].name||'?',cls:c});
     prev+=`<span><span class="w">${md(parse(wk))}</span>${h}</span>`}}
   $('dMeta').innerHTML=`
     <div class="lab">生效週第一位輪到誰</div>
@@ -496,7 +509,7 @@ function applyPeople(){
 
 /* ───────── 分享 / 備份 / 匯入 ───────── */
 function shareLink(){
-  const url=location.origin+location.pathname+'#s='+b64e({segments:S.segments,overrides:S.overrides,wmode:S.wmode,th:S.th,colors:S.colors});
+  const url=location.origin+location.pathname+'#s='+b64e({segments:S.segments,overrides:S.overrides,wmode:S.wmode,th:S.th,cap:S.cap,colors:S.colors});
   copy(url,'唯讀分享連結已複製（同事打開看到的是此刻這份排程）');
 }
 function exportJSON(){
