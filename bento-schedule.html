@@ -133,10 +133,13 @@ dialog::backdrop{background:#0006}
   @page{size:A4 landscape;margin:8mm}
 }
 </style>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 </head>
 <body>
 <div class="wrap">
-  <div class="top noprint"><h1>🍱 訂便當排程</h1><span class="ver">v1.5</span></div>
+  <div class="top noprint"><h1>🍱 訂便當排程</h1><span class="ver">v2.0</span></div>
 
   <div class="ro noprint" id="ro" hidden></div>
   <section class="card hero noprint" id="hero"></section>
@@ -183,16 +186,13 @@ function lunar(d){
 const KEY='feebit_bento_schedule_v1', PREF='feebit_bento_pref_v1';
 const HUES=[350,28,48,92,150,178,200,224,262,288,316,8];
 const SEED={"segments":[{"from":"2026-11-01","offset":0,"people":["Trista","Euphie","LUCI","Ryan","Joanne","Feebit","Louis","MoMo","Vincent"]},{"from":"2026-11-29","offset":4,"people":["Trista","Euphie","LUCI","Ryan","Joanne","Feebit","Louis","MoMo","Vincent","Juwel","Wen","Jackal"]}],"overrides":{"2026-12-06":"Ryan","2026-11-22":"Feebit"},"colors":{"Trista":0,"Euphie":1,"LUCI":2,"Ryan":3,"Joanne":4,"Feebit":5,"Louis":6,"MoMo":7,"Vincent":8,"Juwel":9,"Wen":10,"Jackal":11},"wmode":{},"th":3};
-let S=null, readonly=false, hist=[], sel=null;
+let S=null, readonly=true, hist=[], sel=null, cloud='connecting'; // cloud: connecting | ok | offline
 let pref={year:new Date().getFullYear(),view:'year',lunar:true};
 try{Object.assign(pref,JSON.parse(localStorage.getItem(PREF)||'{}'));pref.year=new Date().getFullYear();}catch(e){}
 const savePref=()=>{try{localStorage.setItem(PREF,JSON.stringify(pref))}catch(e){}};
 
-const b64e=o=>btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-const b64d=s=>JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/g,'+').replace(/_/g,'/')))));
 function valid(o){return o&&Array.isArray(o.segments)&&o.segments.every(s=>/^\d{4}-\d\d-\d\d$/.test(s.from)&&Array.isArray(s.people)&&Number.isInteger(s.offset))&&o.overrides&&typeof o.overrides==='object'}
 function loadState(){
-  try{const m=location.hash.match(/^#s=(.+)$/);if(m){const o=b64d(m[1]);if(valid(o)){readonly=true;return o}}}catch(e){}
   try{const o=JSON.parse(localStorage.getItem(KEY));if(valid(o))return o}catch(e){}
   return JSON.parse(JSON.stringify(SEED));
 }
@@ -206,7 +206,8 @@ function normalize(){
   S.segments.sort((a,b)=>a.from<b.from?-1:1);
   for(const wk of Object.keys(S.overrides)){const b=baseName(wk);if(S.overrides[wk]!==''&&S.overrides[wk]===b)delete S.overrides[wk]}
 }
-function save(){if(readonly)return;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function cacheLocal(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function save(){if(readonly)return;cacheLocal();pushState()}
 function commit(fn,msg){
   hist.push(JSON.stringify(S));if(hist.length>30)hist.shift();
   fn();resetPlan();normalize();ensureColors();save();render();if(msg)toast(msg,true);
@@ -297,9 +298,13 @@ function render(){
   ensureHol();
 }
 function renderRO(){
-  const el=$('ro');el.hidden=!readonly;if(!readonly)return;
-  el.innerHTML='<span>👀 這是分享給你的<b>唯讀版</b>，不會改到任何人的資料。</span><span style="flex:1"></span><button class="btn pri" id="adopt">存成我的排程</button>';
-  $('adopt').onclick=()=>{if(confirm('把這份排程存到這台瀏覽器？（會取代你這裡原本的排程）')){readonly=false;history.replaceState(null,'',location.pathname);save();render();toast('已存到本機')}};
+  const el=$('ro');el.hidden=false;
+  if(cloud==='offline'){el.innerHTML='<span>⚠️ 連不上雲端，顯示的是這台電腦上次的快取，<b>目前無法編輯</b>。請檢查網路後重新整理。</span>';return}
+  if(readonly){el.innerHTML='<span>🔒 <b>唯讀</b>：看到的永遠是最新排程。要修改請向 Jennifer 取得編輯連結。</span>';return}
+  el.innerHTML='<span>✏️ <b>編輯模式</b>：你的修改會即時同步給所有人。</span><span style="flex:1"></span><button class="btn sm" id="copyEdit">🔑 複製編輯連結</button><button class="btn sm" id="logoutEdit">登出編輯</button>';
+  $('copyEdit').onclick=()=>{const k=localStorage.getItem(EKEY);if(!k){toast('找不到編輯密鑰，請重新用編輯連結開啟');return}
+    copy(location.origin+location.pathname+'?edit='+encodeURIComponent(k),'編輯連結已複製：只傳給要有編輯權的人，不要貼到公開群組')};
+  $('logoutEdit').onclick=()=>{try{firebase.auth().signOut()}catch(e){}try{localStorage.removeItem(EKEY)}catch(e){}readonly=true;sel=null;render();toast('已登出編輯，現在是唯讀')};
 }
 function renderHero(){
   const t=new Date(),w0=wkOf(t),w1=ymd(addDays(parse(w0),7)),w2=ymd(addDays(parse(w0),14));
@@ -330,7 +335,7 @@ function renderCtrl(){
     ${holWarn()}
     <span class="sp"></span>
     ${ro?'':'<button class="btn pri" id="bPeople">👥 人員設定</button>'}
-    <button class="btn" id="bShare">🔗 分享連結</button>
+    <button class="btn" id="bShare">🔗 複製網址（唯讀）</button>
     ${ro?'':'<button class="btn" id="bExp">⬇ 備份</button><button class="btn" id="bImp">⬆ 匯入</button>'}
     <button class="btn" id="bPrint">🖨 列印</button>
     ${ro||!hist.length?'':'<button class="btn" id="bUndo">↩ 復原</button>'}`;
@@ -510,10 +515,7 @@ function applyPeople(){
 }
 
 /* ───────── 分享 / 備份 / 匯入 ───────── */
-function shareLink(){
-  const url=location.origin+location.pathname+'#s='+b64e({segments:S.segments,overrides:S.overrides,wmode:S.wmode,th:S.th,cap:S.cap,colors:S.colors});
-  copy(url,'唯讀分享連結已複製（同事打開看到的是此刻這份排程）');
-}
+function shareLink(){copy(location.origin+location.pathname,'網址已複製：對方打開看到的是最新排程，而且只能看')}
 function exportJSON(){
   const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='feebit-bento-schedule-'+ymd(new Date())+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
@@ -538,10 +540,49 @@ function toast(msg,undoable){
 }
 
 window.addEventListener('beforeprint',()=>{const t=new Date();$('printDate').textContent='列印日期：'+t.getFullYear()+'/'+p2(t.getMonth()+1)+'/'+p2(t.getDate())});
+/* ───────── 雲端同步（Firebase Realtime Database）─────────
+ 讀：所有人。寫：只有用「編輯連結」登入的人（連結裡的密鑰就是編輯者帳號的密碼）。 */
+const FIREBASE_CONFIG={apiKey:"AIzaSyDeJOndThLbBxeVwZ6tAPTpbg5gmmhPRpg",authDomain:"jennifer-travel.firebaseapp.com",databaseURL:"https://jennifer-travel-default-rtdb.firebaseio.com",projectId:"jennifer-travel",storageBucket:"jennifer-travel.firebasestorage.app",messagingSenderId:"226431059637",appId:"1:226431059637:web:ca13d5e86396e45b9160fc"};
+const EDITOR_EMAIL='bento-editor@example.com', EKEY='feebit_bento_edit_key', DBPATH='bento/state';
+let db=null, cloudEmpty=false;
+function pushState(){
+  if(!db||readonly)return;
+  db.ref(DBPATH).set(JSON.stringify(S)).catch(()=>toast('⚠️ 儲存到雲端失敗（可能沒有編輯權限或沒網路）'));
+}
+function applyRemote(str){
+  try{const o=JSON.parse(str);if(!valid(o))return;S=o;normalize();ensureColors();resetPlan();cacheLocal();if(sel&&!(sel in S.overrides)&&!segAt(sel))sel=null;render()}catch(e){}
+}
+async function signIn(k){
+  try{
+    await firebase.auth().signInWithEmailAndPassword(EDITOR_EMAIL,k);
+    try{localStorage.setItem(EKEY,k)}catch(e){}
+    readonly=false;
+    if(cloudEmpty)pushState();   // 雲端還沒資料：由第一位編輯者把目前這份推上去
+    render();return true;
+  }catch(e){
+    try{localStorage.removeItem(EKEY)}catch(e2){}
+    toast('編輯連結無效或已失效，目前是唯讀');return false;
+  }
+}
+function initCloud(){
+  let k=null;
+  try{const u=new URLSearchParams(location.search);k=u.get('edit');
+    if(k){u.delete('edit');const q=u.toString();history.replaceState(null,'',location.pathname+(q?'?'+q:'')+location.hash)} // 把密鑰從網址列拿掉
+    else k=localStorage.getItem(EKEY)}catch(e){}
+  try{firebase.initializeApp(FIREBASE_CONFIG);db=firebase.database()}catch(e){cloud='offline';render();return}
+  db.ref(DBPATH).on('value',snap=>{
+    cloud='ok';const v=snap.val();
+    if(v){cloudEmpty=false;applyRemote(v)}
+    else{cloudEmpty=true;if(!readonly)pushState();render()}
+  },()=>{cloud='offline';render()});
+  if(k)signIn(k);
+  setTimeout(()=>{if(cloud==='connecting'){cloud='offline';render()}},8000);
+}
+
 /* ───────── 啟動 ───────── */
 S=loadState();normalize();ensureColors();
-if(!readonly)save();
 render();
+initCloud();
 setTimeout(scrollCur,60);
 </script>
 </body>
