@@ -132,7 +132,7 @@ dialog::backdrop{background:#0006}
 </head>
 <body>
 <div class="wrap">
-  <div class="top noprint"><h1>🍱 訂便當排程</h1><span class="ver">v1.1</span></div>
+  <div class="top noprint"><h1>🍱 訂便當排程</h1><span class="ver">v1.2</span></div>
   <h2 class="printonly" id="printTitle"></h2>
   <div class="ro noprint" id="ro" hidden></div>
   <section class="card hero noprint" id="hero"></section>
@@ -177,7 +177,7 @@ function lunar(d){
  colors：人名 → 色票編號。 */
 const KEY='feebit_bento_schedule_v1', PREF='feebit_bento_pref_v1';
 const HUES=[350,28,48,92,150,178,200,224,262,288,316,8];
-const SEED={segments:[{from:'2026-11-01',offset:0,people:['Trista','Euphie','LUCI','Ryan','Joanne','Feebit','Louis','MoMo','Vincent']}],overrides:{},wmode:{},th:3,colors:{}};
+const SEED={"segments":[{"from":"2026-11-01","offset":0,"people":["Trista","Euphie","LUCI","Ryan","Joanne","Feebit","Louis","MoMo","Vincent"]},{"from":"2026-11-29","offset":4,"people":["Trista","Euphie","LUCI","Ryan","Joanne","Feebit","Louis","MoMo","Vincent","Juwel","Wen","Jackal"]}],"overrides":{"2026-12-06":"Ryan","2026-11-22":"Feebit"},"colors":{"Trista":0,"Euphie":1,"LUCI":2,"Ryan":3,"Joanne":4,"Feebit":5,"Louis":6,"MoMo":7,"Vincent":8,"Juwel":9,"Wen":10,"Jackal":11},"wmode":{},"th":3};
 let S=null, readonly=false, hist=[], sel=null;
 let pref={year:new Date().getFullYear(),view:'year',lunar:true};
 try{Object.assign(pref,JSON.parse(localStorage.getItem(PREF)||'{}'));pref.year=new Date().getFullYear();}catch(e){}
