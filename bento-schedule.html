@@ -116,13 +116,15 @@ dialog::backdrop{background:#0006}
 #toast button{background:none;border:none;color:#ffd666;cursor:pointer;font-weight:700;font-size:14px}
 
 .printonly{display:none}
+.pt{width:100%;border-collapse:collapse;border-spacing:0}.pt>thead>tr>td,.pt>tbody>tr>td{padding:0;border:0;display:block}
+@media print{.pt>thead{display:table-header-group}.pt>tbody{display:table-row-group}.pt>thead>tr>td,.pt>tbody>tr>td{display:table-cell}}
 .ph h2{margin:0;font-size:20px}.ph span{font-size:13px}
 @media(max-width:560px){.hero .big{font-size:22px}.months{grid-template-columns:1fr}}
 @media print{
   body{background:#fff;color:#000;padding:0}
   .noprint,.selbar,#toast{display:none!important}
   .printonly{display:flex;justify-content:space-between;align-items:baseline;margin:0 0 6px}
-  .pt{display:table;width:100%}.pth{display:table-header-group}.ptb{display:table-row-group}
+  .pt{width:100%}
   .months{grid-template-columns:repeat(3,1fr);gap:8px}
   .mcard{box-shadow:none;break-inside:avoid;padding:6px}
   .cal td,.cal th.nm{height:34px}
@@ -134,13 +136,13 @@ dialog::backdrop{background:#0006}
 </head>
 <body>
 <div class="wrap">
-  <div class="top noprint"><h1>🍱 訂便當排程</h1><span class="ver">v1.4</span></div>
+  <div class="top noprint"><h1>🍱 訂便當排程</h1><span class="ver">v1.5</span></div>
 
   <div class="ro noprint" id="ro" hidden></div>
   <section class="card hero noprint" id="hero"></section>
   <div class="ctrl noprint" id="ctrl"></div>
-  <div class="pt"><div class="pth"><div class="printonly ph"><h2 id="printTitle"></h2><span id="printDate"></span></div></div>
-  <div class="ptb"><main id="main"></main></div></div>
+  <table class="pt"><thead><tr><td><div class="printonly ph"><h2 id="printTitle"></h2><span id="printDate"></span></div></td></tr></thead>
+  <tbody><tr><td><main id="main"></main></td></tr></tbody></table>
 </div>
 <div class="selbar noprint" id="selbar" hidden></div>
 <dialog id="dlg"></dialog>
@@ -535,6 +537,7 @@ function toast(msg,undoable){
   clearTimeout(tt);tt=setTimeout(()=>el.hidden=true,5000);
 }
 
+window.addEventListener('beforeprint',()=>{const t=new Date();$('printDate').textContent='列印日期：'+t.getFullYear()+'/'+p2(t.getMonth()+1)+'/'+p2(t.getDate())});
 /* ───────── 啟動 ───────── */
 S=loadState();normalize();ensureColors();
 if(!readonly)save();
