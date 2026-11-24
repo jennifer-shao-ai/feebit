@@ -9,12 +9,12 @@
 :root{
   --bg:#f5f3ef;--card:#fff;--ink:#222;--sub:#7a7670;--line:#e4e0d9;--soft:#faf8f5;
   --accent:#d6403a;--on:#fff;--wk:#f9cdf1;--today:#2563eb;--sel:#fff3c4;--shadow:0 1px 4px #0001;
-  --chipS:72%;--chipL:90%;--chipT:26%;
+  --chipS:72%;--chipL:90%;--chipT:26%;--hol:#ffe2b8;
 }
 @media(prefers-color-scheme:dark){
   :root{--bg:#1d201f;--card:#262b2a;--ink:#e4e8e8;--sub:#9aa5a8;--line:#3a4443;--soft:#2b3130;
   --accent:#ef7b74;--on:#1d201f;--wk:#5b3b58;--today:#7ab0ff;--sel:#4d4520;--shadow:0 1px 4px #0005;
-  --chipS:38%;--chipL:30%;--chipT:88%}
+  --chipS:38%;--chipL:30%;--chipT:88%;--hol:#5e4724}
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -71,6 +71,11 @@ table.cal{width:100%;border-collapse:collapse;table-layout:fixed}
 .cal td.d i{display:block;font-style:normal;font-size:9.5px;color:var(--sub);margin-top:1px}
 .cal td.we{background:var(--wk)}
 .cal td.off{background:var(--soft)}
+.cal td.hol{background:var(--hol)}
+.cal td.mkup{box-shadow:inset 0 0 0 2px var(--accent)}
+.cal td.d i{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding:0 1px}
+.cal td.d i.hn{color:#c2410c;font-weight:600}
+@media(prefers-color-scheme:dark){.cal td.d i.hn{color:#ffb070}}
 .cal td.today b{display:inline-block;min-width:22px;border-radius:50%;background:var(--today);color:#fff;font-weight:700}
 .cal tr.sel td.d{background:var(--sel)}
 .cal tr.sel th.nm{background:var(--sel);outline:3px solid #f0b400;outline-offset:-3px}
@@ -127,7 +132,7 @@ dialog::backdrop{background:#0006}
 </head>
 <body>
 <div class="wrap">
-  <div class="top noprint"><h1>🍱 訂便當排程</h1><span class="ver">v1.0</span></div>
+  <div class="top noprint"><h1>🍱 訂便當排程</h1><span class="ver">v1.1</span></div>
   <h2 class="printonly" id="printTitle"></h2>
   <div class="ro noprint" id="ro" hidden></div>
   <section class="card hero noprint" id="hero"></section>
@@ -172,7 +177,7 @@ function lunar(d){
  colors：人名 → 色票編號。 */
 const KEY='feebit_bento_schedule_v1', PREF='feebit_bento_pref_v1';
 const HUES=[350,28,48,92,150,178,200,224,262,288,316,8];
-const SEED={segments:[{from:'2026-11-01',offset:0,people:['Trista','Euphie','LUCI','Ryan','Joanne','Feebit','Louis','MoMo','Vincent']}],overrides:{},colors:{}};
+const SEED={segments:[{from:'2026-11-01',offset:0,people:['Trista','Euphie','LUCI','Ryan','Joanne','Feebit','Louis','MoMo','Vincent']}],overrides:{},wmode:{},th:3,colors:{}};
 let S=null, readonly=false, hist=[], sel=null;
 let pref={year:new Date().getFullYear(),view:'year',lunar:true};
 try{Object.assign(pref,JSON.parse(localStorage.getItem(PREF)||'{}'));pref.year=new Date().getFullYear();}catch(e){}
@@ -192,35 +197,78 @@ function ensureColors(){
   all.forEach(n=>{if(!(n in S.colors)){let i=0;while(used.has(i)&&i<HUES.length)i++;if(i>=HUES.length)i=Object.keys(S.colors).length%HUES.length;S.colors[n]=i;used.add(i)}});
 }
 function normalize(){
+  S.wmode=S.wmode||{};S.th=S.th||3;
   S.segments.sort((a,b)=>a.from<b.from?-1:1);
   for(const wk of Object.keys(S.overrides)){const b=baseName(wk);if(S.overrides[wk]!==''&&S.overrides[wk]===b)delete S.overrides[wk]}
 }
 function save(){if(readonly)return;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 function commit(fn,msg){
   hist.push(JSON.stringify(S));if(hist.length>30)hist.shift();
-  fn();normalize();ensureColors();save();render();if(msg)toast(msg,true);
+  fn();resetPlan();normalize();ensureColors();save();render();if(msg)toast(msg,true);
 }
-function undo(){if(!hist.length)return;S=JSON.parse(hist.pop());save();render();toast('已復原')}
+function undo(){if(!hist.length)return;S=JSON.parse(hist.pop());resetPlan();normalize();save();render();toast('已復原')}
 
 /* ───────── 排程計算 ───────── */
-function segAt(wk){let r=null;for(const s of S.segments)if(s.from<=wk)r=s;return r}
-function baseName(wk){
-  const s=segAt(wk);if(!s||!s.people.length)return null;
-  const n=s.people.length,k=weeksBetween(s.from,wk);return s.people[(((s.offset+k)%n)+n)%n];
+/* 台灣假日（行政院人事行政總處公開行事曆，經 jsDelivr 取得；抓過會快取在瀏覽器） */
+const HOL={},HOLPEND={};
+const toMap=a=>{const m={};a.forEach(x=>{const d=String(x.date);m[d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6,8)]={h:!!x.isHoliday,d:x.description||''}});return m};
+const holOf=ds=>{const m=HOL[+ds.slice(0,4)];return m?(m[ds]||null):null};
+function isWork(d){const h=holOf(ymd(d));if(h)return !h.h;const w=d.getDay();return w>=1&&w<=5}
+function workdays(wk){const s=parse(wk);let n=0;for(let i=0;i<7;i++)if(isWork(addDays(s,i)))n++;return n}
+async function loadHol(y){
+  const ck='feebit_tw_hol_'+y;let c=null;
+  try{c=JSON.parse(localStorage.getItem(ck))}catch(e){}
+  if(c&&c.a&&Date.now()-c.t<14*DAY){HOL[y]=toMap(c.a);return}
+  try{const r=await fetch('https://cdn.jsdelivr.net/gh/ruyut/TaiwanCalendar/data/'+y+'.json');if(!r.ok)throw 0;
+    const a=await r.json();HOL[y]=toMap(a);try{localStorage.setItem(ck,JSON.stringify({t:Date.now(),a}))}catch(e){}}
+  catch(e){HOL[y]=(c&&c.a)?toMap(c.a):null}
 }
+async function ensureHol(){
+  const y0=Math.min(new Date().getFullYear(),...S.segments.map(s=>+s.from.slice(0,4))),y1=Math.max(pref.year,new Date().getFullYear())+1;
+  const need=[];for(let y=y0;y<=y1;y++)if(!(y in HOL)&&!HOLPEND[y]){HOLPEND[y]=1;need.push(y)}
+  if(!need.length)return;
+  await Promise.all(need.map(loadHol));resetPlan();render();
+}
+
+/* ───────── 排程計算 ─────────
+ 每週先判斷類型：off＝整週放假（休息、不佔輪次）、merge＝上班日不足（併入上一輪，同一人）、turn＝正常一輪。 */
+let PLAN={};const resetPlan=()=>{PLAN={}};
+function segAt(wk){let r=null;for(const s of S.segments)if(s.from<=wk)r=s;return r}
+function cls(wk){
+  const m=(S.wmode||{})[wk];if(m==='off'||m==='turn'||m==='merge')return m;
+  const w=workdays(wk);if(w===0)return'off';return w<(S.th||3)?'merge':'turn';
+}
+function baseInfo(wk){
+  const seg=segAt(wk);if(!seg||!seg.people.length)return null;
+  const key=seg.from+'|'+seg.offset+'|'+seg.people.join(',');
+  const P=PLAN[key]||(PLAN[key]={turn:-1,next:seg.from,map:{}});
+  while(P.next<=wk){
+    const c=cls(P.next);
+    if(c==='off')P.map[P.next]={cls:'off'};
+    else if(c==='merge'&&P.turn>=0)P.map[P.next]={cls:'merge',turn:P.turn};
+    else{P.turn++;P.map[P.next]={cls:'turn',turn:P.turn}}
+    P.next=ymd(addDays(parse(P.next),7));
+  }
+  const r=P.map[wk];if(!r)return null;
+  if(r.cls==='off')return{name:null,cls:'off'};
+  const n=seg.people.length;return{name:seg.people[(((seg.offset+r.turn)%n)+n)%n],cls:r.cls};
+}
+const baseName=wk=>{const i=baseInfo(wk);return i?i.name:null};
 function eff(wk){
-  const b=baseName(wk);
-  if(wk in S.overrides){const o=S.overrides[wk];return o===''?{name:'',kind:'rest',base:b}:{name:o,kind:'swap',base:b}}
-  return b?{name:b,kind:'auto',base:b}:{name:'',kind:'none',base:null};
+  const bi=baseInfo(wk),b=bi?bi.name:null;
+  if(wk in S.overrides){const o=S.overrides[wk];return o===''?{name:'',kind:'rest',base:b,cls:bi&&bi.cls}:{name:o,kind:'swap',base:b,cls:bi&&bi.cls}}
+  if(!bi)return{name:'',kind:'none',base:null};
+  if(bi.cls==='off')return{name:'',kind:'rest',base:null,auto:true,cls:'off'};
+  return{name:b,kind:'auto',base:b,cls:bi.cls};
 }
 function setOv(wk,val){ // val: 人名 / '' 休息 / null 還原
   if(val===null||(val!==''&&val===baseName(wk)))delete S.overrides[wk];else S.overrides[wk]=val;
 }
 function chip(i){
-  if(i.kind==='rest')return'<span class="chip rest">休息</span>';
+  if(i.kind==='rest')return`<span class="chip rest">${i.auto?'休假':'休息'}</span>`;
   if(i.kind==='none')return'<span class="chip none">–</span>';
   const h=HUES[(S.colors[i.name]||0)%HUES.length];
-  return`<span class="chip" style="--h:${h}">${esc(i.name)}</span>`+(i.kind==='swap'?'<sup class="mk" title="已手動調整">⇄</sup>':'');
+  return`<span class="chip" style="--h:${h}">${esc(i.name)}</span>`+(i.kind==='swap'?'<sup class="mk" title="已手動調整">⇄</sup>':i.cls==='merge'?'<sup class="mk" title="上班日不足，併入上一輪（同一人）">併</sup>':'');
 }
 
 /* ───────── 畫面 ───────── */
@@ -231,6 +279,7 @@ function render(){
   renderRO();renderHero();renderCtrl();
   $('main').innerHTML=pref.view==='year'?yearHTML():listHTML();
   renderSel();
+  ensureHol();
 }
 function renderRO(){
   const el=$('ro');el.hidden=!readonly;if(!readonly)return;
@@ -251,12 +300,18 @@ function renderHero(){
     copy(txt,'已複製，可直接貼到群組');
   };
 }
+function holWarn(){
+  const bad=[];for(let y=Math.min(new Date().getFullYear(),pref.year);y<=pref.year;y++)if(HOL[y]===null)bad.push(y);
+  return bad.length?`<span class="chk" style="color:var(--accent)">⚠ ${bad.join('、')} 年尚無官方假日資料，暫以一般週計算</span>`:'';
+}
 function renderCtrl(){
   const ro=readonly;
   $('ctrl').innerHTML=`
     <div class="yr"><button class="btn sm" id="yPrev">◀</button><b>${pref.year}</b><button class="btn sm" id="yNext">▶</button><button class="btn sm" id="yNow">今年</button></div>
     <div class="seg"><button data-v="year" class="${pref.view==='year'?'on':''}">年曆</button><button data-v="list" class="${pref.view==='list'?'on':''}">週列表</button></div>
-    <label class="chk"><input type="checkbox" id="lunarCk" ${pref.lunar?'checked':''}> 顯示農曆</label>
+    <label class="chk"><input type="checkbox" id="lunarCk" ${pref.lunar?'checked':''}> 農曆</label>
+    <label class="chk">上班日少於 <select id="thSel" ${ro?'disabled':''}>${[1,2,3,4,5].map(n=>`<option value="${n}"${n===(S.th||3)?' selected':''}>${n}</option>`).join('')}</select> 天併上週</label>
+    ${holWarn()}
     <span class="sp"></span>
     ${ro?'':'<button class="btn pri" id="bPeople">👥 人員設定</button>'}
     <button class="btn" id="bShare">🔗 分享連結</button>
@@ -267,6 +322,7 @@ function renderCtrl(){
   $('yNext').onclick=()=>{pref.year++;savePref();render()};
   $('yNow').onclick=()=>{pref.year=new Date().getFullYear();savePref();render();scrollCur()};
   $('ctrl').querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{pref.view=b.dataset.v;savePref();render()});
+  $('thSel').onchange=e=>{const v=+e.target.value;commit(()=>{S.th=v},`門檻改為：上班日少於 ${v} 天併入上一週`)};
   $('lunarCk').onchange=e=>{pref.lunar=e.target.checked;savePref();render()};
   $('bShare').onclick=shareLink;$('bPrint').onclick=()=>window.print();
   if(!ro){$('bPeople').onclick=openPeople;$('bExp').onclick=exportJSON;$('bImp').onclick=()=>$('fileIn').click();}
@@ -281,7 +337,9 @@ function monthHTML(y,m){
     for(let i=0;i<7;i++){
       const d=addDays(ws,i);
       if(d.getMonth()!==m){cells+='<td class="d off"></td>';continue}
-      cells+=`<td class="d ${(i===0||i===6)?'we':''} ${ymd(d)===todayK?'today':''}"><b>${d.getDate()}</b>${pref.lunar?`<i>${lunar(d)}</i>`:''}</td>`;
+      const ds=ymd(d),h=holOf(ds),wkd=i>0&&i<6,mk=h&&!h.h&&!wkd;
+      const sub=mk?'<i class="hn">補班</i>':(h&&h.d)?`<i class="hn" title="${esc(h.d)}">${esc(h.d)}</i>`:(pref.lunar?`<i>${lunar(d)}</i>`:'');
+      cells+=`<td class="d ${(i===0||i===6)?'we':''} ${(h&&h.h&&wkd)?'hol':''} ${mk?'mkup':''} ${ds===todayK?'today':''}"><b>${d.getDate()}</b>${sub}</td>`;
     }
     rows+=`<tr data-wk="${wk}" class="${wk===sel?'sel':''} ${wk===curW?'cur':''}"><th class="nm"><button class="nmb" data-wk="${wk}" title="${range(wk)}">${chip(info)}</button></th>${cells}</tr>`;
     ws=addDays(ws,7);
@@ -295,10 +353,10 @@ function listHTML(){
   while(ws<=end){
     const wk=ymd(ws),i=eff(wk);n++;
     const note=i.kind==='swap'?`<span class="badge">調整過（原：${esc(i.base||'–')}）</span>`:i.kind==='rest'?'<span class="badge">休息</span>':'';
-    rows+=`<tr data-wk="${wk}" class="${wk<curW?'past':''} ${wk===curW?'cur':''} ${wk===sel?'sel':''}"><td>${n}</td><td>${range(wk)}</td><td>${chip(i)}${note}${wk===curW?'<span class="badge">本週</span>':''}</td><td>${readonly?'':`<button class="btn sm nmb2" data-wk="${wk}" style="width:auto;height:auto">更換 / 對調</button>`}</td></tr>`;
+    rows+=`<tr data-wk="${wk}" class="${wk<curW?'past':''} ${wk===curW?'cur':''} ${wk===sel?'sel':''}"><td>${n}</td><td>${range(wk)}</td><td>${workdays(wk)} 天</td><td>${chip(i)}${note}${wk===curW?'<span class="badge">本週</span>':''}</td><td>${readonly?'':`<button class="btn sm nmb2" data-wk="${wk}" style="width:auto;height:auto">更換 / 對調</button>`}</td></tr>`;
     ws=addDays(ws,7);
   }
-  return`<div class="card"><table class="wl"><thead><tr><th>#</th><th>日期</th><th>訂餐者</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  return`<div class="card"><table class="wl"><thead><tr><th>#</th><th>日期</th><th>上班日</th><th>訂餐者</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 function scrollCur(){
   const t=new Date();if(pref.view!=='year'||pref.year!==t.getFullYear())return;
@@ -327,16 +385,19 @@ function renderSel(){
   const opts=[...ppl].map(n=>`<option value="${esc(n)}"${n===i.name?' selected':''}>${esc(n)}</option>`).join('');
   el.hidden=false;
   el.innerHTML=`
-    <div>已選 <b>${range(sel)}</b>　目前：${chip(i)}</div>
+    <div>已選 <b>${range(sel)}</b>（上班日 ${workdays(sel)} 天）　目前：${chip(i)}</div>
     <label>改指定為 <select id="selAssign"><option value="__keep">— 選一位 —</option>${opts}<option value="__rest"${i.kind==='rest'?' selected':''}>休息（這週不訂）</option></select></label>
-    ${(sel in S.overrides)?'<button class="btn" id="selReset">還原自動排序</button>':''}
+    <label>這週算 <select id="selMode"><option value="">自動</option><option value="turn">獨立一輪</option><option value="merge">併入上週</option><option value="off">休息（不佔輪次）</option></select></label>
+    ${((sel in S.overrides)||(sel in (S.wmode||{})))?'<button class="btn" id="selReset">還原自動排序</button>':''}
     <button class="btn" id="selCancel">取消</button>
     <small>👉 想對調？直接點<b>另一週</b>的名字，兩週就會互換</small>`;
   $('selAssign').onchange=e=>{
     const v=e.target.value;if(v==='__keep')return;const wk=sel;sel=null;
     commit(()=>setOv(wk,v==='__rest'?'':v),`${range(wk)} 改為：${v==='__rest'?'休息':v}`);
   };
-  if($('selReset'))$('selReset').onclick=()=>{const wk=sel;sel=null;commit(()=>setOv(wk,null),`${range(wk)} 已還原自動排序`)};
+  $('selMode').value=(S.wmode||{})[sel]||'';
+  $('selMode').onchange=e=>{const v=e.target.value,wk=sel;sel=null;commit(()=>{if(v)S.wmode[wk]=v;else delete S.wmode[wk]},`${range(wk)} 處理方式：${{'':'自動','turn':'獨立一輪','merge':'併入上週','off':'休息（不佔輪次）'}[v]}`)};
+  if($('selReset'))$('selReset').onclick=()=>{const wk=sel;sel=null;commit(()=>{setOv(wk,null);delete S.wmode[wk]},`${range(wk)} 已還原自動排序`)};
   $('selCancel').onclick=()=>{sel=null;render()};
 }
 
@@ -398,13 +459,16 @@ function refreshMeta(){
   const n=D.items;if(!n.some(x=>x.id===D.startId))D.startId=null;
   const auto=autoStart(),sid=D.startId??auto;
   const idx=Math.max(0,n.findIndex(x=>x.id===sid));
-  let prev='';for(let i=0;i<Math.min(8,n.length||0)+ (n.length?0:0);i++){}
-  if(n.length){for(let i=0;i<8;i++){const wk=ymd(addDays(parse(D.W),7*i)),it=n[(idx+i)%n.length];
-    prev+=`<span><span class="w">${md(parse(wk))}</span>${chip({kind:'auto',name:it.name||'?'})}</span>`}}
+  let prev='';
+  if(n.length){let turn=-1;for(let i=0;i<10;i++){const wk=ymd(addDays(parse(D.W),7*i)),c=cls(wk);let h;
+    if(c==='off')h=chip({kind:'rest',auto:true});
+    else if(c==='merge'&&turn>=0)h=chip({kind:'auto',name:n[(idx+turn)%n.length].name||'?',cls:'merge'});
+    else{turn++;h=chip({kind:'auto',name:n[(idx+turn)%n.length].name||'?'})}
+    prev+=`<span><span class="w">${md(parse(wk))}</span>${h}</span>`}}
   $('dMeta').innerHTML=`
     <div class="lab">生效週第一位輪到誰</div>
     <select id="dStart">${n.map(x=>`<option value="${x.id}"${x.id===sid?' selected':''}>${esc(x.name||'（未命名）')}${x.id===auto?'　← 依現有順序接續':''}</option>`).join('')}</select>
-    <div class="lab">套用後預覽（從 ${md(parse(D.W))} 起 8 週）</div><div class="prev">${prev||'<span class="hint">請先新增人員</span>'}</div>`;
+    <div class="lab">套用後預覽（從 ${md(parse(D.W))} 起 10 週，已含假日規則）</div><div class="prev">${prev||'<span class="hint">請先新增人員</span>'}</div>`;
   $('dStart').onchange=e=>{D.startId=+e.target.value;refreshMeta()};
   // 預覽用的色票：新名字先暫借顏色，不寫入資料
 }
@@ -431,7 +495,7 @@ function applyPeople(){
 
 /* ───────── 分享 / 備份 / 匯入 ───────── */
 function shareLink(){
-  const url=location.origin+location.pathname+'#s='+b64e({segments:S.segments,overrides:S.overrides,colors:S.colors});
+  const url=location.origin+location.pathname+'#s='+b64e({segments:S.segments,overrides:S.overrides,wmode:S.wmode,th:S.th,colors:S.colors});
   copy(url,'唯讀分享連結已複製（同事打開看到的是此刻這份排程）');
 }
 function exportJSON(){
