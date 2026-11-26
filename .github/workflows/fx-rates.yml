@@ -1,0 +1,33 @@
+name: 彰銀牌告匯率更新（平日白天每小時）
+
+on:
+  schedule:
+    # 台灣時間平日 09:05～16:05 每小時一次（UTC 01:05～08:05）
+    - cron: '5 1-8 * * 1-5'
+  workflow_dispatch: # 允許手動觸發
+
+jobs:
+  fx:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 抓彰銀牌告匯率
+        run: node scripts/fetch-chb-rates.js
+
+      - name: 有變動才 Commit & push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/fx-rates.json
+          git diff --staged --quiet || git commit -m "💱 彰銀匯率 $(date +'%Y-%m-%d %H:%M')"
+          git pull --rebase -q origin main || true
+          git push

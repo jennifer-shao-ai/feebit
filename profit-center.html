@@ -78,7 +78,7 @@ tr.click:hover td{background:#f8fafc}
 <div class="wrap">
   <div class="topbar">
     <div>
-      <h1>全產品成本利潤中心 <span style="font-size:12px;color:var(--muted);font-weight:600">v1.0</span></h1>
+      <h1>全產品成本利潤中心 <span style="font-size:12px;color:var(--muted);font-weight:600">v2.0</span></h1>
       <div class="sub">資料即時讀自 Ragic「全產品總表」，看得到哪些成本由你的 Ragic 權限決定。成本只在這個瀏覽器分頁的記憶體裡，不存檔、不上傳。</div>
     </div>
     <div style="text-align:right">
@@ -157,6 +157,7 @@ tr.click:hover td{background:#f8fafc}
         <div class="fg"><label>預計售價（選填）</label><input type="number" id="sbSell" step="any" placeholder="算各平台利潤"></div>
       </div>
       <div class="hint" id="sbFormula"></div>
+      <div class="row" style="margin-top:8px"><button class="btn" onclick="applyFx('sell')">用彰銀今日牌告（即期賣出）</button><span class="status" id="fxInfo"></span></div>
     </div>
     <div class="card" id="sbOut"></div>
   </div>
@@ -179,7 +180,13 @@ tr.click:hover td{background:#f8fafc}
         <div class="fg"><label>運費＋關稅係數（新品試算預設）</label><input type="number" id="setDuty" step="0.01"></div>
       </div>
       <h2 style="margin-top:16px">匯率（原幣→台幣）</h2>
+      <div class="row" style="margin-bottom:8px">
+        <select id="fxKind"><option value="sell">彰銀即期賣出（進貨付款用，預設）</option><option value="buy">彰銀即期買入</option></select>
+        <button class="btn" onclick="applyFx()">更新為彰銀今日牌告</button>
+        <span class="status" id="fxInfoSet"></span>
+      </div>
       <div class="grid" id="setCur"></div>
+      <div class="hint">彰銀牌告沒有韓元，韓元請手動填。更新只會改美金、日圓、人民幣，並存在這個瀏覽器。</div>
       <h2 style="margin-top:16px">價格階梯標註</h2>
       <div class="grid" id="setLadder"></div>
       <h2 style="margin-top:16px">隱藏品牌（逗號分隔，搜尋預設不顯示）</h2>
@@ -494,6 +501,24 @@ function renderSb() {
   out.innerHTML = h;
 }
 
+// ── 彰銀牌告匯率（data/fx-rates.json 由 GitHub Actions 平日白天每小時更新）──
+let FX = null;
+async function loadFx() {
+  try { const r = await fetch('data/fx-rates.json?v=' + Date.now()); if (!r.ok) throw 0; FX = await r.json(); } catch (e) { FX = null; }
+  const info = FX ? '牌告時間 ' + FX.updated + '（' + FX.source + '）' : '讀不到牌告檔，請手動填匯率';
+  ['fxInfo', 'fxInfoSet'].forEach(id => { if ($(id)) $(id).textContent = info; });
+}
+function applyFx(kind) {
+  if (!FX) return toast('讀不到牌告檔，請手動填匯率');
+  kind = kind || ($('fxKind') ? $('fxKind').value : 'sell');
+  const done = [];
+  ['USD', 'JPY', 'CNY'].forEach(id => { const v = FX.rates[id] && FX.rates[id][kind]; if (v > 0) { SET.cur[id] = v; done.push(id + ' ' + v); } });
+  try { localStorage.setItem(LS_SET, JSON.stringify(SET)); } catch (e) {}
+  renderSettings(); sbSetRate(); renderSb(); loadFxLabel();
+  toast('已更新：' + done.join('、') + '（' + FX.updated + '）');
+}
+function loadFxLabel() { const info = FX ? '牌告時間 ' + FX.updated + '（' + FX.source + '）' : ''; ['fxInfo', 'fxInfoSet'].forEach(id => { if ($(id)) $(id).textContent = info; }); }
+
 // ── 設定頁 ──
 function renderSettings() {
   $('setSys').value = SET.sysMargin; $('setDuty').value = SET.duty;
@@ -526,7 +551,7 @@ function demoProducts() {
 
 (async function init() {
   try { await loadFees(); } catch (e) { setStatus('費率檔讀取失敗：' + e.message, true); return; }
-  loadSettings(); renderSettings(); renderKeyState(); sbInit(); renderSb();
+  loadSettings(); renderSettings(); renderKeyState(); sbInit(); renderSb(); loadFx();
   document.querySelectorAll('.tab').forEach(b => b.onclick = () => gotoTab(b.dataset.t));
   document.querySelectorAll('#modeSeg button').forEach(b => b.onclick = () => { S.mode = b.dataset.m; S.limit = 200; syncSeg(); render(); });
   let tm; $('q').addEventListener('input', e => { clearTimeout(tm); tm = setTimeout(() => { S.q = e.target.value; S.limit = 200; render(); }, 150); });

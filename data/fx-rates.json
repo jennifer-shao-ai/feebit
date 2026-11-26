@@ -1,0 +1,75 @@
+{
+ "source": "彰化銀行外幣即期匯率牌告",
+ "url": "https://ae.chb.com.tw/accessible/faces/login/CERates_View",
+ "updated": "2026/11/23 10:01:19",
+ "fetchedAt": "2026-11-23T02:02:59Z",
+ "note": "即期買入／賣出；cashBuy／cashSell 是現鈔。韓元彰銀牌告沒有，需手動。（此檔初始值為手動抓取，之後由 GitHub Actions 平日白天每小時更新）",
+ "rates": {
+  "USD": {
+   "buy": 32.94,
+   "sell": 33.04,
+   "cashBuy": 32.69,
+   "cashSell": 33.26
+  },
+  "GBP": {
+   "buy": 43.055,
+   "sell": 43.455
+  },
+  "AUD": {
+   "buy": 21.815,
+   "sell": 22.015
+  },
+  "HKD": {
+   "buy": 4.184,
+   "sell": 4.234,
+   "cashBuy": 4.099,
+   "cashSell": 4.259
+  },
+  "SGD": {
+   "buy": 25.47,
+   "sell": 25.67
+  },
+  "CAD": {
+   "buy": 22.914,
+   "sell": 23.114
+  },
+  "CHF": {
+   "buy": 39.155,
+   "sell": 39.415
+  },
+  "ZAR": {
+   "buy": 1.836,
+   "sell": 1.936
+  },
+  "SEK": {
+   "buy": 3.18,
+   "sell": 3.28
+  },
+  "JPY": {
+   "buy": 0.2055,
+   "sell": 0.2095,
+   "cashBuy": 0.203,
+   "cashSell": 0.211
+  },
+  "THB": {
+   "buy": 0.9559,
+   "sell": 0.9959
+  },
+  "EUR": {
+   "buy": 36.037,
+   "sell": 36.437,
+   "cashBuy": 35.637,
+   "cashSell": 36.737
+  },
+  "NZD": {
+   "buy": 17.97,
+   "sell": 18.17
+  },
+  "CNY": {
+   "buy": 4.9168,
+   "sell": 4.9608,
+   "cashBuy": 4.8388,
+   "cashSell": 5.0388
+  }
+ }
+}

@@ -109,7 +109,7 @@
     <a class="nav-item" href="tools.html"><span class="icon">🔧</span> 使用工具</a>
   </div>
 
-  <div class="sidebar-footer">v3.1 · Feebit © 2026</div>
+  <div class="sidebar-footer">v4.0 · Feebit © 2026</div>
 </div>
 
 <!-- ── SIDEBAR OVERLAY ── -->
@@ -122,7 +122,7 @@
       <button class="btn-hamburger" onclick="openSidebar()">☰</button>
       <span class="topbar-title">帳務轉換</span>
       <span class="topbar-badge">財務工具</span>
-      <span style="font-size:11px;color:var(--gray-400);margin-left:4px">v3.1</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-left:4px">v4.0</span>
     </div>
     <button class="btn-share" onclick="copyShare(this)" title="複製分享連結">🔗 分享</button>
   </div>
@@ -694,8 +694,19 @@ const RAGIC = {
   base: 'https://ap13.ragic.com/feebit50968407/ragicpersonal-finance',
   TX: '20002', ACCT: '20001',
   F: { date:'3005433', type:'3005434', acct:'3005435', acctCur:'3005859', mainCur:'3005869',
-       amount:'3005439', main:'3005437', sub:'3005438', payee:'3005452', desc:'3005442', confirmed:'3005458' },
+       amount:'3005439', main:'3005437', sub:'3005438', payee:'3005452', desc:'3005442', confirmed:'3005458',
+       toAcct:'3005440', fee:'3005584', arrived:'3005459' },
+  BTN_ARRIVE: 3,   // 確認到帳
 };
+// 轉到自己其他帳戶的規則：自動填「至帳戶」、拆出手續費、匯入後按「確認到帳」幫對方帳戶入帳
+// 2026-11-10 實測：新增時自帳戶扣「原幣＋手續費」；確認到帳時至帳戶只加「原幣」
+const TRANSFER_RULES = [
+  { sub: '飛比特星展外幣帳戶', to: '飛比特星展環星匯-台幣', fee: 15 },
+];
+function transferRule(tx) {
+  if (isIncome(tx.type)) return null;
+  return TRANSFER_RULES.find(r => r.sub === tx.sub) || null;
+}
 let ragicPlan = null;   // 匯入前檢查的結果
 let ragicBusy = false;
 const h = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -752,8 +763,10 @@ async function ragicPrecheck() {
     else { try { localStorage.removeItem(KEY_RAGIC); } catch (e) {} }
     riStatus('⏳ 讀取 Ragic 帳戶餘額…');
     const bals = await ragicBalances();
+    for (const t of pending) { const r = transferRule(t); t.xfer = r ? { to: r.to, fee: r.fee, net: t.amount - r.fee } : null; }
     const accts = [...new Set(pending.map(t => t.accountName))];
-    const missing = accts.filter(a => !bals[a]);
+    const toAccts = [...new Set(pending.filter(t => t.xfer).map(t => t.xfer.to))].filter(a => !accts.includes(a));
+    const missing = [...accts, ...toAccts].filter(a => !bals[a]);
     if (missing.length) {
       riStatus(`⛔ Ragic 帳戶列表找不到：<b>${missing.map(h).join('、')}</b>。<br>請到「帳戶設定」分頁把名稱改成跟 Ragic「帳戶名稱」完全一樣。`);
       return;
@@ -767,9 +780,26 @@ async function ragicPrecheck() {
       const j = await ragicFetch(q);
       for (const r of Object.values(j)) {
         if (!r || r['自帳戶'] !== a) continue;
-        const k = `${a}|${r['交易日期']}|${isIncome(r['交易類別']) ? '+' : '-'}|${parseFloat(r['原幣金額'])}`;
+        const inc = isIncome(r['交易類別']);
+        const amt = parseFloat(r['原幣金額']) + (inc ? 0 : (parseFloat(r['手續費']) || 0));  // 轉帳支出存的是淨額＋手續費
+        const k = `${a}|${r['交易日期']}|${inc ? '+' : '-'}|${amt}`;
         existing[k] = (existing[k] || 0) + 1;
       }
+    }
+    // 轉入帳戶是否已經手動記過這筆入帳（日期前後 5 天、金額＝轉出淨額）→ 有就不按確認到帳，避免重複
+    const toExisting = {};
+    for (const a of [...new Set(pending.filter(t => t.xfer).map(t => t.xfer.to))]) {
+      const ds = pending.filter(t => t.xfer && t.xfer.to === a).map(t => t.date).sort()[0];
+      const d0 = new Date(+ds.slice(0,4), +ds.slice(4,6) - 1, +ds.slice(6,8) - 5);
+      const minDate = `${d0.getFullYear()}/${String(d0.getMonth()+1).padStart(2,'0')}/${String(d0.getDate()).padStart(2,'0')}`;
+      const j = await ragicFetch(`/${RAGIC.TX}?api&v=3&limit=3000&where=${encodeURIComponent(RAGIC.F.acct + ',eq,' + a)}&where=${encodeURIComponent(RAGIC.F.date + ',gte,' + minDate)}`);
+      toExisting[a] = Object.values(j).filter(r => r && r['自帳戶'] === a && isIncome(r['交易類別'])).map(r => ({ date: new Date(r['交易日期'].replace(/\//g, '-')), amt: parseFloat(r['原幣金額']), used: false }));
+    }
+    for (const t of pending) {
+      if (!t.xfer) continue;
+      const td = new Date(+t.date.slice(0,4), +t.date.slice(4,6) - 1, +t.date.slice(6,8));
+      const hit = (toExisting[t.xfer.to] || []).find(e => !e.used && Math.abs(e.amt - t.xfer.net) < 0.005 && Math.abs(e.date - td) <= 5 * 864e5);
+      t.xfer.toDup = !!hit; if (hit) hit.used = true;
     }
     // 收款人：Ragic 慣用「姓名＋帳號末5碼」（例：Vivian12259），用末5碼對應既有收款人
     riStatus('⏳ 讀取 Ragic 既有收款人…');
@@ -799,12 +829,7 @@ async function ragicPrecheck() {
       return { tx: t, dup };
     });
     const summary = {};
-    for (const a of accts) summary[a] = { before: bals[a].bal, inc: 0, exp: 0, n: 0 };
-    for (const r of rows) {
-      if (r.dup) continue;
-      const s = summary[r.tx.accountName]; s.n++;
-      if (isIncome(r.tx.type)) s.inc += r.tx.amount; else s.exp += r.tx.amount;
-    }
+    for (const a of [...accts, ...toAccts]) summary[a] = { before: bals[a].bal, inc: 0, exp: 0, n: 0 };
     ragicPlan = { rows, summary };
     renderPrecheck();
   } catch (e) {
@@ -819,7 +844,11 @@ function renderPrecheck() {
   // 依是否含重複重新計算預期
   const sum = {};
   for (const [a, s] of Object.entries(summary)) sum[a] = { before: s.before, inc: 0, exp: 0, n: 0 };
-  for (const r of toImport) { const s = sum[r.tx.accountName]; s.n++; if (isIncome(r.tx.type)) s.inc += r.tx.amount; else s.exp += r.tx.amount; }
+  for (const r of toImport) {
+    const s = sum[r.tx.accountName]; s.n++;
+    if (isIncome(r.tx.type)) s.inc += r.tx.amount; else s.exp += r.tx.amount;
+    if (r.tx.xfer && !r.tx.xfer.toDup) { const s2 = sum[r.tx.xfer.to]; s2.n++; s2.inc += r.tx.xfer.net; }
+  }
   ragicPlan.toImport = toImport; ragicPlan.expect = sum;
   let html = `<table style="width:100%;font-size:13px"><thead><tr><th>帳戶</th><th>筆數</th><th style="text-align:right">目前餘額</th><th style="text-align:right">＋收入</th><th style="text-align:right">－支出</th><th style="text-align:right">預期匯入後</th></tr></thead><tbody>`;
   for (const [a, s] of Object.entries(sum)) {
@@ -828,6 +857,10 @@ function renderPrecheck() {
       <tr><td colspan="6" style="font-size:12px;color:var(--gray-600)">算式：${fmtNum(s.before)} ＋ ${fmtNum(s.inc)} － ${fmtNum(s.exp)} ＝ ${fmtNum(exp)}</td></tr>`;
   }
   html += '</tbody></table>';
+  const xfers = toImport.filter(r => r.tx.xfer);
+  if (xfers.length) {
+    html += `<details style="margin-top:12px" open><summary>轉到自己帳戶（${xfers.length} 筆）：自動填至帳戶、手續費 ${xfers[0].tx.xfer.fee} 元，匯入後按「確認到帳」</summary><ul style="margin:6px 0 0 18px">${xfers.map(r => `<li>${h(toRagicDate(r.tx.date))}　轉出 ${fmtNum(r.tx.amount)} ＝ ${fmtNum(r.tx.xfer.net)} ＋ 手續費 ${fmtNum(r.tx.xfer.fee)} → ${h(r.tx.xfer.to)}${r.tx.xfer.toDup ? '　<span style="color:var(--warning)">（對方帳戶已經有這筆入帳，只填至帳戶、不按確認到帳）</span>' : ''}</li>`).join('')}</ul></details>`;
+  }
   const pays = toImport.filter(r => r.tx.payee);
   if (pays.length) {
     html += `<details style="margin-top:12px" ${pays.some(r => r.tx.payeeNew) ? 'open' : ''}><summary>收款人對應（${pays.length} 筆，依帳號末 5 碼對到 Ragic 既有收款人）</summary><ul style="margin:6px 0 0 18px">${pays.map(r => `<li>${h(r.tx.payee)} → <b>${h(r.tx.ragicPayee)}</b>${r.tx.payeeNew ? '　<span style="color:var(--warning)">（Ragic 沒有這位，會新寫入這個名稱）</span>' : ''}</li>`).join('')}</ul></details>`;
@@ -861,7 +894,8 @@ async function ragicRunImport() {
     body.set(F.acct, tx.accountName);
     body.set(F.acctCur, tx.currency || 'TWD');
     body.set(F.mainCur, tx.currency || 'TWD');
-    body.set(F.amount, String(tx.amount));
+    body.set(F.amount, String(tx.xfer ? tx.xfer.net : tx.amount));
+    if (tx.xfer) { body.set(F.toAcct, tx.xfer.to); body.set(F.fee, String(tx.xfer.fee)); }
     body.set(F.main, tx.main || '');
     body.set(F.sub, tx.sub || '');
     const payeeOut = tx.ragicPayee || tx.payee || '';
@@ -877,6 +911,11 @@ async function ragicRunImport() {
       if (!d[F.confirmed]) warns.push(`${no}：Ragic 沒有自動「確認交易」，請到 Ragic 手動按一次`);
       if ((d[F.main] || '') !== (tx.main || '')) warns.push(`${no}：主分類「${tx.main}」沒寫進去（Ragic 選單沒有這個選項），請到 Ragic 補`);
       if ((d[F.sub] || '') !== (tx.sub || '')) warns.push(`${no}：子分類「${tx.sub}」沒寫進去（Ragic 選單沒有這個選項），請到 Ragic 補`);
+      if (tx.xfer && !tx.xfer.toDup) {
+        const b = await ragicFetch(`/${RAGIC.TX}/${r.ragicId}?api&bId=${RAGIC.BTN_ARRIVE}`, { method: 'POST' });
+        if (b.status !== 'SUCCESS') warns.push(`${no}：「確認到帳」沒有成功，${tx.xfer.to} 還沒入帳，請到 Ragic 手動按`);
+        else tx.xfer.arrived = true;
+      }
       if (payeeOut) { const p = d[F.payee]; const ok = Array.isArray(p) ? p.includes(payeeOut) : p === payeeOut; if (!ok) warns.push(`${no}：收款人「${payeeOut}」沒寫進去，請到 Ragic 補`); }
     } catch (e) { fail = { tx, msg: e.message }; break; }
   }
@@ -887,7 +926,10 @@ async function ragicRunImport() {
     const after = await ragicBalances();
     const exp = {};
     for (const a of Object.keys(ragicPlan.expect)) exp[a] = ragicPlan.expect[a].before;
-    for (const d of done) exp[d.tx.accountName] += isIncome(d.tx.type) ? d.tx.amount : -d.tx.amount;
+    for (const d of done) {
+      exp[d.tx.accountName] += isIncome(d.tx.type) ? d.tx.amount : -d.tx.amount;
+      if (d.tx.xfer && d.tx.xfer.arrived) exp[d.tx.xfer.to] += d.tx.xfer.net;
+    }
     let allOk = true;
     html += `<table style="width:100%;font-size:13px"><thead><tr><th>帳戶</th><th style="text-align:right">匯入前</th><th style="text-align:right">預期</th><th style="text-align:right">Ragic 實際</th><th>結果</th></tr></thead><tbody>`;
     for (const a of Object.keys(exp)) {
