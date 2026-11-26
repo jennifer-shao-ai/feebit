@@ -1,8 +1,8 @@
 {
  "source": "彰化銀行外幣即期匯率牌告",
  "url": "https://ae.chb.com.tw/accessible/faces/login/CERates_View",
- "updated": "2026/11/26 16:54:18",
- "fetchedAt": "2026-11-26T08:54:38.969Z",
+ "updated": "2026/11/26 16:55:18",
+ "fetchedAt": "2026-11-26T18:21:40.100Z",
  "note": "即期買入／賣出；cashBuy／cashSell 是現鈔。韓元彰銀牌告沒有，需手動。",
  "rates": {
   "USD": {
