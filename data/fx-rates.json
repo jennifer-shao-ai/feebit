@@ -1,75 +1,75 @@
 {
  "source": "彰化銀行外幣即期匯率牌告",
  "url": "https://ae.chb.com.tw/accessible/faces/login/CERates_View",
- "updated": "2026/11/26 16:55:18",
- "fetchedAt": "2026-11-26T18:21:40.100Z",
+ "updated": "2026/11/27 16:55:18",
+ "fetchedAt": "2026-11-27T09:36:55.544Z",
  "note": "即期買入／賣出；cashBuy／cashSell 是現鈔。韓元彰銀牌告沒有，需手動。",
  "rates": {
   "USD": {
-   "buy": 32.936,
-   "sell": 33.036,
-   "cashBuy": 32.686,
-   "cashSell": 33.256
+   "buy": 32.904,
+   "sell": 33.004,
+   "cashBuy": 32.654,
+   "cashSell": 33.224
   },
   "GBP": {
-   "buy": 43.028,
-   "sell": 43.428
+   "buy": 43.05,
+   "sell": 43.45
   },
   "AUD": {
-   "buy": 21.779,
-   "sell": 21.979
+   "buy": 21.892,
+   "sell": 22.092
   },
   "HKD": {
-   "buy": 4.183,
-   "sell": 4.233,
-   "cashBuy": 4.098,
-   "cashSell": 4.258
+   "buy": 4.184,
+   "sell": 4.234,
+   "cashBuy": 4.099,
+   "cashSell": 4.259
   },
   "SGD": {
-   "buy": 25.467,
-   "sell": 25.667
+   "buy": 25.463,
+   "sell": 25.663
   },
   "CAD": {
-   "buy": 23.09,
-   "sell": 23.29
+   "buy": 23.045,
+   "sell": 23.245
   },
   "CHF": {
-   "buy": 39.486,
-   "sell": 39.746
+   "buy": 39.324,
+   "sell": 39.584
   },
   "ZAR": {
-   "buy": 1.831,
-   "sell": 1.931
+   "buy": 1.85,
+   "sell": 1.95
   },
   "SEK": {
-   "buy": 3.171,
-   "sell": 3.271
+   "buy": 3.185,
+   "sell": 3.285
   },
   "JPY": {
-   "buy": 0.2052,
-   "sell": 0.2092,
-   "cashBuy": 0.2027,
-   "cashSell": 0.2107
+   "buy": 0.2047,
+   "sell": 0.2087,
+   "cashBuy": 0.2022,
+   "cashSell": 0.2102
   },
   "THB": {
-   "buy": 0.954,
-   "sell": 0.994
+   "buy": 0.9565,
+   "sell": 0.9965
   },
   "EUR": {
-   "buy": 36.002,
-   "sell": 36.402,
-   "cashBuy": 35.602,
-   "cashSell": 36.702
+   "buy": 35.952,
+   "sell": 36.352,
+   "cashBuy": 35.552,
+   "cashSell": 36.652
   },
   "NZD": {
-   "buy": 17.978,
-   "sell": 18.178
+   "buy": 17.988,
+   "sell": 18.188
   },
   "CNY": {
-   "buy": 4.9306,
-   "sell": 4.9746,
-   "cashBuy": 4.8526,
-   "cashSell": 5.0526
+   "buy": 4.9295,
+   "sell": 4.9735,
+   "cashBuy": 4.8515,
+   "cashSell": 5.0515
   }
  }
 }
